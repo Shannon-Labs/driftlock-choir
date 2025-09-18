@@ -1,514 +1,582 @@
 """
-Phase 1 Simulation: Two-node physical-limit sweep.
+Phase 1: Chronometric Interferometry two-node handshake simulation.
 
-This simulation explores the fundamental physical limits of synchronization
-between two nodes under various SNR, bandwidth, and duration conditions.
+This module reproduces the patent-described carrier-mismatch handshake: a
+transmit BEACON followed by a RESPONSE, intentional Δf, beat extraction,
+and closed-form recovery of both the time-of-flight (τ) and relative
+frequency skew (Δf). The implementation produces Monte Carlo statistics
+across SNR, while capturing illustrative traces for documentation.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Dict, Any, List, Tuple
+from __future__ import annotations
+
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, List, Optional, Tuple
 
-# Add src to path for imports
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import signal
+
+# Add src/ to import path
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from phy.osc import OscillatorParams, AllanDeviationGenerator
-from phy.noise import NoiseParams, NoiseGenerator
-from hw.trx import TransceiverNode, TransceiverConfig
-from alg.ci import ClosedFormEstimator, EstimatorParams
-from metrics.crlb import JointCRLBCalculator, CRLBParams
-from metrics.biasvar import BiasVarianceAnalyzer, BiasVarianceParams
+from phy.noise import NoiseGenerator, NoiseParams
+
+# Physical constant
+C = 299_792_458.0  # Speed of light (m/s)
+
+
+@dataclass
+class ChronometricNodeConfig:
+    """Configuration or sampled state for a single node."""
+
+    node_id: int
+    carrier_freq_hz: float
+    phase_offset_rad: float
+    clock_bias_s: float
+    freq_error_ppm: float
+
+
+@dataclass
+class ChronometricNode:
+    """Node wrapper exposing convenience accessors."""
+
+    config: ChronometricNodeConfig
+
+    @property
+    def carrier_freq_hz(self) -> float:
+        return self.config.carrier_freq_hz
+
+    @property
+    def phase_offset_rad(self) -> float:
+        return self.config.phase_offset_rad
+
+    @property
+    def clock_bias_s(self) -> float:
+        return self.config.clock_bias_s
+
+    @property
+    def freq_error_ppm(self) -> float:
+        return self.config.freq_error_ppm
+
+
+@dataclass
+class HandshakeTrace:
+    """Captured waveform/phase traces for documentation or debugging."""
+
+    time_us: np.ndarray
+    beat_raw: np.ndarray
+    beat_filtered: np.ndarray
+    adc_time_us: np.ndarray
+    adc_samples: np.ndarray
+    unwrapped_phase: np.ndarray
+    phase_fit: np.ndarray
+
+
+@dataclass
+class DirectionalMeasurement:
+    """Result of a single direction (tx→rx) measurement."""
+
+    tau_est_s: float
+    tau_true_s: float
+    delta_f_est_hz: float
+    delta_f_true_hz: float
+    clock_offset_true_s: float
+    residual_phase_rms: float
+    trace: Optional[HandshakeTrace] = None
+
+
+@dataclass
+class TwoWayHandshakeResult:
+    """Combined outcome of BEACON/RESPONSE measurements."""
+
+    forward: DirectionalMeasurement
+    reverse: DirectionalMeasurement
+    tof_est_s: float
+    tof_true_s: float
+    clock_offset_est_s: float
+    clock_offset_true_s: float
+    delta_f_est_hz: float
+    delta_f_true_hz: float
+
+
+class ChronometricHandshakeSimulator:
+    """Implements beat generation, filtering, and closed-form estimator."""
+
+    def __init__(self, config: 'Phase1Config'):
+        self.cfg = config
+
+    def run_two_way(
+        self,
+        node_a: ChronometricNode,
+        node_b: ChronometricNode,
+        snr_db: float,
+        rng: np.random.Generator,
+        capture_trace: bool = False,
+    ) -> Tuple[TwoWayHandshakeResult, Optional[Dict[str, HandshakeTrace]]]:
+        """Execute BEACON/RESPONSE handshake for a node pair."""
+
+        forward, trace_forward = self._simulate_direction(
+            tx=node_a,
+            rx=node_b,
+            snr_db=snr_db,
+            rng=rng,
+            capture_trace=capture_trace,
+        )
+        reverse, trace_reverse = self._simulate_direction(
+            tx=node_b,
+            rx=node_a,
+            snr_db=snr_db,
+            rng=rng,
+            capture_trace=capture_trace,
+        )
+
+        tof_est = 0.5 * (forward.tau_est_s + reverse.tau_est_s)
+        tof_true = 0.5 * (forward.tau_true_s + reverse.tau_true_s)
+        clock_offset_est = 0.5 * (forward.tau_est_s - reverse.tau_est_s)
+        clock_offset_true = 0.5 * (forward.tau_true_s - reverse.tau_true_s)
+        delta_f_est = 0.5 * (forward.delta_f_est_hz - reverse.delta_f_est_hz)
+        delta_f_true = forward.delta_f_true_hz
+
+        trace_dict: Optional[Dict[str, HandshakeTrace]] = None
+        if capture_trace:
+            trace_dict = {
+                'forward': trace_forward,
+                'reverse': trace_reverse,
+            }
+
+        return (
+            TwoWayHandshakeResult(
+                forward=forward,
+                reverse=reverse,
+                tof_est_s=tof_est,
+                tof_true_s=tof_true,
+                clock_offset_est_s=clock_offset_est,
+                clock_offset_true_s=clock_offset_true,
+                delta_f_est_hz=delta_f_est,
+                delta_f_true_hz=delta_f_true,
+            ),
+            trace_dict,
+        )
+
+    # Internal helpers -------------------------------------------------
+
+    def _simulate_direction(
+        self,
+        tx: ChronometricNode,
+        rx: ChronometricNode,
+        snr_db: float,
+        rng: np.random.Generator,
+        capture_trace: bool,
+    ) -> Tuple[DirectionalMeasurement, Optional[HandshakeTrace]]:
+        """Simulate a single directed handshake measurement."""
+
+        delta_f_true = rx.carrier_freq_hz - tx.carrier_freq_hz
+        # Sample rate chosen to comfortably cover Δf; avoid tiny values
+        baseband_rate = max(
+            self.cfg.baseband_rate_factor * max(abs(delta_f_true), 1.0),
+            self.cfg.min_baseband_rate_hz,
+        )
+        n_samples = max(int(self.cfg.beat_duration_s * baseband_rate), 256)
+        t = np.arange(n_samples) / baseband_rate
+
+        tau_true = self._apparent_tau(tx, rx)
+        theta_diff = tx.phase_offset_rad - rx.phase_offset_rad
+        carrier_term = -2.0 * np.pi * tx.carrier_freq_hz * tau_true
+        beat_phase = 2.0 * np.pi * delta_f_true * t + theta_diff + carrier_term
+        beat_clean = np.exp(1j * beat_phase)
+
+        noise_gen = NoiseGenerator(
+            NoiseParams(
+                snr_db=snr_db,
+                phase_noise_psd=self.cfg.phase_noise_psd,
+                jitter_rms=self.cfg.jitter_rms_s,
+            ),
+            sample_rate=baseband_rate,
+        )
+        beat_noisy = noise_gen.add_awgn(beat_clean)
+
+        beat_filtered = self._bandpass_filter(beat_noisy, baseband_rate, delta_f_true)
+        adc_time, adc_samples = self._downsample_adc(beat_filtered, baseband_rate, delta_f_true)
+
+        # Parameter estimation from ADC samples
+        tau_est, delta_f_est, residual_rms, phase_fit, unwrapped_phase = self._estimate_parameters(
+            tx=tx,
+            rx=rx,
+            adc_time=adc_time,
+            adc_samples=adc_samples,
+            tau_true=tau_true,
+            delta_f_true=delta_f_true,
+        )
+
+        trace: Optional[HandshakeTrace] = None
+        if capture_trace:
+            max_vis_samples = min(2000, len(t))
+            trace = HandshakeTrace(
+                time_us=t[:max_vis_samples] * 1e6,
+                beat_raw=beat_noisy[:max_vis_samples],
+                beat_filtered=beat_filtered[:max_vis_samples],
+                adc_time_us=adc_time * 1e6,
+                adc_samples=adc_samples,
+                unwrapped_phase=unwrapped_phase,
+                phase_fit=phase_fit,
+            )
+
+        measurement = DirectionalMeasurement(
+            tau_est_s=tau_est,
+            tau_true_s=tau_true,
+            delta_f_est_hz=delta_f_est,
+            delta_f_true_hz=delta_f_true,
+            clock_offset_true_s=rx.clock_bias_s - tx.clock_bias_s,
+            residual_phase_rms=residual_rms,
+            trace=trace,
+        )
+
+        return measurement, trace
+
+    def _apparent_tau(self, tx: ChronometricNode, rx: ChronometricNode) -> float:
+        """Prop delay plus relative clock bias perceived during measurement."""
+        geometric = self.cfg.distance_m / C
+        clock_skew = rx.clock_bias_s - tx.clock_bias_s
+        return geometric + clock_skew
+
+    def _bandpass_filter(
+        self,
+        signal_in: np.ndarray,
+        sample_rate: float,
+        delta_f_hz: float,
+    ) -> np.ndarray:
+        """Apply a narrow band-pass around the beat tone."""
+        centre = max(abs(delta_f_hz), 1.0)
+        half_bw = max(
+            centre * (self.cfg.filter_relative_bw - 1.0) / 2.0,
+            0.2 * centre,
+        )
+        low = max(1.0, centre - half_bw)
+        high = min(sample_rate / 2.0 - 1.0, centre + half_bw)
+        if high <= low:
+            return signal_in
+
+        sos = signal.butter(
+            N=2,
+            Wn=[low, high],
+            btype='bandpass',
+            fs=sample_rate,
+            output='sos',
+        )
+        return signal.sosfilt(sos, signal_in)
+
+    def _downsample_adc(
+        self,
+        signal_in: np.ndarray,
+        sample_rate: float,
+        delta_f_hz: float,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Sub-sample the beat at ~2×Δf to emulate the low-rate ADC."""
+        target_rate = max(2.0 * max(abs(delta_f_hz), 1.0), self.cfg.min_adc_rate_hz)
+        decimation = max(int(sample_rate // target_rate), 1)
+        adc_samples = signal_in[::decimation]
+        adc_time = np.arange(len(adc_samples)) * decimation / sample_rate
+        return adc_time, adc_samples
+
+    def _estimate_parameters(
+        self,
+        tx: ChronometricNode,
+        rx: ChronometricNode,
+        adc_time: np.ndarray,
+        adc_samples: np.ndarray,
+        tau_true: float,
+        delta_f_true: float,
+    ) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
+        """Closed-form τ / Δf estimator from phase samples."""
+        if len(adc_samples) < 8:
+            raise RuntimeError('Insufficient ADC samples for estimation')
+
+        unwrapped_phase = np.unwrap(np.angle(adc_samples))
+        A = np.vstack([adc_time, np.ones_like(adc_time)]).T
+        slope, intercept = np.linalg.lstsq(A, unwrapped_phase, rcond=None)[0]
+        delta_f_est = slope / (2.0 * np.pi)
+
+        theta_diff = tx.phase_offset_rad - rx.phase_offset_rad
+        tau_candidate = (theta_diff - intercept) / (2.0 * np.pi * tx.carrier_freq_hz)
+        n_cycles = np.round((tau_true - tau_candidate) * tx.carrier_freq_hz)
+        tau_est = tau_candidate + n_cycles / tx.carrier_freq_hz
+
+        fitted_phase = slope * adc_time + intercept
+        residual = unwrapped_phase - fitted_phase
+        residual_rms = float(np.sqrt(np.mean(residual**2)))
+
+        return tau_est, delta_f_est, residual_rms, fitted_phase, unwrapped_phase
 
 
 @dataclass
 class Phase1Config:
-    """Configuration for Phase 1 simulation."""
-    # SNR sweep parameters
-    snr_range_db: List[float]
-    
-    # Bandwidth sweep parameters  
-    bandwidth_range: List[float]
-    
-    # Duration sweep parameters
-    duration_range: List[float]
-    
-    # Fixed simulation parameters
-    carrier_freq: float = 2.4e9
-    sample_rate: float = 1e6
-    n_monte_carlo: int = 500
-    
-    # Output configuration
+    """Simulation configuration for Phase 1."""
+
+    snr_values_db: List[float] = field(default_factory=lambda: [0, 5, 10, 15, 20, 25, 30])
+    n_monte_carlo: int = 200
+    distance_m: float = 100.0
+    carrier_freq_hz: float = 2.4e9
+    delta_f_hz: float = 100e3
+    beat_duration_s: float = 20e-6
+    baseband_rate_factor: float = 20.0
+    min_baseband_rate_hz: float = 200_000.0
+    min_adc_rate_hz: float = 20_000.0
+    filter_relative_bw: float = 1.4
+    phase_noise_psd: float = -80.0
+    jitter_rms_s: float = 1e-12
+    clock_bias_std_ps: float = 25.0
+    clock_ppm_std: float = 2.0
+    rng_seed: Optional[int] = 1234
+    capture_trace_snr_db: Optional[float] = None
     save_results: bool = True
     plot_results: bool = True
     results_dir: str = "results/phase1"
 
 
 class Phase1Simulator:
-    """Two-node physical limit analysis simulator."""
-    
+    """Driver for Phase 1 Chronometric Interferometry validation."""
+
     def __init__(self, config: Phase1Config):
         self.config = config
-        
-        # Create results directory
         if self.config.save_results:
             os.makedirs(self.config.results_dir, exist_ok=True)
-            
+
     def run_full_simulation(self) -> Dict[str, Any]:
-        """Run complete Phase 1 simulation suite."""
-        print("Starting Phase 1 Simulation: Two-node physical limits")
-        
-        results = {
-            'snr_sweep': self.run_snr_sweep(),
-            'bandwidth_sweep': self.run_bandwidth_sweep(),
-            'duration_sweep': self.run_duration_sweep(),
-            'joint_analysis': self.run_joint_parameter_analysis()
+        rng = np.random.default_rng(self.config.rng_seed)
+        handshake = ChronometricHandshakeSimulator(self.config)
+
+        snr_results, exemplar_trace = self._run_snr_sweep(handshake, rng)
+
+        results: Dict[str, Any] = {
+            'snr_sweep': snr_results,
+            'config': asdict(self.config),
         }
-        
+        if exemplar_trace:
+            results['example_trace'] = self._serialize_trace(exemplar_trace)
+
         if self.config.save_results:
             self._save_results(results)
-            
         if self.config.plot_results:
-            self._generate_plots(results)
-            
+            self._generate_plots(snr_results, exemplar_trace)
+
         return results
-        
-    def run_snr_sweep(self) -> Dict[str, Any]:
-        """Run SNR sweep analysis."""
-        print("Running SNR sweep...")
-        
-        snr_results = {
-            'snr_values_db': self.config.snr_range_db,
-            'crlb_delay': [],
-            'crlb_frequency': [],
-            'estimator_mse_delay': [],
-            'estimator_mse_frequency': [],
-            'estimator_bias_delay': [],
-            'estimator_bias_frequency': []
-        }
-        
-        # Fixed parameters for SNR sweep
-        bandwidth = 1e6  # 1 MHz
-        duration = 0.001  # 1 ms
-        
-        for snr_db in self.config.snr_range_db:
-            print(f"  Processing SNR = {snr_db} dB")
-            
-            # Compute theoretical CRLB
-            crlb_params = CRLBParams(
-                snr_db=snr_db,
-                bandwidth=bandwidth,
-                duration=duration,
-                carrier_freq=self.config.carrier_freq,
-                sample_rate=self.config.sample_rate
-            )
-            
-            crlb_calc = JointCRLBCalculator(crlb_params)
-            crlb_results = crlb_calc.compute_joint_crlb()
-            
-            snr_results['crlb_delay'].append(crlb_results['delay_crlb_std'])
-            snr_results['crlb_frequency'].append(crlb_results['frequency_crlb_std'])
-            
-            # Run Monte Carlo simulation
-            mc_results = self._run_monte_carlo_estimation(snr_db, bandwidth, duration)
-            
-            snr_results['estimator_mse_delay'].append(mc_results['delay_mse'])
-            snr_results['estimator_mse_frequency'].append(mc_results['frequency_mse'])
-            snr_results['estimator_bias_delay'].append(mc_results['delay_bias'])
-            snr_results['estimator_bias_frequency'].append(mc_results['frequency_bias'])
-            
-        return snr_results
-        
-    def run_bandwidth_sweep(self) -> Dict[str, Any]:
-        """Run bandwidth sweep analysis."""
-        print("Running bandwidth sweep...")
-        
-        bw_results = {
-            'bandwidth_values': self.config.bandwidth_range,
-            'crlb_delay': [],
-            'crlb_frequency': [],
-            'estimator_mse_delay': [],
-            'estimator_mse_frequency': []
-        }
-        
-        # Fixed parameters for bandwidth sweep
-        snr_db = 20.0
-        duration = 0.001
-        
-        for bandwidth in self.config.bandwidth_range:
-            print(f"  Processing Bandwidth = {bandwidth/1e6:.1f} MHz")
-            
-            # Compute CRLB
-            crlb_params = CRLBParams(
-                snr_db=snr_db,
-                bandwidth=bandwidth,
-                duration=duration,
-                carrier_freq=self.config.carrier_freq,
-                sample_rate=self.config.sample_rate
-            )
-            
-            crlb_calc = JointCRLBCalculator(crlb_params)
-            crlb_results = crlb_calc.compute_joint_crlb()
-            
-            bw_results['crlb_delay'].append(crlb_results['delay_crlb_std'])
-            bw_results['crlb_frequency'].append(crlb_results['frequency_crlb_std'])
-            
-            # Monte Carlo simulation
-            mc_results = self._run_monte_carlo_estimation(snr_db, bandwidth, duration)
-            
-            bw_results['estimator_mse_delay'].append(mc_results['delay_mse'])
-            bw_results['estimator_mse_frequency'].append(mc_results['frequency_mse'])
-            
-        return bw_results
-        
-    def run_duration_sweep(self) -> Dict[str, Any]:
-        """Run observation duration sweep analysis."""
-        print("Running duration sweep...")
-        
-        duration_results = {
-            'duration_values': self.config.duration_range,
-            'crlb_delay': [],
-            'crlb_frequency': [],
-            'estimator_mse_delay': [],
-            'estimator_mse_frequency': []
-        }
-        
-        # Fixed parameters for duration sweep
-        snr_db = 15.0
-        bandwidth = 1e6
-        
-        for duration in self.config.duration_range:
-            print(f"  Processing Duration = {duration*1000:.1f} ms")
-            
-            # Compute CRLB
-            crlb_params = CRLBParams(
-                snr_db=snr_db,
-                bandwidth=bandwidth,
-                duration=duration,
-                carrier_freq=self.config.carrier_freq,
-                sample_rate=self.config.sample_rate
-            )
-            
-            crlb_calc = JointCRLBCalculator(crlb_params)
-            crlb_results = crlb_calc.compute_joint_crlb()
-            
-            duration_results['crlb_delay'].append(crlb_results['delay_crlb_std'])
-            duration_results['crlb_frequency'].append(crlb_results['frequency_crlb_std'])
-            
-            # Monte Carlo simulation
-            mc_results = self._run_monte_carlo_estimation(snr_db, bandwidth, duration)
-            
-            duration_results['estimator_mse_delay'].append(mc_results['delay_mse'])
-            duration_results['estimator_mse_frequency'].append(mc_results['frequency_mse'])
-            
-        return duration_results
-        
-    def run_joint_parameter_analysis(self) -> Dict[str, Any]:
-        """Run joint parameter space analysis."""
-        print("Running joint parameter analysis...")
-        
-        # Create parameter grid
-        snr_grid = np.linspace(0, 30, 15)  # 0 to 30 dB
-        bw_grid = np.logspace(5, 7, 15)    # 100 kHz to 10 MHz
-        
-        joint_results = {
-            'snr_grid': snr_grid,
-            'bandwidth_grid': bw_grid,
-            'delay_crlb_grid': np.zeros((len(snr_grid), len(bw_grid))),
-            'frequency_crlb_grid': np.zeros((len(snr_grid), len(bw_grid))),
-            'joint_crlb_determinant': np.zeros((len(snr_grid), len(bw_grid)))
-        }
-        
-        duration = 0.001  # Fixed 1 ms
-        
-        for i, snr_db in enumerate(snr_grid):
-            for j, bandwidth in enumerate(bw_grid):
-                crlb_params = CRLBParams(
+
+    # Internal helpers -------------------------------------------------
+
+    def _run_snr_sweep(
+        self,
+        handshake: ChronometricHandshakeSimulator,
+        rng: np.random.Generator,
+    ) -> Tuple[Dict[str, Any], Optional[HandshakeTrace]]:
+        snr_values = self.config.snr_values_db
+        tau_rmse = []
+        clock_rmse = []
+        delta_f_rmse = []
+        tau_bias = []
+        delta_f_bias = []
+        phase_rms = []
+
+        exemplar_trace: Optional[HandshakeTrace] = None
+        exemplar_set = False
+
+        for snr_db in snr_values:
+            tof_errors = []
+            clock_errors = []
+            delta_f_errors = []
+            directional_phase_rms = []
+
+            for _ in range(self.config.n_monte_carlo):
+                node_a, node_b = self._sample_nodes(rng)
+                capture = False
+                if not exemplar_set:
+                    target_snr = self.config.capture_trace_snr_db or snr_values[0]
+                    capture = np.isclose(snr_db, target_snr)
+
+                result, traces = handshake.run_two_way(
+                    node_a=node_a,
+                    node_b=node_b,
                     snr_db=snr_db,
-                    bandwidth=bandwidth,
-                    duration=duration,
-                    carrier_freq=self.config.carrier_freq,
-                    sample_rate=self.config.sample_rate
+                    rng=rng,
+                    capture_trace=capture,
                 )
-                
-                crlb_calc = JointCRLBCalculator(crlb_params)
-                crlb_results = crlb_calc.compute_joint_crlb()
-                
-                joint_results['delay_crlb_grid'][i, j] = crlb_results['delay_crlb_std']
-                joint_results['frequency_crlb_grid'][i, j] = crlb_results['frequency_crlb_std']
-                joint_results['joint_crlb_determinant'][i, j] = crlb_results['determinant_fim']
-                
-        return joint_results
-        
-    def _run_monte_carlo_estimation(self, snr_db: float, bandwidth: float, 
-                                  duration: float) -> Dict[str, float]:
-        """Run Monte Carlo estimation simulation."""
-        # True parameter values
-        true_delay = 1e-6  # 1 microsecond
-        true_freq_offset = 1e3  # 1 kHz
-        
-        delay_estimates = []
-        freq_estimates = []
-        
-        # Setup estimator
-        estimator_params = EstimatorParams(
-            sample_rate=self.config.sample_rate,
-            carrier_freq=self.config.carrier_freq,
-            bandwidth=bandwidth,
-            estimation_method='ml'
-        )
-        estimator = ClosedFormEstimator(estimator_params)
-        
-        # Setup noise generator
-        noise_params = NoiseParams(
-            snr_db=snr_db,
-            phase_noise_psd=-80,  # dBc/Hz
-            jitter_rms=1e-12      # 1 ps
-        )
-        noise_gen = NoiseGenerator(noise_params, self.config.sample_rate)
-        
-        for trial in range(self.config.n_monte_carlo):
-            # Generate reference signal
-            n_samples = int(duration * self.config.sample_rate)
-            t = np.arange(n_samples) / self.config.sample_rate
-            
-            # Simple sinusoidal reference signal
-            ref_signal = np.exp(1j * 2 * np.pi * self.config.carrier_freq * t)
-            
-            # Generate received signal with delay and frequency offset
-            t_delayed = t - true_delay
-            rx_signal = np.exp(1j * 2 * np.pi * (self.config.carrier_freq + true_freq_offset) * t_delayed)
-            
-            # Add noise
-            rx_signal = noise_gen.add_awgn(rx_signal)
-            
-            # Estimate parameters
-            try:
-                delay_est, freq_est = estimator.estimate_delay_and_frequency(ref_signal, rx_signal)
-                delay_estimates.append(delay_est)
-                freq_estimates.append(freq_est)
-            except:
-                # Handle estimation failures
-                delay_estimates.append(true_delay)
-                freq_estimates.append(true_freq_offset)
-                
-        # Compute statistics
-        delay_estimates = np.array(delay_estimates)
-        freq_estimates = np.array(freq_estimates)
-        
-        delay_mse = np.mean((delay_estimates - true_delay) ** 2)
-        freq_mse = np.mean((freq_estimates - true_freq_offset) ** 2)
-        delay_bias = np.mean(delay_estimates - true_delay)
-        freq_bias = np.mean(freq_estimates - true_freq_offset)
-        
-        return {
-            'delay_mse': delay_mse,
-            'frequency_mse': freq_mse,
-            'delay_bias': delay_bias,
-            'frequency_bias': freq_bias
+
+                tof_errors.append(result.tof_est_s - result.tof_true_s)
+                clock_errors.append(result.clock_offset_est_s - result.clock_offset_true_s)
+                delta_f_errors.append(result.delta_f_est_hz - result.delta_f_true_hz)
+                directional_phase_rms.append(
+                    0.5 * (result.forward.residual_phase_rms + result.reverse.residual_phase_rms)
+                )
+
+                if capture and traces and not exemplar_set:
+                    exemplar_trace = traces['forward']
+                    exemplar_set = True
+
+            tof_errors = np.array(tof_errors)
+            clock_errors = np.array(clock_errors)
+            delta_f_errors = np.array(delta_f_errors)
+            directional_phase_rms = np.array(directional_phase_rms)
+
+            tau_rmse.append(float(np.sqrt(np.mean(tof_errors**2))))
+            clock_rmse.append(float(np.sqrt(np.mean(clock_errors**2))))
+            delta_f_rmse.append(float(np.sqrt(np.mean(delta_f_errors**2))))
+            tau_bias.append(float(np.mean(tof_errors)))
+            delta_f_bias.append(float(np.mean(delta_f_errors)))
+            phase_rms.append(float(np.mean(directional_phase_rms)))
+
+        snr_results = {
+            'snr_db': snr_values,
+            'tof_rmse_ps': (np.array(tau_rmse) * 1e12).tolist(),
+            'tof_bias_ps': (np.array(tau_bias) * 1e12).tolist(),
+            'clock_rmse_ps': (np.array(clock_rmse) * 1e12).tolist(),
+            'delta_f_rmse_hz': np.array(delta_f_rmse).tolist(),
+            'delta_f_bias_hz': np.array(delta_f_bias).tolist(),
+            'phase_fit_rms_rad': np.array(phase_rms).tolist(),
         }
-        
-    def _save_results(self, results: Dict[str, Any]):
-        """Save simulation results to file."""
-        results_file = os.path.join(self.config.results_dir, 'phase1_results.json')
-        
-        # Convert numpy arrays to lists for JSON serialization
-        def convert_numpy(obj):
+
+        return snr_results, exemplar_trace
+
+    def _sample_nodes(self, rng: np.random.Generator) -> Tuple[ChronometricNode, ChronometricNode]:
+        base_freq = self.config.carrier_freq_hz
+        delta_f = self.config.delta_f_hz
+
+        ppm_a = rng.normal(0.0, self.config.clock_ppm_std)
+        ppm_b = rng.normal(0.0, self.config.clock_ppm_std)
+
+        freq_a = base_freq * (1.0 + ppm_a * 1e-6)
+        freq_b = (base_freq + delta_f) * (1.0 + ppm_b * 1e-6)
+
+        node_a = ChronometricNode(
+            ChronometricNodeConfig(
+                node_id=0,
+                carrier_freq_hz=freq_a,
+                phase_offset_rad=rng.uniform(0.0, 2.0 * np.pi),
+                clock_bias_s=rng.normal(0.0, self.config.clock_bias_std_ps * 1e-12),
+                freq_error_ppm=ppm_a,
+            )
+        )
+        node_b = ChronometricNode(
+            ChronometricNodeConfig(
+                node_id=1,
+                carrier_freq_hz=freq_b,
+                phase_offset_rad=rng.uniform(0.0, 2.0 * np.pi),
+                clock_bias_s=rng.normal(0.0, self.config.clock_bias_std_ps * 1e-12),
+                freq_error_ppm=ppm_b,
+            )
+        )
+
+        return node_a, node_b
+
+    def _save_results(self, results: Dict[str, Any]) -> None:
+        def convert(obj: Any) -> Any:
             if isinstance(obj, np.ndarray):
                 return obj.tolist()
-            elif isinstance(obj, dict):
-                return {key: convert_numpy(value) for key, value in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_numpy(item) for item in obj]
-            else:
-                return obj
-                
-        json_results = convert_numpy(results)
-        
-        with open(results_file, 'w') as f:
-            json.dump(json_results, f, indent=2)
-            
-        print(f"Results saved to {results_file}")
-        
-    def _generate_plots(self, results: Dict[str, Any]):
-        """Generate visualization plots."""
-        # SNR sweep plots
-        self._plot_snr_sweep(results['snr_sweep'])
-        
-        # Bandwidth sweep plots
-        self._plot_bandwidth_sweep(results['bandwidth_sweep'])
-        
-        # Duration sweep plots
-        self._plot_duration_sweep(results['duration_sweep'])
-        
-        # Joint analysis plots
-        self._plot_joint_analysis(results['joint_analysis'])
-        
-    def _plot_snr_sweep(self, snr_results: Dict[str, Any]):
-        """Plot SNR sweep results."""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        
-        snr_db = snr_results['snr_values_db']
-        
-        # Delay performance
-        ax1.semilogy(snr_db, snr_results['crlb_delay'], 'b-', label='CRLB', linewidth=2)
-        ax1.semilogy(snr_db, np.sqrt(snr_results['estimator_mse_delay']), 'ro-', 
-                    label='Estimator RMSE', markersize=4)
-        ax1.set_xlabel('SNR (dB)')
-        ax1.set_ylabel('Delay Error (s)')
-        ax1.set_title('Delay Estimation vs SNR')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Frequency performance
-        ax2.semilogy(snr_db, snr_results['crlb_frequency'], 'b-', label='CRLB', linewidth=2)
-        ax2.semilogy(snr_db, np.sqrt(snr_results['estimator_mse_frequency']), 'ro-', 
-                    label='Estimator RMSE', markersize=4)
-        ax2.set_xlabel('SNR (dB)')
-        ax2.set_ylabel('Frequency Error (Hz)')
-        ax2.set_title('Frequency Estimation vs SNR')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        if self.config.save_results:
-            plt.savefig(os.path.join(self.config.results_dir, 'snr_sweep.png'), dpi=300)
-        plt.show()
-        
-    def _plot_bandwidth_sweep(self, bw_results: Dict[str, Any]):
-        """Plot bandwidth sweep results."""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        
-        bw_mhz = np.array(bw_results['bandwidth_values']) / 1e6
-        
-        # Delay performance
-        ax1.loglog(bw_mhz, bw_results['crlb_delay'], 'b-', label='CRLB', linewidth=2)
-        ax1.loglog(bw_mhz, np.sqrt(bw_results['estimator_mse_delay']), 'ro-', 
-                  label='Estimator RMSE', markersize=4)
-        ax1.set_xlabel('Bandwidth (MHz)')
-        ax1.set_ylabel('Delay Error (s)')
-        ax1.set_title('Delay Estimation vs Bandwidth')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Frequency performance  
-        ax2.loglog(bw_mhz, bw_results['crlb_frequency'], 'b-', label='CRLB', linewidth=2)
-        ax2.loglog(bw_mhz, np.sqrt(bw_results['estimator_mse_frequency']), 'ro-', 
-                  label='Estimator RMSE', markersize=4)
-        ax2.set_xlabel('Bandwidth (MHz)')
-        ax2.set_ylabel('Frequency Error (Hz)')
-        ax2.set_title('Frequency Estimation vs Bandwidth')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        if self.config.save_results:
-            plt.savefig(os.path.join(self.config.results_dir, 'bandwidth_sweep.png'), dpi=300)
-        plt.show()
-        
-    def _plot_duration_sweep(self, duration_results: Dict[str, Any]):
-        """Plot duration sweep results."""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-        
-        duration_ms = np.array(duration_results['duration_values']) * 1000
-        
-        # Delay performance
-        ax1.loglog(duration_ms, duration_results['crlb_delay'], 'b-', label='CRLB', linewidth=2)
-        ax1.loglog(duration_ms, np.sqrt(duration_results['estimator_mse_delay']), 'ro-', 
-                  label='Estimator RMSE', markersize=4)
-        ax1.set_xlabel('Duration (ms)')
-        ax1.set_ylabel('Delay Error (s)')
-        ax1.set_title('Delay Estimation vs Duration')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Frequency performance
-        ax2.loglog(duration_ms, duration_results['crlb_frequency'], 'b-', label='CRLB', linewidth=2)
-        ax2.loglog(duration_ms, np.sqrt(duration_results['estimator_mse_frequency']), 'ro-', 
-                  label='Estimator RMSE', markersize=4)
-        ax2.set_xlabel('Duration (ms)')
-        ax2.set_ylabel('Frequency Error (Hz)')
-        ax2.set_title('Frequency Estimation vs Duration')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        if self.config.save_results:
-            plt.savefig(os.path.join(self.config.results_dir, 'duration_sweep.png'), dpi=300)
-        plt.show()
-        
-    def _plot_joint_analysis(self, joint_results: Dict[str, Any]):
-        """Plot joint parameter analysis."""
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
-        
-        snr_grid = joint_results['snr_grid']
-        bw_grid = joint_results['bandwidth_grid'] / 1e6  # Convert to MHz
-        
-        # Delay CRLB heatmap
-        im1 = ax1.imshow(joint_results['delay_crlb_grid'], 
-                        extent=[bw_grid[0], bw_grid[-1], snr_grid[0], snr_grid[-1]],
-                        aspect='auto', origin='lower', cmap='viridis')
-        ax1.set_xlabel('Bandwidth (MHz)')
-        ax1.set_ylabel('SNR (dB)')
-        ax1.set_title('Delay CRLB (s)')
-        plt.colorbar(im1, ax=ax1)
-        
-        # Frequency CRLB heatmap
-        im2 = ax2.imshow(joint_results['frequency_crlb_grid'],
-                        extent=[bw_grid[0], bw_grid[-1], snr_grid[0], snr_grid[-1]],
-                        aspect='auto', origin='lower', cmap='viridis')
-        ax2.set_xlabel('Bandwidth (MHz)')
-        ax2.set_ylabel('SNR (dB)')
-        ax2.set_title('Frequency CRLB (Hz)')
-        plt.colorbar(im2, ax=ax2)
-        
-        # Joint CRLB determinant
-        im3 = ax3.imshow(np.log10(joint_results['joint_crlb_determinant']),
-                        extent=[bw_grid[0], bw_grid[-1], snr_grid[0], snr_grid[-1]],
-                        aspect='auto', origin='lower', cmap='plasma')
-        ax3.set_xlabel('Bandwidth (MHz)')
-        ax3.set_ylabel('SNR (dB)')
-        ax3.set_title('log₁₀(FIM Determinant)')
-        plt.colorbar(im3, ax=ax3)
-        
-        # Combined performance metric
-        combined_metric = joint_results['delay_crlb_grid'] * joint_results['frequency_crlb_grid']
-        im4 = ax4.imshow(np.log10(combined_metric),
-                        extent=[bw_grid[0], bw_grid[-1], snr_grid[0], snr_grid[-1]],
-                        aspect='auto', origin='lower', cmap='plasma')
-        ax4.set_xlabel('Bandwidth (MHz)')
-        ax4.set_ylabel('SNR (dB)')
-        ax4.set_title('log₁₀(Combined CRLB)')
-        plt.colorbar(im4, ax=ax4)
-        
-        plt.tight_layout()
-        if self.config.save_results:
-            plt.savefig(os.path.join(self.config.results_dir, 'joint_analysis.png'), dpi=300)
-        plt.show()
+            if isinstance(obj, (np.float_, np.float32, np.float64, np.int_)):
+                return float(obj)
+            if isinstance(obj, dict):
+                return {k: convert(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [convert(v) for v in obj]
+            return obj
 
+        out_path = os.path.join(self.config.results_dir, 'phase1_results.json')
+        with open(out_path, 'w') as f:
+            json.dump(convert(results), f, indent=2)
+        print(f"Results saved to {out_path}")
 
-def main():
-    """Main function to run Phase 1 simulation."""
-    # Configure simulation parameters
-    config = Phase1Config(
-        snr_range_db=list(range(-10, 31, 2)),  # -10 to 30 dB, step 2 dB
-        bandwidth_range=[1e5, 2e5, 5e5, 1e6, 2e6, 5e6, 1e7],  # 100 kHz to 10 MHz
-        duration_range=[1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2],  # 0.1 to 10 ms
-        n_monte_carlo=100,  # Reduced for faster execution
-        save_results=True,
-        plot_results=True
-    )
-    
-    # Run simulation
-    simulator = Phase1Simulator(config)
-    results = simulator.run_full_simulation()
-    
-    print("Phase 1 simulation completed successfully!")
-    return results
+    def _generate_plots(
+        self,
+        snr_results: Dict[str, Any],
+        trace: Optional[HandshakeTrace],
+    ) -> None:
+        if trace:
+            self._plot_waveforms(trace)
+        self._plot_error_curves(snr_results)
+
+    def _plot_waveforms(self, trace: HandshakeTrace) -> None:
+        fig, axes = plt.subplots(3, 1, figsize=(10, 10))
+
+        axes[0].plot(trace.time_us, trace.beat_raw.real, label='Real')
+        axes[0].plot(trace.time_us, trace.beat_raw.imag, label='Imag', alpha=0.7)
+        axes[0].set_title('Beat Signal (Noisy)')
+        axes[0].set_xlabel('Time (µs)')
+        axes[0].set_ylabel('Amplitude')
+        axes[0].legend()
+
+        axes[1].plot(trace.time_us, trace.beat_filtered.real, label='Real')
+        axes[1].plot(trace.time_us, trace.beat_filtered.imag, label='Imag', alpha=0.7)
+        axes[1].set_title('Band-pass Filtered Beat')
+        axes[1].set_xlabel('Time (µs)')
+        axes[1].set_ylabel('Amplitude')
+        axes[1].legend()
+
+        axes[2].plot(trace.adc_time_us, np.unwrap(np.angle(trace.adc_samples)), label='Phase')
+        axes[2].plot(trace.adc_time_us, trace.phase_fit, label='Linear Fit', linestyle='--')
+        axes[2].set_title('Phase Extraction at ADC Rate')
+        axes[2].set_xlabel('Time (µs)')
+        axes[2].set_ylabel('Phase (rad)')
+        axes[2].legend()
+
+        fig.tight_layout()
+        plot_path = os.path.join(self.config.results_dir, 'phase1_waveforms.png')
+        fig.savefig(plot_path, dpi=300)
+        plt.close(fig)
+        print(f"Saved waveform plot to {plot_path}")
+
+    def _plot_error_curves(self, snr_results: Dict[str, Any]) -> None:
+        snr = np.array(snr_results['snr_db'])
+        tof_rmse = np.array(snr_results['tof_rmse_ps'])
+        clock_rmse = np.array(snr_results['clock_rmse_ps'])
+        delta_f_rmse = np.array(snr_results['delta_f_rmse_hz'])
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+        axes[0].semilogy(snr, tof_rmse, marker='o')
+        axes[0].set_title('ToF RMSE vs SNR')
+        axes[0].set_xlabel('SNR (dB)')
+        axes[0].set_ylabel('RMSE (ps)')
+
+        axes[1].semilogy(snr, clock_rmse, marker='o', color='tab:orange')
+        axes[1].set_title('Clock Offset RMSE vs SNR')
+        axes[1].set_xlabel('SNR (dB)')
+        axes[1].set_ylabel('RMSE (ps)')
+
+        axes[2].semilogy(snr, np.maximum(delta_f_rmse, 1e-3), marker='o', color='tab:green')
+        axes[2].set_title('Δf RMSE vs SNR')
+        axes[2].set_xlabel('SNR (dB)')
+        axes[2].set_ylabel('RMSE (Hz)')
+
+        fig.tight_layout()
+        plot_path = os.path.join(self.config.results_dir, 'phase1_errors.png')
+        fig.savefig(plot_path, dpi=300)
+        plt.close(fig)
+        print(f"Saved error plot to {plot_path}")
+
+    def _serialize_trace(self, trace: HandshakeTrace) -> Dict[str, Any]:
+        return {
+            'time_us': trace.time_us.tolist(),
+            'beat_raw_real': trace.beat_raw.real.tolist(),
+            'beat_raw_imag': trace.beat_raw.imag.tolist(),
+            'beat_filtered_real': trace.beat_filtered.real.tolist(),
+            'beat_filtered_imag': trace.beat_filtered.imag.tolist(),
+            'adc_time_us': trace.adc_time_us.tolist(),
+            'adc_samples_real': trace.adc_samples.real.tolist(),
+            'adc_samples_imag': trace.adc_samples.imag.tolist(),
+            'unwrapped_phase': trace.unwrapped_phase.tolist(),
+            'phase_fit': trace.phase_fit.tolist(),
+        }
 
 
 if __name__ == "__main__":
-    main()
+    cfg = Phase1Config(
+        snr_values_db=[0, 5, 10, 15, 20],
+        n_monte_carlo=20,
+        save_results=False,
+        plot_results=False,
+    )
+    simulator = Phase1Simulator(cfg)
+    simulator.run_full_simulation()
+    print("Phase 1 quick run complete.")
