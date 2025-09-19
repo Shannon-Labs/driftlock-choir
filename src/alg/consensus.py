@@ -1,271 +1,258 @@
-"""
-Consensus algorithms: Vanilla and Chebyshev accelerated variants.
+"""Consensus primitives for chronometric synchronization."""
 
-This module implements distributed consensus algorithms for synchronization
-parameter estimation across multiple nodes in a network.
-"""
+from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import Dict, Optional, Tuple
+
+import networkx as nx
 import numpy as np
-from typing import List, Dict, Optional, Tuple, Any
-from dataclasses import dataclass
-from scipy.sparse import csr_matrix
-from scipy.sparse.linalg import eigsh
+from numpy.typing import NDArray
+from scipy.sparse.linalg import ArpackNoConvergence, eigsh
 
 
 @dataclass
-class ConsensusParams:
-    """Parameters for consensus algorithms."""
+class ConsensusOptions:
+    """Configuration for decentralized chronometric consensus."""
+
     max_iterations: int = 1000
-    tolerance: float = 1e-6
-    step_size: float = 0.01
-    acceleration_factor: float = 0.9
-    network_topology: str = 'random'  # 'random', 'ring', 'complete'
+    epsilon: Optional[float] = None
+    tolerance_ps: float = 100.0
+    asynchronous: bool = False
+    rng_seed: Optional[int] = None
+    enforce_zero_mean: bool = True
+    spectral_margin: float = 0.8
 
 
-class NetworkTopology:
-    """Network topology management for consensus algorithms."""
-    
-    @staticmethod
-    def create_adjacency_matrix(n_nodes: int, topology: str, 
-                               connectivity: float = 0.3) -> np.ndarray:
-        """Create adjacency matrix for given topology."""
-        if topology == 'complete':
-            return np.ones((n_nodes, n_nodes)) - np.eye(n_nodes)
-        elif topology == 'ring':
-            adj = np.zeros((n_nodes, n_nodes))
-            for i in range(n_nodes):
-                adj[i, (i + 1) % n_nodes] = 1
-                adj[i, (i - 1) % n_nodes] = 1
-            return adj
-        elif topology == 'random':
-            adj = np.random.rand(n_nodes, n_nodes) < connectivity
-            adj = adj.astype(float)
-            np.fill_diagonal(adj, 0)
-            # Make symmetric
-            adj = (adj + adj.T) / 2
-            adj = (adj > 0).astype(float)
-            return adj
+@dataclass
+class ConsensusResult:
+    """Telemetry from the consensus solver."""
+
+    state_history: NDArray[np.float64]
+    timing_rms_ps: NDArray[np.float64]
+    frequency_rms_hz: NDArray[np.float64]
+    converged: bool
+    convergence_iteration: Optional[int]
+    epsilon: float
+    asynchronous: bool
+    edge_residuals: Dict[Tuple[int, int], NDArray[np.float64]]
+    lambda_max: float
+    lambda_2: float
+    spectral_gap: float
+
+
+class DecentralizedChronometricConsensus:
+    """Implements Equation (4) variance-weighted consensus updates."""
+
+    def __init__(self, graph: nx.Graph, options: ConsensusOptions):
+        if graph.number_of_nodes() == 0:
+            raise ValueError("Consensus graph must contain at least one node")
+        self.graph = graph
+        self.options = options
+        self._rng = np.random.default_rng(options.rng_seed)
+        self._last_lambda_max: float = 1.0
+        self._last_lambda_2: float = 0.0
+
+    # Public API -------------------------------------------------------
+
+    def run(
+        self,
+        initial_state: NDArray[np.float64],
+        true_state: Optional[NDArray[np.float64]] = None,
+        measurement_attr: str = "measurement",
+        weight_attr: str = "weight_matrix",
+    ) -> ConsensusResult:
+        """Execute the decentralized consensus iterations."""
+        state = np.array(initial_state, dtype=float)
+        n_nodes, n_params = state.shape
+        if n_params != 2:
+            raise ValueError("State must provide [ΔT, Δf] per node (shape: N×2)")
+        if n_nodes != self.graph.number_of_nodes():
+            raise ValueError("Initial state size does not match graph nodes")
+
+        if true_state is not None:
+            true_state = np.array(true_state, dtype=float)
+            if true_state.shape != state.shape:
+                raise ValueError("True state must match initial state shape")
+            if self.options.enforce_zero_mean:
+                true_state = self._project_zero_mean(true_state)
+
+        epsilon = self._resolve_step_size()
+
+        state_history = [state.copy()]
+        timing_hist = []
+        freq_hist = []
+        timing_rms, freq_rms = self._compute_rms(state, true_state)
+        timing_hist.append(timing_rms * 1e12)
+        freq_hist.append(freq_rms)
+
+        converged = timing_hist[-1] <= self.options.tolerance_ps
+        convergence_iteration: Optional[int] = 0 if converged else None
+
+        for iteration in range(1, self.options.max_iterations + 1):
+            if self.options.asynchronous:
+                state = self._step_asynchronous(state, epsilon, measurement_attr, weight_attr)
+            else:
+                state = self._step_synchronous(state, epsilon, measurement_attr, weight_attr)
+
+            if self.options.enforce_zero_mean:
+                state = self._project_zero_mean(state)
+
+            state_history.append(state.copy())
+            timing_rms, freq_rms = self._compute_rms(state, true_state)
+            timing_hist.append(timing_rms * 1e12)
+            freq_hist.append(freq_rms)
+
+            if timing_hist[-1] <= self.options.tolerance_ps:
+                converged = True
+                convergence_iteration = iteration
+                break
+
+        residuals = self._edge_residuals(state_history[-1], measurement_attr)
+
+        return ConsensusResult(
+            state_history=np.stack(state_history, axis=0),
+            timing_rms_ps=np.array(timing_hist),
+            frequency_rms_hz=np.array(freq_hist),
+            converged=converged,
+            convergence_iteration=convergence_iteration,
+            epsilon=epsilon,
+            asynchronous=self.options.asynchronous,
+            edge_residuals=residuals,
+            lambda_max=self._last_lambda_max,
+            lambda_2=self._last_lambda_2,
+            spectral_gap=self._last_lambda_2,
+        )
+
+    # Internal helpers -------------------------------------------------
+
+    def _resolve_step_size(self) -> float:
+        if self.options.epsilon is not None:
+            return float(self.options.epsilon)
+
+        laplacian = nx.laplacian_matrix(self.graph).astype(float)
+        if laplacian.shape == (0, 0) or laplacian.nnz == 0:
+            self._last_lambda_max = 1.0
+            self._last_lambda_2 = 0.0
+            return 1.0
+
+        try:
+            largest = eigsh(
+                laplacian,
+                k=1,
+                which='LM',
+                return_eigenvectors=False,
+            )
+            lambda_max = float(np.real(largest[0]))
+            if laplacian.shape[0] > 1:
+                smallest = eigsh(
+                    laplacian,
+                    k=2,
+                    which='SM',
+                    return_eigenvectors=False,
+                )
+                lambda_2 = float(np.real(smallest[1]))
+            else:
+                lambda_2 = 0.0
+        except ArpackNoConvergence as exc:
+            eigen_real = np.real(exc.eigenvalues) if exc.eigenvalues.size else np.array([1.0])
+            lambda_max = float(np.max(eigen_real))
+            if exc.eigenvalues.size > 1:
+                lambda_2 = float(sorted(eigen_real)[1])
+            else:
+                lambda_2 = 0.0
+
+        if lambda_max <= 0:
+            self._last_lambda_max = 1.0
+            self._last_lambda_2 = 0.0
+            return 1.0
+
+        margin = self.options.spectral_margin
+        self._last_lambda_max = lambda_max
+        self._last_lambda_2 = max(lambda_2, 0.0)
+        return float(margin / lambda_max)
+
+    def _step_synchronous(
+        self,
+        state: NDArray[np.float64],
+        epsilon: float,
+        measurement_attr: str,
+        weight_attr: str,
+    ) -> NDArray[np.float64]:
+        gradient = np.zeros_like(state)
+        for u, v, data in self.graph.edges(data=True):
+            measurement = self._directed_measurement(u, v, data, measurement_attr)
+            weight = np.array(data[weight_attr], dtype=float)
+            diff = (state[v] - state[u]) - measurement
+            update = weight @ diff
+            gradient[u] += update
+            gradient[v] -= update
+        return state + epsilon * gradient
+
+    def _step_asynchronous(
+        self,
+        state: NDArray[np.float64],
+        epsilon: float,
+        measurement_attr: str,
+        weight_attr: str,
+    ) -> NDArray[np.float64]:
+        node = int(self._rng.integers(self.graph.number_of_nodes()))
+        update = np.zeros(2, dtype=float)
+        for neighbor, data in self.graph[node].items():
+            measurement = self._directed_measurement(node, neighbor, data, measurement_attr)
+            weight = np.array(data[weight_attr], dtype=float)
+            diff = (state[neighbor] - state[node]) - measurement
+            update += weight @ diff
+        state[node] = state[node] + epsilon * update
+        return state
+
+    def _directed_measurement(
+        self,
+        source: int,
+        target: int,
+        data: Dict[str, object],
+        measurement_attr: str,
+    ) -> NDArray[np.float64]:
+        measurement = np.array(data[measurement_attr], dtype=float)
+        orientation = data.get('orientation')
+        if orientation is None:
+            orientation = (source, target)
+        if orientation[0] == source and orientation[1] == target:
+            return measurement
+        if orientation[0] == target and orientation[1] == source:
+            return -measurement
+        # Fallback to sorted orientation if metadata missing
+        if source < target:
+            return measurement
+        return -measurement
+
+    def _project_zero_mean(self, state: NDArray[np.float64]) -> NDArray[np.float64]:
+        centred = state.copy()
+        centred[:, 0] -= np.mean(centred[:, 0])
+        centred[:, 1] -= np.mean(centred[:, 1])
+        return centred
+
+    def _compute_rms(
+        self,
+        state: NDArray[np.float64],
+        true_state: Optional[NDArray[np.float64]],
+    ) -> Tuple[float, float]:
+        if true_state is None:
+            error = state - np.mean(state, axis=0, keepdims=True)
         else:
-            raise ValueError(f"Unknown topology: {topology}")
-    
-    @staticmethod
-    def create_laplacian_matrix(adjacency: np.ndarray) -> np.ndarray:
-        """Create Laplacian matrix from adjacency matrix."""
-        degree = np.sum(adjacency, axis=1)
-        return np.diag(degree) - adjacency
+            error = state - true_state
+        timing_rms = float(np.sqrt(np.mean(error[:, 0] ** 2)))
+        freq_rms = float(np.sqrt(np.mean(error[:, 1] ** 2)))
+        return timing_rms, freq_rms
 
-
-class VanillaConsensus:
-    """Standard consensus algorithm for distributed parameter estimation."""
-    
-    def __init__(self, params: ConsensusParams):
-        self.params = params
-        
-    def run_consensus(self, initial_estimates: np.ndarray, 
-                     adjacency_matrix: np.ndarray,
-                     measurements: Optional[np.ndarray] = None) -> Dict[str, Any]:
-        """
-        Run vanilla consensus algorithm.
-        
-        Args:
-            initial_estimates: Initial parameter estimates for each node [n_nodes x n_params]
-            adjacency_matrix: Network adjacency matrix [n_nodes x n_nodes]
-            measurements: Optional measurement updates [n_nodes x n_params]
-            
-        Returns:
-            Dictionary with consensus results and convergence metrics
-        """
-        n_nodes, n_params = initial_estimates.shape
-        
-        # Create mixing matrix (Metropolis-Hastings weights)
-        mixing_matrix = self._create_mixing_matrix(adjacency_matrix)
-        
-        # Initialize consensus variables
-        estimates = initial_estimates.copy()
-        convergence_history = []
-        
-        for iteration in range(self.params.max_iterations):
-            # Store previous estimates
-            prev_estimates = estimates.copy()
-            
-            # Consensus update
-            estimates = mixing_matrix @ estimates
-            
-            # Optional measurement incorporation
-            if measurements is not None:
-                estimates += self.params.step_size * measurements
-                
-            # Check convergence
-            consensus_error = np.max(np.std(estimates, axis=0))
-            convergence_history.append(consensus_error)
-            
-            if consensus_error < self.params.tolerance:
-                break
-                
-        return {
-            'final_estimates': estimates,
-            'consensus_value': np.mean(estimates, axis=0),
-            'convergence_history': convergence_history,
-            'iterations': iteration + 1,
-            'converged': consensus_error < self.params.tolerance
-        }
-        
-    def _create_mixing_matrix(self, adjacency: np.ndarray) -> np.ndarray:
-        """Create mixing matrix using Metropolis-Hastings weights."""
-        n_nodes = adjacency.shape[0]
-        mixing = np.zeros_like(adjacency)
-        
-        for i in range(n_nodes):
-            for j in range(n_nodes):
-                if i == j:
-                    # Self-weight
-                    mixing[i, i] = 1 - np.sum(adjacency[i, :]) * self.params.step_size
-                elif adjacency[i, j] > 0:
-                    # Neighbor weight (Metropolis-Hastings)
-                    degree_i = np.sum(adjacency[i, :])
-                    degree_j = np.sum(adjacency[j, :])
-                    mixing[i, j] = self.params.step_size / max(degree_i, degree_j)
-                    
-        return mixing
-
-
-class ChebyshevAcceleratedConsensus:
-    """Chebyshev accelerated consensus algorithm for faster convergence."""
-    
-    def __init__(self, params: ConsensusParams):
-        self.params = params
-        
-    def run_consensus(self, initial_estimates: np.ndarray, 
-                     adjacency_matrix: np.ndarray,
-                     measurements: Optional[np.ndarray] = None) -> Dict[str, Any]:
-        """
-        Run Chebyshev accelerated consensus algorithm.
-        
-        Args:
-            initial_estimates: Initial parameter estimates for each node
-            adjacency_matrix: Network adjacency matrix
-            measurements: Optional measurement updates
-            
-        Returns:
-            Dictionary with consensus results and convergence metrics
-        """
-        n_nodes, n_params = initial_estimates.shape
-        
-        # Create mixing matrix
-        mixing_matrix = self._create_optimal_mixing_matrix(adjacency_matrix)
-        
-        # Get spectral properties for acceleration
-        eigenvals = np.linalg.eigvals(mixing_matrix)
-        lambda_2 = np.sort(np.abs(eigenvals))[-2]  # Second largest eigenvalue
-        
-        # Initialize variables
-        estimates = initial_estimates.copy()
-        prev_estimates = estimates.copy()
-        convergence_history = []
-        
-        # Chebyshev acceleration parameters
-        alpha = (1 - lambda_2) / (1 + lambda_2)
-        
-        for iteration in range(self.params.max_iterations):
-            # Store for acceleration
-            old_estimates = estimates.copy()
-            
-            # Standard consensus step
-            estimates = mixing_matrix @ estimates
-            
-            # Optional measurement incorporation
-            if measurements is not None:
-                estimates += self.params.step_size * measurements
-                
-            # Chebyshev acceleration
-            if iteration > 0:
-                estimates = estimates + alpha * (estimates - prev_estimates)
-                
-            prev_estimates = old_estimates
-            
-            # Check convergence
-            consensus_error = np.max(np.std(estimates, axis=0))
-            convergence_history.append(consensus_error)
-            
-            if consensus_error < self.params.tolerance:
-                break
-                
-        return {
-            'final_estimates': estimates,
-            'consensus_value': np.mean(estimates, axis=0),
-            'convergence_history': convergence_history,
-            'iterations': iteration + 1,
-            'converged': consensus_error < self.params.tolerance,
-            'acceleration_factor': alpha
-        }
-        
-    def _create_optimal_mixing_matrix(self, adjacency: np.ndarray) -> np.ndarray:
-        """Create optimal mixing matrix for fastest convergence."""
-        # Compute Laplacian
-        laplacian = NetworkTopology.create_laplacian_matrix(adjacency)
-        
-        # Get second smallest eigenvalue
-        eigenvals, eigenvecs = eigsh(laplacian, k=2, which='SM')
-        lambda_2 = eigenvals[1]  # Algebraic connectivity
-        
-        # Optimal step size for fastest convergence
-        optimal_step = 2 / (eigenvals[-1] + lambda_2)
-        
-        # Create mixing matrix
-        n_nodes = adjacency.shape[0]
-        mixing = np.eye(n_nodes) - optimal_step * laplacian
-        
-        return mixing
-
-
-class DistributedSynchronization:
-    """Complete distributed synchronization framework."""
-    
-    def __init__(self, params: ConsensusParams, use_acceleration: bool = True):
-        self.params = params
-        self.consensus_alg = (ChebyshevAcceleratedConsensus(params) 
-                            if use_acceleration else VanillaConsensus(params))
-        
-    def synchronize_network(self, node_estimates: Dict[int, Tuple[float, float]], 
-                           network_topology: np.ndarray) -> Dict[str, Any]:
-        """
-        Perform distributed network synchronization.
-        
-        Args:
-            node_estimates: Dictionary of {node_id: (delay_estimate, freq_estimate)}
-            network_topology: Adjacency matrix for network
-            
-        Returns:
-            Synchronization results with consensus values
-        """
-        # Convert estimates to matrix format
-        node_ids = sorted(node_estimates.keys())
-        n_nodes = len(node_ids)
-        initial_matrix = np.zeros((n_nodes, 2))  # [delay, frequency]
-        
-        for i, node_id in enumerate(node_ids):
-            initial_matrix[i, :] = node_estimates[node_id]
-            
-        # Run consensus
-        results = self.consensus_alg.run_consensus(initial_matrix, network_topology)
-        
-        # Convert back to node-specific results
-        final_sync_params = {}
-        for i, node_id in enumerate(node_ids):
-            final_sync_params[node_id] = {
-                'delay': results['final_estimates'][i, 0],
-                'frequency': results['final_estimates'][i, 1]
-            }
-            
-        return {
-            'node_sync_params': final_sync_params,
-            'global_consensus': {
-                'delay': results['consensus_value'][0],
-                'frequency': results['consensus_value'][1]
-            },
-            'convergence_metrics': {
-                'iterations': results['iterations'],
-                'converged': results['converged'],
-                'history': results['convergence_history']
-            }
-        }
+    def _edge_residuals(
+        self,
+        state: NDArray[np.float64],
+        measurement_attr: str,
+    ) -> Dict[Tuple[int, int], NDArray[np.float64]]:
+        residuals: Dict[Tuple[int, int], NDArray[np.float64]] = {}
+        for u, v, data in self.graph.edges(data=True):
+            measurement = self._directed_measurement(u, v, data, measurement_attr)
+            diff = (state[v] - state[u]) - measurement
+            residuals[(u, v)] = diff.astype(float)
+        return residuals

@@ -14,7 +14,7 @@ __email__ = "contact@shannonlabs.com"
 from . import phy
 from . import hw
 from . import alg
-from . import net
 from . import metrics
+from . import mac
 
-__all__ = ['phy', 'hw', 'alg', 'net', 'metrics']
+__all__ = ['phy', 'hw', 'alg', 'metrics', 'mac']

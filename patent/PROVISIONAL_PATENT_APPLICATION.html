@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Provisional Patent — Bown Driftlock Method</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; color: #000; max-width: 900px; margin: 40px auto; }
+    h1, h2, h3 { font-family: Arial, Helvetica, sans-serif; margin-top: 1.2em; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; }
+    h3 { font-size: 18px; }
+    .small { color: #333; font-size: 14px; }
+    .fig { border: 1px solid #000; padding: 8px; margin: 18px 0; }
+    .fig-caption { font-size: 14px; margin-top: 6px; }
+    code { font-family: 'Courier New', monospace; }
+    .claims ol { counter-reset: item; padding-left: 20px; }
+    .claims li { display: block; margin-bottom: 10px; }
+    .claims li:before { content: counters(item, '.') ' '; counter-increment: item; font-weight: bold; }
+    .refnums { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>System and Method for Distributed Wireless Synchronization Using Chronometric Interferometry with Intentional Carrier Frequency Offset</h1>
+  <p><strong>Inventor:</strong> Hunter Bown<br/>
+     <strong>Assignee:</strong> Shannon Labs, Inc. (Delaware C‑Corp), Division: Driftlock</p>
+
+  <h2>Abstract</h2>
+  <p>
+    The Bown Driftlock Method introduces chronometric interferometry for wireless synchronization by intentionally creating a small
+    carrier frequency offset Δf between nodes to generate a beat signal whose phase encodes propagation delay and true frequency difference.
+    A closed‑form estimator applied to beat‑phase evolution recovers τ and Δf over microsecond windows without iterative search.
+    Bidirectional measurements separate geometric delay from clock bias. A variance‑weighted distributed consensus with spectral step‑size
+    (and optional Chebyshev acceleration) aligns all nodes without a master reference, converging rapidly to high precision.
+    Example results show ~2 ns RMS accuracy in simulation with theoretical capability for sub‑nanosecond precision, enabling GPS‑free, scalable synchronization for 5G/6G,
+    distributed radar, finance, quantum systems, and IoT.
+  </p>
+
+  <h2>Incorporation by Reference</h2>
+  <p>This application incorporates by reference all materials submitted herewith, and any prior applications to which priority is claimed (if any). Priority details will be provided in the filing submission.</p>
+
+  <h2>Advantages</h2>
+  <ul>
+    <li>No GPS dependency; masterless operation.</li>
+    <li>Works with commercial oscillators (e.g., TCXO); indoor/underground capable.</li>
+    <li>Distributed consensus; scalable to many nodes and topologies.</li>
+  </ul>
+
+  <h2>Industrial Applicability</h2>
+  <p>Immediate applicability in 5G/6G base station coordination, distributed radar, high‑frequency trading, scientific instrumentation, and IoT synchronization.</p>
+
+  <h2>Best Mode and Scope</h2>
+  <p>The best mode contemplated by the inventor is described herein. Variations and modifications will be apparent to those skilled in the art. The invention encompasses methods, systems, and computer‑readable media storing instructions for performing the methods. Prior art universally treats frequency offset as an impairment requiring correction; the present approach exploits offset as a measurement tool.</p>
+
+  <h2>Field of the Invention</h2>
+  <p>
+    The invention relates to wireless time and frequency synchronization via chronometric interferometry wherein intentional carrier frequency offsets
+    produce beat signals used for precise delay and frequency‑difference estimation across distributed nodes.
+  </p>
+
+  <h2>Background</h2>
+  <p>
+    Conventional systems treat frequency offset as an impairment to be eliminated (e.g., IEEE 1588, 3GPP, ITU, IETF, PLL design).
+    GPS/GNSS offers ~10–50 ns timing but fails indoors and is vulnerable to interference. Wired timing (PTP/NTP) degrades in wireless environments.
+    Fiber‑based sub‑nanosecond solutions require specialized infrastructure. Master‑based wireless schemes suffer single points of failure and error accumulation.
+    There remains a need for a masterless, wireless method achieving &lt;10 ns—preferably &lt;2 ns—using commercial oscillators.
+  </p>
+  <p>
+    Related techniques are distinguishable: FMCW radar uses beats for ranging, not clock synchronization; heterodyne receivers mix to an IF for demodulation rather than treating beat phase as a chronometric observable; and two‑way time transfer (satellite/fiber) exchanges timing signals without intentionally introducing and maintaining an offset Δf within a wireless channel to create a chronometric beat for closed‑form τ/Δf estimation and masterless distributed consensus.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    The method intentionally generates and maintains a small Δf between nodes so that simultaneous transmission and reception yield a beat signal at Δf with a phase
+    that evolves linearly in time and depends on propagation delay. By measuring beat phase over microsecond windows and applying a closed‑form estimator,
+    nodes extract τ and Δf without iterative search. Two‑way exchange separates geometric delay from clock bias. A variance‑weighted consensus achieves network‑wide
+    alignment without a master reference, with spectral step size and optional Chebyshev acceleration for rapid convergence.
+  </p>
+
+  <h2>Brief Description of the Drawings</h2>
+  <div class="fig">
+    <img src="figures/fig1_beat_handshake.svg" alt="Fig. 1" width="100%"/>
+    <div class="fig-caption">Fig. 1. Two‑node beat generation and two‑way handshake (e.g., (100)–(180)).</div>
+  </div>
+  <div class="fig">
+    <img src="figures/fig2_phase_estimator.svg" alt="Fig. 2" width="100%"/>
+    <div class="fig-caption">Fig. 2. Phase extraction and closed‑form estimator pipeline (e.g., (200)–(280)).</div>
+  </div>
+  <div class="fig">
+    <img src="figures/fig3_network_consensus.svg" alt="Fig. 3" width="100%"/>
+    <div class="fig-caption">Fig. 3. Network topology and variance‑weighted consensus (e.g., (300)–(310)).</div>
+  </div>
+  <div class="fig">
+    <img src="figures/fig4_convergence.svg" alt="Fig. 4" width="100%"/>
+    <div class="fig-caption">Fig. 4. Convergence example (timing RMS vs. iteration). Values illustrative.</div>
+  </div>
+  <div class="fig">
+    <img src="figures/fig5_system_block.svg" alt="Fig. 5" width="100%"/>
+    <div class="fig-caption">Fig. 5. Node/system block diagram (e.g., (400)–(460)).</div>
+  </div>
+
+  <h2>Detailed Description</h2>
+  <h3>I. Theory of Operation</h3>
+  <p>
+    Nodes i and j employ carriers f<sub>i</sub> and f<sub>j</sub>=f<sub>i</sub>+Δf. Simultaneous transmit/receive produces a beat at Δf with phase
+    φ<sub>beat</sub>(t) = 2πΔf (t − τ) + (θ<sub>i</sub> − θ<sub>j</sub>) + 2π f<sub>i</sub> τ.
+    Linear fitting of unwrapped phase yields slope a ≈ 2πΔf and intercept b from which a closed‑form τ is derived using known carrier terms. Here, f<sub>i</sub> denotes the absolute carrier frequency (Hz) of node i; Δf = f<sub>j</sub> − f<sub>i</sub> is the intentional offset maintained as a measurement feature.
+  </p>
+  <h3>II. Two‑Way Handshake</h3>
+  <p>
+    Forward (A→B) and reverse (B→A) measurements produce (τ̂<sub>AB</sub>, Δf̂<sub>AB</sub>) and (τ̂<sub>BA</sub>, Δf̂<sub>BA</sub>). Bias δt = 0.5(τ̂<sub>AB</sub> − τ̂<sub>BA</sub>);
+    geometric delay τ<sub>geo</sub> = 0.5(τ̂<sub>AB</sub> + τ̂<sub>BA</sub>).
+  </p>
+  <h3>III. Estimation and Signal Processing</h3>
+  <p>
+    Pipeline: filter near Δf → sub‑sample (~2×Δf) → angle and unwrap → linear fit φ(t)=at+b → obtain Δf̂ and τ candidates → unwrap τ using coarse hints and/or retunes.
+    Weight multi‑carrier τ estimates proportional to f². Coarse wideband preambles provide unambiguous hints for unwrapping.
+  </p>
+  <h3>IV. Distributed Consensus</h3>
+  <p>
+    For graph G=(V,E), edge measurements d<sub>ij</sub> with variances σ² update x<sub>i</sub>=[ΔT<sub>i</sub>, Δf<sub>i</sub>] via
+    x<sub>i</sub>(k+1)=x<sub>i</sub>(k)+ε Σ W<sub>ij</sub>(d<sub>ij</sub>−(x<sub>i</sub>−x<sub>j</sub>)), with W<sub>ij</sub>=diag(1/σ²<sub>τ</sub>,1/σ²<sub>Δf</sub>). A spectral step size ε≈c/λ<sub>max</sub>(L), 0&lt;c&lt;1, ensures stability; optional Chebyshev acceleration improves convergence.
+  </p>
+  <h3>V. Embodiments and Parameters</h3>
+  <p>
+    Carriers: ISM/licensed; Δf≈1–10 MHz (typ. bandwidth/10); T≈10–20 µs; sub‑sampling rate ≈2×Δf. Calibration modes: none/loopback/perfect. Mobility and packet loss tolerated via iterative updates.
+  </p>
+
+  <h2>Claims</h2>
+  <h3>Condensed Claims (Provisional — 25)</h3>
+  <div class="claims">
+    <ol>
+      <li>A method for synchronizing wireless nodes by intentionally generating a frequency offset Δf, forming beat signals at Δf from simultaneous transmission and reception, extracting beat phase over a microsecond window, and recovering propagation delay τ and frequency difference via a closed‑form estimator, wherein said frequency offset Δf is intentionally generated and maintained as a measurement feature rather than being corrected or compensated as an error, contrary to conventional synchronization methods, and wherein bidirectional measurements resolve clock bias and yield geometric delay.</li>
+      <li>A wireless synchronization system comprising: first and second programmable transceivers transmitting at carrier frequencies that differ by an intentional offset Δf; a beat detection path using a sub‑sampling ADC at approximately 2×Δf; and one or more processors configured to extract beat phase and compute τ and Δf from a closed‑form estimator and execute a two‑way handshake to separate geometric delay from clock bias.</li>
+      <li>A distributed synchronization method for a network of nodes, comprising: performing pairwise measurements d<sub>ij</sub> = [ΔT<sub>ij</sub>, Δf<sub>ij</sub>] with variances; and iteratively updating node states x<sub>i</sub> = [ΔT<sub>i</sub>, Δf<sub>i</sub>] via x<sub>i</sub>(k+1) = x<sub>i</sub>(k) + ε Σ W<sub>ij</sub> ( d<sub>ij</sub> − (x<sub>i</sub> − x<sub>j</sub>) ), where W<sub>ij</sub> = diag(1/σ²<sub>τ</sub>, 1/σ²<sub>Δf</sub>) and ε is selected from a Laplacian spectrum, achieving masterless synchronization without GPS, atomic clocks, or external timing references.</li>
+      <li>A non‑transitory computer‑readable medium storing instructions that, when executed by a processor, cause a device to perform any of the methods of claim 1 or claim 3.</li>
+      <li>A method of wireless synchronization that exploits rather than eliminates frequency offset between nodes, comprising: intentionally generating and maintaining a carrier frequency offset Δf as a measurement feature; forming a beat signal at Δf during simultaneous transmission and reception; extracting beat phase over an observation window; and computing τ and Δf via a closed‑form estimator.</li>
+      <li>The method of claim 1, wherein Δf is between approximately 1 MHz and approximately 10 MHz and is approximately one‑tenth of an available channel bandwidth.</li>
+      <li>The method of claim 1, wherein the measurement window T is between approximately 10 microseconds and approximately 20 microseconds and a sub‑sampling ADC operates at approximately 2×Δf.</li>
+      <li>The method of claim 1, wherein Δf is maintained as a synchronization feature and not corrected as an impairment.</li>
+      <li>The method of claim 1, further comprising coarse wideband delay estimation to obtain an unambiguous delay hint for phase unwrapping.</li>
+      <li>The method of claim 1, further comprising multi‑carrier retunes to provide synthetic wavelengths for robust unwrapping, including Chinese Remainder constructions.</li>
+      <li>The method of claim 1, wherein τ is computed from a closed‑form linear fit of unwrapped beat phase without iterative search.</li>
+      <li>The method of claim 1, wherein bidirectional measurements compute δt = 0.5(τ̂<sub>AB</sub> − τ̂<sub>BA</sub>) and τ<sub>geo</sub> = 0.5(τ̂<sub>AB</sub> + τ̂<sub>BA</sub>).</li>
+      <li>The method of claim 1, further comprising weighting multi‑carrier τ estimates proportional to carrier frequency squared.</li>
+      <li>The method of claim 1, further comprising multipath mitigation via super‑resolution separation and weighting of direct‑path estimates.</li>
+      <li>The system of claim 2, wherein the sub‑sampling ADC includes anti‑alias filtering and dynamic range sufficient for Δf capture, and a transceiver frequency resolution of at least 1 Hz is provided.</li>
+      <li>The system of claim 2, wherein oscillators are temperature‑compensated crystal oscillators with stability between approximately 2 and approximately 20 parts per million.</li>
+      <li>The method of claim 1, wherein Δf avoids integer relationships with sampling clocks to minimize aliasing.</li>
+      <li>The method of claim 1, wherein Δf is adaptively selected based on signal‑to‑noise ratio and bandwidth to optimize estimator variance.</li>
+      <li>The method of claim 1, further comprising scheduling measurement offsets Δt to average jitter and oscillator phase noise.</li>
+      <li>The method of claim 3, further comprising enforcing zero‑mean constraints across nodes for timing and frequency states; supporting asynchronous updates; and applying Chebyshev polynomial acceleration to reduce convergence time.</li>
+      <li>The method of claim 3, wherein ε = c/λ<sub>max</sub>(L) with 0 &lt; c &lt; 1 provides a stability margin and rapid convergence.</li>
+      <li>The method of claim 3, wherein the consensus achieves substantially improved network‑wide precision relative to conventional microsecond‑class methods under representative SNR and connectivity.</li>
+      <li>The system of claim 2, maintaining synchronization performance under up to approximately 20% packet loss and in the presence of node mobility.</li>
+      <li>The system of claim 2, operating in industrial, scientific, and medical bands and/or in licensed cellular spectrum.</li>
+      <li>A method substantially as described herein with reference to the accompanying description and any one of the examples.</li>
+    </ol>
+  </div>
+  
+
+  <h2>Reference Numerals</h2>
+  <p class="refnums">
+    (100) Node A; (110) Transmitter at f1; (120) Wireless link / propagation delay τ; (130) Node B; (140) Transmitter at f2=f1+Δf; (150) Beat detector at Δf; (160) Phase extraction; (170) Measurement exchange; (180) Two‑way resolver;<br/>
+    (200) Beat samples; (210) Filter at Δf; (220) Sub‑sampling ADC (~2×Δf); (230) Angle and unwrap; (240) Linear fit φ(t)=at+b; (250) Δf̂ from slope; (260) τ candidate; (270) τ unwrapping; (280) τ̂ output;<br/>
+    (300)–(304) Network nodes; (310) Consensus update and weighting rule;<br/>
+    (400) RF transceiver; (410) Beat/Mixer; (420) Sub‑sampling ADC; (430) DSP; (440) Estimator; (450) Consensus engine; (460) Network/MAC.
+  </p>
+
+  <h2>Acknowledgment</h2>
+  <p class="small">This work continues a multi‑generational innovation lineage (e.g., Ralph Bown’s mid‑20th century communications patents) while establishing a new paradigm that treats frequency offset as a chronometric feature rather than a defect.</p>
+
+</body>
+</html>

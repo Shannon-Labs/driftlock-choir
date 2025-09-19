@@ -33,9 +33,9 @@ class Phase3Config:
     network_sizes: List[int]      # Number of nodes
     area_sizes: List[float]       # Network area sizes (m)
     
-    # Oscillator parameters
-    allan_dev_values: List[float]  # Allan deviation at 1s
-    drift_rates: List[float]       # Linear drift rates (Hz/s)
+    # Oscillator parameters (realistic ranges based on hardware constraints)
+    allan_dev_values: List[float]  # Allan deviation at 1s (1e-11 to 1e-7 range)
+    drift_rates: List[float]       # Linear drift rates (Hz/s) (1e-10 to 1e-6 range)
     
     # Simulation parameters
     simulation_duration: float = 10.0  # seconds
@@ -198,14 +198,17 @@ class Phase3Simulator:
                         positions_history, n_nodes
                     )
                     
-                    sync_errors.append(sync_result['final_sync_error'])
-                    convergence_times.append(sync_result['convergence_time'])
-                    
+                sync_errors.append(sync_result['final_sync_error'])
+                convergence_times.append(sync_result['convergence_time'])
+                
+                # Realistic success threshold based on hardware constraints (300-500 ps for TCXO-class)
+                success_threshold = 500e-12  # 500 ps instead of 1 ps
+                
                 mobility_results['performance_metrics'][model][speed] = {
                     'avg_sync_error': np.mean(sync_errors),
                     'std_sync_error': np.std(sync_errors),
                     'avg_convergence_time': np.mean(convergence_times),
-                    'success_rate': np.sum(np.array(sync_errors) < 1e-6) / len(sync_errors)
+                    'success_rate': np.sum(np.array(sync_errors) < success_threshold) / len(sync_errors)
                 }
                 
         return mobility_results
@@ -431,11 +434,14 @@ class Phase3Simulator:
                 sync_errors.append(sync_result['final_sync_error'])
                 convergence_times.append(sync_result['convergence_time'])
                 
+            # Realistic success threshold for combined effects analysis
+            success_threshold = 500e-12  # 500 ps
+                
             combined_results['performance_metrics'][scenario['name']] = {
                 'avg_sync_error': np.mean(sync_errors),
                 'std_sync_error': np.std(sync_errors),
                 'avg_convergence_time': np.mean(convergence_times),
-                'success_rate': np.sum(np.array(sync_errors) < 1e-6) / len(sync_errors)
+                'success_rate': np.sum(np.array(sync_errors) < success_threshold) / len(sync_errors)
             }
             
         return combined_results
@@ -808,8 +814,9 @@ def main():
         mobility_models=['random_walk', 'linear'],
         network_sizes=[20, 30, 50, 75, 100],
         area_sizes=[500.0, 1000.0, 2000.0],  # m
-        allan_dev_values=[1e-11, 1e-10, 1e-9, 1e-8, 1e-7],
-        drift_rates=[1e-10, 1e-9, 1e-8, 1e-7, 1e-6],  # Hz/s
+        # Realistic oscillator ranges based on hardware constraints
+        allan_dev_values=[1e-11, 1e-10, 1e-9, 1e-8, 1e-7],  # OCXO to standard XO
+        drift_rates=[1e-10, 1e-9, 1e-8, 1e-7, 1e-6],  # Hz/s from high-end TCXO to XO
         n_monte_carlo=30,  # Reduced for faster execution
         save_results=True,
         plot_results=True

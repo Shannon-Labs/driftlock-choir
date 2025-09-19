@@ -1,320 +1,48 @@
 """
 Phase 1: Chronometric Interferometry two-node handshake simulation.
 
-This module reproduces the patent-described carrier-mismatch handshake: a
-transmit BEACON followed by a RESPONSE, intentional Δf, beat extraction,
-and closed-form recovery of both the time-of-flight (τ) and relative
-frequency skew (Δf). The implementation produces Monte Carlo statistics
-across SNR, while capturing illustrative traces for documentation.
+This module now supports two primary workflows:
+
+1. The legacy SNR sweep used during early validation (still available via
+   `Phase1Simulator.run_full_simulation`).
+2. A configurable alias-failure mapping sweep that scans retune offsets,
+   coarse preamble bandwidth, and SNR to quantify synthetic-wavelength
+   robustness. Command-line execution focuses on the alias map workflow.
 """
 
 from __future__ import annotations
 
-import json
+import argparse
+import math
 import os
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import asdict, dataclass, field, replace
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
 
-# Add src/ to import path
+# Add src/ to import path for local execution
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from phy.noise import NoiseGenerator, NoiseParams
-
-# Physical constant
-C = 299_792_458.0  # Speed of light (m/s)
-
-
-@dataclass
-class ChronometricNodeConfig:
-    """Configuration or sampled state for a single node."""
-
-    node_id: int
-    carrier_freq_hz: float
-    phase_offset_rad: float
-    clock_bias_s: float
-    freq_error_ppm: float
-
-
-@dataclass
-class ChronometricNode:
-    """Node wrapper exposing convenience accessors."""
-
-    config: ChronometricNodeConfig
-
-    @property
-    def carrier_freq_hz(self) -> float:
-        return self.config.carrier_freq_hz
-
-    @property
-    def phase_offset_rad(self) -> float:
-        return self.config.phase_offset_rad
-
-    @property
-    def clock_bias_s(self) -> float:
-        return self.config.clock_bias_s
-
-    @property
-    def freq_error_ppm(self) -> float:
-        return self.config.freq_error_ppm
-
-
-@dataclass
-class HandshakeTrace:
-    """Captured waveform/phase traces for documentation or debugging."""
-
-    time_us: np.ndarray
-    beat_raw: np.ndarray
-    beat_filtered: np.ndarray
-    adc_time_us: np.ndarray
-    adc_samples: np.ndarray
-    unwrapped_phase: np.ndarray
-    phase_fit: np.ndarray
-
-
-@dataclass
-class DirectionalMeasurement:
-    """Result of a single direction (tx→rx) measurement."""
-
-    tau_est_s: float
-    tau_true_s: float
-    delta_f_est_hz: float
-    delta_f_true_hz: float
-    clock_offset_true_s: float
-    residual_phase_rms: float
-    trace: Optional[HandshakeTrace] = None
-
-
-@dataclass
-class TwoWayHandshakeResult:
-    """Combined outcome of BEACON/RESPONSE measurements."""
-
-    forward: DirectionalMeasurement
-    reverse: DirectionalMeasurement
-    tof_est_s: float
-    tof_true_s: float
-    clock_offset_est_s: float
-    clock_offset_true_s: float
-    delta_f_est_hz: float
-    delta_f_true_hz: float
-
-
-class ChronometricHandshakeSimulator:
-    """Implements beat generation, filtering, and closed-form estimator."""
-
-    def __init__(self, config: 'Phase1Config'):
-        self.cfg = config
-
-    def run_two_way(
-        self,
-        node_a: ChronometricNode,
-        node_b: ChronometricNode,
-        snr_db: float,
-        rng: np.random.Generator,
-        capture_trace: bool = False,
-    ) -> Tuple[TwoWayHandshakeResult, Optional[Dict[str, HandshakeTrace]]]:
-        """Execute BEACON/RESPONSE handshake for a node pair."""
-
-        forward, trace_forward = self._simulate_direction(
-            tx=node_a,
-            rx=node_b,
-            snr_db=snr_db,
-            rng=rng,
-            capture_trace=capture_trace,
-        )
-        reverse, trace_reverse = self._simulate_direction(
-            tx=node_b,
-            rx=node_a,
-            snr_db=snr_db,
-            rng=rng,
-            capture_trace=capture_trace,
-        )
-
-        tof_est = 0.5 * (forward.tau_est_s + reverse.tau_est_s)
-        tof_true = 0.5 * (forward.tau_true_s + reverse.tau_true_s)
-        clock_offset_est = 0.5 * (forward.tau_est_s - reverse.tau_est_s)
-        clock_offset_true = 0.5 * (forward.tau_true_s - reverse.tau_true_s)
-        delta_f_est = 0.5 * (forward.delta_f_est_hz - reverse.delta_f_est_hz)
-        delta_f_true = forward.delta_f_true_hz
-
-        trace_dict: Optional[Dict[str, HandshakeTrace]] = None
-        if capture_trace:
-            trace_dict = {
-                'forward': trace_forward,
-                'reverse': trace_reverse,
-            }
-
-        return (
-            TwoWayHandshakeResult(
-                forward=forward,
-                reverse=reverse,
-                tof_est_s=tof_est,
-                tof_true_s=tof_true,
-                clock_offset_est_s=clock_offset_est,
-                clock_offset_true_s=clock_offset_true,
-                delta_f_est_hz=delta_f_est,
-                delta_f_true_hz=delta_f_true,
-            ),
-            trace_dict,
-        )
-
-    # Internal helpers -------------------------------------------------
-
-    def _simulate_direction(
-        self,
-        tx: ChronometricNode,
-        rx: ChronometricNode,
-        snr_db: float,
-        rng: np.random.Generator,
-        capture_trace: bool,
-    ) -> Tuple[DirectionalMeasurement, Optional[HandshakeTrace]]:
-        """Simulate a single directed handshake measurement."""
-
-        delta_f_true = rx.carrier_freq_hz - tx.carrier_freq_hz
-        # Sample rate chosen to comfortably cover Δf; avoid tiny values
-        baseband_rate = max(
-            self.cfg.baseband_rate_factor * max(abs(delta_f_true), 1.0),
-            self.cfg.min_baseband_rate_hz,
-        )
-        n_samples = max(int(self.cfg.beat_duration_s * baseband_rate), 256)
-        t = np.arange(n_samples) / baseband_rate
-
-        tau_true = self._apparent_tau(tx, rx)
-        theta_diff = tx.phase_offset_rad - rx.phase_offset_rad
-        carrier_term = -2.0 * np.pi * tx.carrier_freq_hz * tau_true
-        beat_phase = 2.0 * np.pi * delta_f_true * t + theta_diff + carrier_term
-        beat_clean = np.exp(1j * beat_phase)
-
-        noise_gen = NoiseGenerator(
-            NoiseParams(
-                snr_db=snr_db,
-                phase_noise_psd=self.cfg.phase_noise_psd,
-                jitter_rms=self.cfg.jitter_rms_s,
-            ),
-            sample_rate=baseband_rate,
-        )
-        beat_noisy = noise_gen.add_awgn(beat_clean)
-
-        beat_filtered = self._bandpass_filter(beat_noisy, baseband_rate, delta_f_true)
-        adc_time, adc_samples = self._downsample_adc(beat_filtered, baseband_rate, delta_f_true)
-
-        # Parameter estimation from ADC samples
-        tau_est, delta_f_est, residual_rms, phase_fit, unwrapped_phase = self._estimate_parameters(
-            tx=tx,
-            rx=rx,
-            adc_time=adc_time,
-            adc_samples=adc_samples,
-            tau_true=tau_true,
-            delta_f_true=delta_f_true,
-        )
-
-        trace: Optional[HandshakeTrace] = None
-        if capture_trace:
-            max_vis_samples = min(2000, len(t))
-            trace = HandshakeTrace(
-                time_us=t[:max_vis_samples] * 1e6,
-                beat_raw=beat_noisy[:max_vis_samples],
-                beat_filtered=beat_filtered[:max_vis_samples],
-                adc_time_us=adc_time * 1e6,
-                adc_samples=adc_samples,
-                unwrapped_phase=unwrapped_phase,
-                phase_fit=phase_fit,
-            )
-
-        measurement = DirectionalMeasurement(
-            tau_est_s=tau_est,
-            tau_true_s=tau_true,
-            delta_f_est_hz=delta_f_est,
-            delta_f_true_hz=delta_f_true,
-            clock_offset_true_s=rx.clock_bias_s - tx.clock_bias_s,
-            residual_phase_rms=residual_rms,
-            trace=trace,
-        )
-
-        return measurement, trace
-
-    def _apparent_tau(self, tx: ChronometricNode, rx: ChronometricNode) -> float:
-        """Prop delay plus relative clock bias perceived during measurement."""
-        geometric = self.cfg.distance_m / C
-        clock_skew = rx.clock_bias_s - tx.clock_bias_s
-        return geometric + clock_skew
-
-    def _bandpass_filter(
-        self,
-        signal_in: np.ndarray,
-        sample_rate: float,
-        delta_f_hz: float,
-    ) -> np.ndarray:
-        """Apply a narrow band-pass around the beat tone."""
-        centre = max(abs(delta_f_hz), 1.0)
-        half_bw = max(
-            centre * (self.cfg.filter_relative_bw - 1.0) / 2.0,
-            0.2 * centre,
-        )
-        low = max(1.0, centre - half_bw)
-        high = min(sample_rate / 2.0 - 1.0, centre + half_bw)
-        if high <= low:
-            return signal_in
-
-        sos = signal.butter(
-            N=2,
-            Wn=[low, high],
-            btype='bandpass',
-            fs=sample_rate,
-            output='sos',
-        )
-        return signal.sosfilt(sos, signal_in)
-
-    def _downsample_adc(
-        self,
-        signal_in: np.ndarray,
-        sample_rate: float,
-        delta_f_hz: float,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Sub-sample the beat at ~2×Δf to emulate the low-rate ADC."""
-        target_rate = max(2.0 * max(abs(delta_f_hz), 1.0), self.cfg.min_adc_rate_hz)
-        decimation = max(int(sample_rate // target_rate), 1)
-        adc_samples = signal_in[::decimation]
-        adc_time = np.arange(len(adc_samples)) * decimation / sample_rate
-        return adc_time, adc_samples
-
-    def _estimate_parameters(
-        self,
-        tx: ChronometricNode,
-        rx: ChronometricNode,
-        adc_time: np.ndarray,
-        adc_samples: np.ndarray,
-        tau_true: float,
-        delta_f_true: float,
-    ) -> Tuple[float, float, float, np.ndarray, np.ndarray]:
-        """Closed-form τ / Δf estimator from phase samples."""
-        if len(adc_samples) < 8:
-            raise RuntimeError('Insufficient ADC samples for estimation')
-
-        unwrapped_phase = np.unwrap(np.angle(adc_samples))
-        A = np.vstack([adc_time, np.ones_like(adc_time)]).T
-        slope, intercept = np.linalg.lstsq(A, unwrapped_phase, rcond=None)[0]
-        delta_f_est = slope / (2.0 * np.pi)
-
-        theta_diff = tx.phase_offset_rad - rx.phase_offset_rad
-        tau_candidate = (theta_diff - intercept) / (2.0 * np.pi * tx.carrier_freq_hz)
-        n_cycles = np.round((tau_true - tau_candidate) * tx.carrier_freq_hz)
-        tau_est = tau_candidate + n_cycles / tx.carrier_freq_hz
-
-        fitted_phase = slope * adc_time + intercept
-        residual = unwrapped_phase - fitted_phase
-        residual_rms = float(np.sqrt(np.mean(residual**2)))
-
-        return tau_est, delta_f_est, residual_rms, fitted_phase, unwrapped_phase
+from alg.chronometric_handshake import (
+    ChronometricHandshakeConfig,
+    ChronometricHandshakeSimulator,
+    ChronometricNode,
+    ChronometricNodeConfig,
+    HandshakeTrace,
+    TwoWayHandshakeResult,
+)
+from mac.scheduler import MacSlots
+from chan.tdl import TappedDelayLine, tdl_exponential
+from utils.io import dump_run_config, echo_config, ensure_directory, save_json, write_csv
+from utils.plotting import heatmap as plot_heatmap, save_figure
 
 
 @dataclass
 class Phase1Config:
-    """Simulation configuration for Phase 1."""
+    """Simulation configuration for legacy Phase 1 sweep."""
 
     snr_values_db: List[float] = field(default_factory=lambda: [0, 5, 10, 15, 20, 25, 30])
     n_monte_carlo: int = 200
@@ -330,11 +58,53 @@ class Phase1Config:
     jitter_rms_s: float = 1e-12
     clock_bias_std_ps: float = 25.0
     clock_ppm_std: float = 2.0
+    retune_offsets_hz: Tuple[float, ...] = (1e6,)
+    coarse_enabled: bool = True
+    coarse_bandwidth_hz: float = 20e6
+    coarse_duration_s: float = 5e-6
+    coarse_variance_floor_ps: float = 50.0
+    multipath_two_ray_alpha: Optional[float] = None
+    multipath_two_ray_delay_s: Optional[float] = None
     rng_seed: Optional[int] = 1234
     capture_trace_snr_db: Optional[float] = None
     save_results: bool = True
     plot_results: bool = True
     results_dir: str = "results/phase1"
+    channel_model: Optional[TappedDelayLine] = None
+    tdl_profile: Optional[str] = None
+    delta_t_us: Tuple[float, ...] = (0.0,)
+    calib_mode: str = 'off'
+    loopback_cal_noise_ps: float = 10.0
+    d_tx_ns: Dict[int, float] = field(default_factory=dict)
+    d_rx_ns: Dict[int, float] = field(default_factory=dict)
+    mac_slots: Optional[MacSlots] = field(
+        default_factory=lambda: MacSlots(preamble_len=1024, narrowband_len=512, guard_us=10.0)
+    )
+
+    def handshake_config(self) -> ChronometricHandshakeConfig:
+        return ChronometricHandshakeConfig(
+            beat_duration_s=self.beat_duration_s,
+            baseband_rate_factor=self.baseband_rate_factor,
+            min_baseband_rate_hz=self.min_baseband_rate_hz,
+            min_adc_rate_hz=self.min_adc_rate_hz,
+            filter_relative_bw=self.filter_relative_bw,
+            phase_noise_psd=self.phase_noise_psd,
+            jitter_rms_s=self.jitter_rms_s,
+            retune_offsets_hz=self.retune_offsets_hz,
+            coarse_enabled=self.coarse_enabled,
+            coarse_bandwidth_hz=self.coarse_bandwidth_hz,
+            coarse_duration_s=self.coarse_duration_s,
+            coarse_variance_floor_ps=self.coarse_variance_floor_ps,
+            multipath_two_ray_alpha=self.multipath_two_ray_alpha,
+            multipath_two_ray_delay_s=self.multipath_two_ray_delay_s,
+            channel_model=self.channel_model,
+            delta_t_schedule_us=self.delta_t_us,
+            calibration_mode=self.calib_mode,
+            loopback_cal_noise_ps=self.loopback_cal_noise_ps,
+            d_tx_ns=self.d_tx_ns if self.d_tx_ns else None,
+            d_rx_ns=self.d_rx_ns if self.d_rx_ns else None,
+            mac=self.mac_slots,
+        )
 
 
 class Phase1Simulator:
@@ -343,13 +113,17 @@ class Phase1Simulator:
     def __init__(self, config: Phase1Config):
         self.config = config
         if self.config.save_results:
-            os.makedirs(self.config.results_dir, exist_ok=True)
+            ensure_directory(self.config.results_dir)
+        self.handshake = ChronometricHandshakeSimulator(self.config.handshake_config())
+        self._base_handshake_cfg = self.config.handshake_config()
+
+    # ------------------------------------------------------------------
+    # Legacy sweep utilities
 
     def run_full_simulation(self) -> Dict[str, Any]:
         rng = np.random.default_rng(self.config.rng_seed)
-        handshake = ChronometricHandshakeSimulator(self.config)
 
-        snr_results, exemplar_trace = self._run_snr_sweep(handshake, rng)
+        snr_results, exemplar_trace = self._run_snr_sweep(self.handshake, rng)
 
         results: Dict[str, Any] = {
             'snr_sweep': snr_results,
@@ -365,29 +139,34 @@ class Phase1Simulator:
 
         return results
 
-    # Internal helpers -------------------------------------------------
-
     def _run_snr_sweep(
         self,
         handshake: ChronometricHandshakeSimulator,
         rng: np.random.Generator,
     ) -> Tuple[Dict[str, Any], Optional[HandshakeTrace]]:
         snr_values = self.config.snr_values_db
-        tau_rmse = []
-        clock_rmse = []
-        delta_f_rmse = []
-        tau_bias = []
-        delta_f_bias = []
-        phase_rms = []
+        tau_rmse: List[float] = []
+        clock_rmse: List[float] = []
+        delta_f_rmse: List[float] = []
+        tau_bias: List[float] = []
+        delta_f_bias: List[float] = []
+        phase_rms: List[float] = []
+        coarse_rmse: List[Optional[float]] = []
+        alias_success: List[Optional[float]] = []
+        carrier_counts: List[Optional[float]] = []
 
         exemplar_trace: Optional[HandshakeTrace] = None
         exemplar_set = False
 
         for snr_db in snr_values:
-            tof_errors = []
-            clock_errors = []
-            delta_f_errors = []
-            directional_phase_rms = []
+            tof_errors: List[float] = []
+            clock_errors: List[float] = []
+            delta_f_errors: List[float] = []
+            directional_phase_rms: List[float] = []
+
+            coarse_errors: List[float] = []
+            alias_flags: List[float] = []
+            carrier_counts_local: List[float] = []
 
             for _ in range(self.config.n_monte_carlo):
                 node_a, node_b = self._sample_nodes(rng)
@@ -399,9 +178,11 @@ class Phase1Simulator:
                 result, traces = handshake.run_two_way(
                     node_a=node_a,
                     node_b=node_b,
+                    distance_m=self.config.distance_m,
                     snr_db=snr_db,
                     rng=rng,
                     capture_trace=capture,
+                    retune_offsets_hz=self.config.retune_offsets_hz,
                 )
 
                 tof_errors.append(result.tof_est_s - result.tof_true_s)
@@ -410,22 +191,47 @@ class Phase1Simulator:
                 directional_phase_rms.append(
                     0.5 * (result.forward.residual_phase_rms + result.reverse.residual_phase_rms)
                 )
+                if result.coarse_tof_est_s is not None:
+                    coarse_errors.append(result.coarse_tof_est_s - result.tof_true_s)
+                alias_forward = bool(result.forward.alias_resolved)
+                alias_reverse = bool(result.reverse.alias_resolved)
+                alias_flags.append(float(alias_forward and alias_reverse))
+                carrier_counts_local.append(
+                    0.5
+                    * (
+                        len(result.forward.carrier_frequencies_hz)
+                        + len(result.reverse.carrier_frequencies_hz)
+                    )
+                )
 
                 if capture and traces and not exemplar_set:
                     exemplar_trace = traces['forward']
                     exemplar_set = True
 
-            tof_errors = np.array(tof_errors)
+            tau_errors = np.array(tof_errors)
             clock_errors = np.array(clock_errors)
-            delta_f_errors = np.array(delta_f_errors)
-            directional_phase_rms = np.array(directional_phase_rms)
+            delta_f_errors_arr = np.array(delta_f_errors)
+            directional_phase_rms_arr = np.array(directional_phase_rms)
 
-            tau_rmse.append(float(np.sqrt(np.mean(tof_errors**2))))
+            tau_rmse.append(float(np.sqrt(np.mean(tau_errors**2))))
             clock_rmse.append(float(np.sqrt(np.mean(clock_errors**2))))
-            delta_f_rmse.append(float(np.sqrt(np.mean(delta_f_errors**2))))
-            tau_bias.append(float(np.mean(tof_errors)))
-            delta_f_bias.append(float(np.mean(delta_f_errors)))
-            phase_rms.append(float(np.mean(directional_phase_rms)))
+            delta_f_rmse.append(float(np.sqrt(np.mean(delta_f_errors_arr**2))))
+            tau_bias.append(float(np.mean(tau_errors)))
+            delta_f_bias.append(float(np.mean(delta_f_errors_arr)))
+            phase_rms.append(float(np.mean(directional_phase_rms_arr)))
+            if coarse_errors:
+                coarse_value = float(np.sqrt(np.mean(np.square(coarse_errors))))
+                coarse_rmse.append(coarse_value * 1e12)
+            else:
+                coarse_rmse.append(None)
+            if alias_flags:
+                alias_success.append(float(np.mean(alias_flags)))
+            else:
+                alias_success.append(None)
+            if carrier_counts_local:
+                carrier_counts.append(float(np.mean(carrier_counts_local)))
+            else:
+                carrier_counts.append(None)
 
         snr_results = {
             'snr_db': snr_values,
@@ -435,6 +241,9 @@ class Phase1Simulator:
             'delta_f_rmse_hz': np.array(delta_f_rmse).tolist(),
             'delta_f_bias_hz': np.array(delta_f_bias).tolist(),
             'phase_fit_rms_rad': np.array(phase_rms).tolist(),
+            'coarse_tof_rmse_ps': _clean_numeric_list(coarse_rmse),
+            'alias_success_rate': _clean_numeric_list(alias_success),
+            'avg_carrier_count': _clean_numeric_list(carrier_counts),
         }
 
         return snr_results, exemplar_trace
@@ -471,20 +280,8 @@ class Phase1Simulator:
         return node_a, node_b
 
     def _save_results(self, results: Dict[str, Any]) -> None:
-        def convert(obj: Any) -> Any:
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            if isinstance(obj, (np.float_, np.float32, np.float64, np.int_)):
-                return float(obj)
-            if isinstance(obj, dict):
-                return {k: convert(v) for k, v in obj.items()}
-            if isinstance(obj, list):
-                return [convert(v) for v in obj]
-            return obj
-
         out_path = os.path.join(self.config.results_dir, 'phase1_results.json')
-        with open(out_path, 'w') as f:
-            json.dump(convert(results), f, indent=2)
+        save_json(results, out_path)
         print(f"Results saved to {out_path}")
 
     def _generate_plots(
@@ -520,10 +317,8 @@ class Phase1Simulator:
         axes[2].set_ylabel('Phase (rad)')
         axes[2].legend()
 
-        fig.tight_layout()
         plot_path = os.path.join(self.config.results_dir, 'phase1_waveforms.png')
-        fig.savefig(plot_path, dpi=300)
-        plt.close(fig)
+        save_figure(fig, plot_path)
         print(f"Saved waveform plot to {plot_path}")
 
     def _plot_error_curves(self, snr_results: Dict[str, Any]) -> None:
@@ -549,10 +344,8 @@ class Phase1Simulator:
         axes[2].set_xlabel('SNR (dB)')
         axes[2].set_ylabel('RMSE (Hz)')
 
-        fig.tight_layout()
         plot_path = os.path.join(self.config.results_dir, 'phase1_errors.png')
-        fig.savefig(plot_path, dpi=300)
-        plt.close(fig)
+        save_figure(fig, plot_path)
         print(f"Saved error plot to {plot_path}")
 
     def _serialize_trace(self, trace: HandshakeTrace) -> Dict[str, Any]:
@@ -569,14 +362,618 @@ class Phase1Simulator:
             'phase_fit': trace.phase_fit.tolist(),
         }
 
+    # ------------------------------------------------------------------
+    # Alias failure mapping
 
-if __name__ == "__main__":
-    cfg = Phase1Config(
-        snr_values_db=[0, 5, 10, 15, 20],
-        n_monte_carlo=20,
-        save_results=False,
-        plot_results=False,
+    def run_alias_failure_map(
+        self,
+        retune_offsets_hz: Sequence[float],
+        coarse_bw_hz: Sequence[float],
+        snr_db: Sequence[float],
+        num_trials: int,
+        rng_seed: int,
+        make_plots: bool = False,
+    ) -> Dict[str, Any]:
+        if self.config.save_results:
+            alias_dir = os.path.join(self.config.results_dir, 'alias_map')
+            os.makedirs(alias_dir, exist_ok=True)
+        else:
+            alias_dir = None
+
+        rng = np.random.default_rng(rng_seed)
+
+        retune_offsets = list(retune_offsets_hz)
+        coarse_bandwidths = list(coarse_bw_hz)
+        snr_values = list(snr_db)
+
+        shape = (len(retune_offsets), len(coarse_bandwidths), len(snr_values))
+        alias_fail_rate = np.full(shape, np.nan, dtype=float)
+        tau_rmse_ps = np.full(shape, np.nan, dtype=float)
+        tau_bias_ps = np.full(shape, np.nan, dtype=float)
+        deltaf_rmse_hz = np.full(shape, np.nan, dtype=float)
+        coarse_rmse_ns = np.full(shape, np.nan, dtype=float)
+        carriers_avg = np.full(shape, np.nan, dtype=float)
+        phase_bias_rad = np.full(shape, np.nan, dtype=float)
+        reciprocity_bias_ps = np.full(shape, np.nan, dtype=float)
+
+        for i, retune in enumerate(retune_offsets):
+            for j, coarse_bw in enumerate(coarse_bandwidths):
+                handshake_cfg = replace(
+                    self._base_handshake_cfg,
+                    retune_offsets_hz=(retune,),
+                    coarse_bandwidth_hz=coarse_bw,
+                )
+                handshake = ChronometricHandshakeSimulator(handshake_cfg)
+
+                for k, snr in enumerate(snr_values):
+                    alias_flags: List[bool] = []
+                    tau_errors_ps: List[float] = []
+                    deltaf_errors_hz: List[float] = []
+                    coarse_errors_ns: List[float] = []
+                    carrier_counts: List[float] = []
+                    phase_bias_vals: List[float] = []
+                    reciprocity_vals_ps: List[float] = []
+
+                    for _ in range(num_trials):
+                        node_a, node_b = self._sample_nodes(rng)
+                        result, _ = handshake.run_two_way(
+                            node_a=node_a,
+                            node_b=node_b,
+                            distance_m=self.config.distance_m,
+                            snr_db=snr,
+                            rng=rng,
+                            retune_offsets_hz=handshake_cfg.retune_offsets_hz,
+                        )
+
+                        alias_forward = bool(result.forward.alias_resolved)
+                        alias_reverse = bool(result.reverse.alias_resolved)
+                        alias_flags.append(alias_forward and alias_reverse)
+
+                        tau_errors_ps.append((result.tof_est_s - result.tof_true_s) * 1e12)
+                        deltaf_errors_hz.append(result.delta_f_est_hz - result.delta_f_true_hz)
+                        if result.coarse_tof_est_s is not None:
+                            coarse_errors_ns.append((result.coarse_tof_est_s - result.tof_true_s) * 1e9)
+                        carrier_counts.append(
+                            0.5
+                            * (
+                                len(result.forward.carrier_frequencies_hz)
+                                + len(result.reverse.carrier_frequencies_hz)
+                            )
+                        )
+                        phase_samples = [result.forward.phase_bias_rad, result.reverse.phase_bias_rad]
+                        valid_phase = [val for val in phase_samples if val is not None]
+                        if valid_phase:
+                            phase_bias_vals.append(float(np.mean(valid_phase)))
+                        reciprocity_vals_ps.append(result.reciprocity_bias_s * 1e12)
+
+                    alias_arr = np.asarray(alias_flags, dtype=float)
+                    tau_arr = np.asarray(tau_errors_ps, dtype=float)
+                    deltaf_arr = np.asarray(deltaf_errors_hz, dtype=float)
+                    coarse_arr = np.asarray(coarse_errors_ns, dtype=float)
+                    carriers_arr = np.asarray(carrier_counts, dtype=float)
+
+                    alias_success = alias_arr.mean() if alias_arr.size else np.nan
+                    alias_fail_rate[i, j, k] = float(1.0 - alias_success) if alias_arr.size else float('nan')
+                    tau_rmse_ps[i, j, k] = _rmse(tau_arr)
+                    deltaf_rmse_hz[i, j, k] = _rmse(deltaf_arr)
+                    coarse_rmse_ns[i, j, k] = _rmse(coarse_arr)
+                    carriers_avg[i, j, k] = float(carriers_arr.mean()) if carriers_arr.size else float('nan')
+                    tau_bias_ps[i, j, k] = float(np.mean(tau_arr)) if tau_arr.size else float('nan')
+                    phase_bias_rad[i, j, k] = float(np.mean(phase_bias_vals)) if phase_bias_vals else float('nan')
+                    reciprocity_bias_ps[i, j, k] = float(np.mean(reciprocity_vals_ps)) if reciprocity_vals_ps else float('nan')
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+        metrics = {
+            'alias_fail_rate': alias_fail_rate.tolist(),
+            'tau_rmse_ps': tau_rmse_ps.tolist(),
+            'tau_bias_ps': tau_bias_ps.tolist(),
+            'deltaf_rmse_hz': deltaf_rmse_hz.tolist(),
+            'coarse_rmse_ns': coarse_rmse_ns.tolist(),
+            'avg_carriers_used': carriers_avg.tolist(),
+            'phase_bias_rad': phase_bias_rad.tolist(),
+            'channel_k_factor_db': self.config.channel_model.k_factor_db if self.config.channel_model else None,
+            'reciprocity_bias_ps': reciprocity_bias_ps.tolist(),
+        }
+        with np.errstate(invalid='ignore'):
+            bias_mean_raw = np.nanmean(reciprocity_bias_ps)
+            bias_by_retune_raw = np.nanmean(reciprocity_bias_ps, axis=(1, 2))
+            bias_by_snr_raw = np.nanmean(reciprocity_bias_ps, axis=(0, 1))
+        bias_summary = {
+            'calibration_mode': self.config.calib_mode,
+            'delta_t_schedule_us': list(self.config.delta_t_us),
+            'mean_bias_ps': _clean_numeric_value(None if np.isnan(bias_mean_raw) else float(bias_mean_raw)),
+            'bias_by_retune_ps': _clean_numeric_list(
+                [None if np.isnan(val) else float(val) for val in bias_by_retune_raw]
+            ),
+            'bias_by_snr_ps': _clean_numeric_list(
+                [None if np.isnan(val) else float(val) for val in bias_by_snr_raw]
+            ),
+        }
+
+        manifest = {
+            'snr_db': snr_values,
+            'retune_offsets_hz': retune_offsets,
+            'coarse_bw_hz': coarse_bandwidths,
+            'num_trials': num_trials,
+            'metrics': metrics,
+            'rng_seed': rng_seed,
+            'timestamp': timestamp,
+            'tdl_profile': self.config.tdl_profile,
+            'delta_t_us': list(self.config.delta_t_us),
+            'calib_mode': self.config.calib_mode,
+            'loopback_cal_noise_ps': self.config.loopback_cal_noise_ps,
+            'mac': (
+                {
+                    'preamble_len': self.config.mac_slots.preamble_len,
+                    'narrowband_len': self.config.mac_slots.narrowband_len,
+                    'guard_us': self.config.mac_slots.guard_us,
+                    'guard_s': self.config.mac_slots.guard_seconds(),
+                    'asymmetric': self.config.mac_slots.asymmetric,
+                }
+                if self.config.mac_slots
+                else None
+            ),
+            'bias_diagnostics': bias_summary,
+        }
+
+        manifest_path = None
+        csv_path = None
+        plot_paths: List[str] = []
+
+        if alias_dir:
+            manifest_path = os.path.join(alias_dir, 'alias_map_manifest.json')
+            save_json(manifest, manifest_path)
+
+            csv_path = os.path.join(alias_dir, 'alias_map_metrics.csv')
+            self._write_alias_csv(
+                csv_path,
+                retune_offsets,
+                coarse_bandwidths,
+                snr_values,
+                alias_fail_rate,
+                tau_bias_ps,
+                tau_rmse_ps,
+                deltaf_rmse_hz,
+                coarse_rmse_ns,
+                carriers_avg,
+                phase_bias_rad,
+                reciprocity_bias_ps,
+            )
+
+            if make_plots:
+                plot_paths = self._plot_alias_heatmaps(
+                    alias_dir,
+                    retune_offsets,
+                    coarse_bandwidths,
+                    snr_values,
+                    alias_fail_rate,
+                    tau_rmse_ps,
+                    deltaf_rmse_hz,
+                    reciprocity_bias_ps,
+                )
+                bias_trend_path = self._plot_bias_trends(
+                    alias_dir,
+                    retune_offsets,
+                    snr_values,
+                    reciprocity_bias_ps,
+                )
+                if bias_trend_path:
+                    plot_paths.append(bias_trend_path)
+
+        return {
+            'manifest': manifest,
+            'manifest_path': manifest_path,
+            'csv_path': csv_path,
+            'plot_paths': plot_paths,
+        }
+
+    def _write_alias_csv(
+        self,
+        csv_path: str,
+        retune_offsets: Sequence[float],
+        coarse_bandwidths: Sequence[float],
+        snr_values: Sequence[float],
+        alias_fail_rate: np.ndarray,
+        tau_bias_ps: np.ndarray,
+        tau_rmse_ps: np.ndarray,
+        deltaf_rmse_hz: np.ndarray,
+        coarse_rmse_ns: np.ndarray,
+        carriers_avg: np.ndarray,
+        phase_bias_rad: np.ndarray,
+        reciprocity_bias_ps: np.ndarray,
+    ) -> None:
+        fieldnames = [
+            'retune_offset_hz',
+            'coarse_bw_hz',
+            'snr_db',
+            'alias_fail_rate',
+            'tau_rmse_ps',
+            'tau_bias_ps',
+            'deltaf_rmse_hz',
+            'coarse_rmse_ns',
+            'avg_carriers_used',
+            'phase_bias_rad',
+            'reciprocity_bias_ps',
+        ]
+        rows: List[Dict[str, Any]] = []
+        for i, retune in enumerate(retune_offsets):
+            for j, coarse in enumerate(coarse_bandwidths):
+                for k, snr in enumerate(snr_values):
+                    rows.append(
+                        {
+                            'retune_offset_hz': retune,
+                            'coarse_bw_hz': coarse,
+                            'snr_db': snr,
+                            'alias_fail_rate': alias_fail_rate[i, j, k],
+                            'tau_rmse_ps': tau_rmse_ps[i, j, k],
+                            'tau_bias_ps': tau_bias_ps[i, j, k],
+                            'deltaf_rmse_hz': deltaf_rmse_hz[i, j, k],
+                            'coarse_rmse_ns': coarse_rmse_ns[i, j, k],
+                            'avg_carriers_used': carriers_avg[i, j, k],
+                            'phase_bias_rad': phase_bias_rad[i, j, k],
+                            'reciprocity_bias_ps': reciprocity_bias_ps[i, j, k],
+                        }
+                    )
+        write_csv(csv_path, fieldnames, rows)
+
+    def _plot_alias_heatmaps(
+        self,
+        alias_dir: str,
+        retune_offsets: Sequence[float],
+        coarse_bandwidths: Sequence[float],
+        snr_values: Sequence[float],
+        alias_fail_rate: np.ndarray,
+        tau_rmse_ps: np.ndarray,
+        deltaf_rmse_hz: np.ndarray,
+        reciprocity_bias_ps: np.ndarray,
+    ) -> List[str]:
+        plot_paths: List[str] = []
+        metrics = {
+            'alias_fail_rate': alias_fail_rate,
+            'tau_rmse_ps': tau_rmse_ps,
+            'deltaf_rmse_hz': deltaf_rmse_hz,
+            'reciprocity_bias_ps': reciprocity_bias_ps,
+        }
+        label_map = {
+            'alias_fail_rate': 'Alias Fail Rate',
+            'tau_rmse_ps': 'τ RMSE (ps)',
+            'deltaf_rmse_hz': 'Δf RMSE (Hz)',
+            'reciprocity_bias_ps': 'Reciprocity Bias (ps)',
+        }
+        snr_labels = [str(s) for s in snr_values]
+        coarse_labels = [f"{bw/1e6:.1f} MHz" for bw in coarse_bandwidths]
+
+        for metric_name, data in metrics.items():
+            for idx, offset in enumerate(retune_offsets):
+                fig, ax = plt.subplots(figsize=(6, 4))
+                matrix = np.asarray(data[idx], dtype=float)
+                display_label = label_map.get(metric_name, metric_name.replace('_', ' ').title())
+                title = f"{display_label} (retune {offset/1e6:.2f} MHz)"
+                plot_heatmap(
+                    ax,
+                    matrix,
+                    xticklabels=snr_labels,
+                    yticklabels=coarse_labels,
+                    title=title,
+                    cbar_label=display_label,
+                )
+                ax.set_xlabel('SNR (dB)')
+                ax.set_ylabel('Coarse BW')
+
+                safe_offset = str(offset).replace('.', 'p')
+                filename = f"{metric_name}_retune_{safe_offset}.png"
+                plot_path = os.path.join(alias_dir, filename)
+                save_figure(fig, plot_path)
+                plot_paths.append(plot_path)
+
+        return plot_paths
+
+    def _plot_bias_trends(
+        self,
+        alias_dir: str,
+        retune_offsets: Sequence[float],
+        snr_values: Sequence[float],
+        reciprocity_bias_ps: np.ndarray,
+    ) -> Optional[str]:
+        with np.errstate(invalid='ignore'):
+            bias_by_coarse = np.nanmean(reciprocity_bias_ps, axis=1)
+        valid_indices = [idx for idx in range(len(retune_offsets)) if not np.all(np.isnan(bias_by_coarse[idx]))]
+        if not valid_indices:
+            return None
+        fig, ax = plt.subplots(figsize=(6, 4))
+        for idx in valid_indices:
+            series = bias_by_coarse[idx]
+            ax.plot(snr_values, series, marker='o', label=f'{retune_offsets[idx]/1e6:.2f} MHz')
+        ax.set_title('Reciprocity Bias vs SNR')
+        ax.set_xlabel('SNR (dB)')
+        ax.set_ylabel('Bias (ps)')
+        if len(valid_indices) > 1:
+            ax.legend(title='Retune Offset')
+        schedule_text = ', '.join(f'{val:.2f}' for val in self.config.delta_t_us)
+        annotation = f"Calibration: {self.config.calib_mode}\nΔt (µs): {schedule_text}"
+        ax.text(
+            0.02,
+            0.98,
+            annotation,
+            transform=ax.transAxes,
+            va='top',
+            ha='left',
+            fontsize=9,
+            bbox={'facecolor': 'white', 'alpha': 0.8, 'edgecolor': 'none'},
+        )
+        bias_path = os.path.join(alias_dir, 'reciprocity_bias_trends.png')
+        save_figure(fig, bias_path)
+        return bias_path
+
+
+def _rmse(values: np.ndarray) -> float:
+    if values.size == 0:
+        return float('nan')
+    return float(np.sqrt(np.mean(np.square(values))))
+
+
+def _clean_numeric_value(value: Optional[float]) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    return float(value)
+
+
+def _clean_numeric_list(values: Sequence[Optional[float]]) -> List[Optional[float]]:
+    cleaned: List[Optional[float]] = []
+    for val in values:
+        if val is None:
+            cleaned.append(None)
+            continue
+        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+            cleaned.append(None)
+        else:
+            cleaned.append(float(val))
+    return cleaned
+
+
+def _parse_float_list(arg: str) -> List[float]:
+    if not arg:
+        return []
+    parts = [part.strip() for part in arg.split(',')]
+    return [float(p) for p in parts if p]
+
+
+def _parse_time_token(token: str) -> float:
+    cleaned = token.strip().lower()
+    suffixes = [
+        ('ps', 1e-12),
+        ('ns', 1e-9),
+        ('us', 1e-6),
+        ('ms', 1e-3),
+        ('s', 1.0),
+    ]
+    for suffix, scale in suffixes:
+        if cleaned.endswith(suffix):
+            value = float(cleaned[: -len(suffix)])
+            return value * scale
+    return float(cleaned)
+
+
+def _parse_tdl_profile(profile: str) -> TappedDelayLine:
+    tokens = [part.strip() for part in profile.split(':') if part.strip()]
+    if not tokens:
+        raise ValueError('TDL profile string is empty')
+    mode = tokens[0].upper()
+    if mode == 'EXPO':
+        if len(tokens) < 2:
+            raise ValueError('EXPO profile requires RMS delay token, e.g., EXPO:50ns')
+        rms_delay = _parse_time_token(tokens[1])
+        k_factor = None
+        L = 5
+        doppler = None
+        for token in tokens[2:]:
+            upper = token.upper()
+            if upper.startswith('K='):
+                value = upper.split('=', 1)[1]
+                if value.endswith('DB'):
+                    value = value[:-2]
+                k_factor = float(value)
+            elif upper.startswith('L='):
+                L = int(upper.split('=', 1)[1])
+            elif upper.startswith('FD='):
+                doppler = float(upper.split('=', 1)[1])
+        tdl = tdl_exponential(L=L, rms_delay_spread_s=rms_delay, k_factor_db=k_factor)
+        if doppler is not None:
+            tdl.doppler_hz = doppler
+        return tdl
+    raise ValueError(f'Unsupported TDL profile mode: {mode}')
+
+
+def build_alias_map_cli(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        '--snr-db',
+        type=str,
+        default='20,10,0,-10,-20',
+        help='Comma-separated SNR values in dB.',
     )
+    parser.add_argument(
+        '--retune-offsets-hz',
+        type=str,
+        default='1e6,5e6',
+        help='Comma-separated retune offsets in Hz.',
+    )
+    parser.add_argument(
+        '--coarse-bw-hz',
+        type=str,
+        default='20e6,40e6,80e6',
+        help='Comma-separated coarse preamble bandwidths in Hz.',
+    )
+    parser.add_argument(
+        '--num-trials',
+        type=int,
+        default=500,
+        help='Monte Carlo trials per (offset, bandwidth, SNR) tuple.',
+    )
+    parser.add_argument(
+        '--rng-seed',
+        type=int,
+        default=1337,
+        help='Seed for the NumPy default RNG.',
+    )
+    parser.add_argument(
+        '--results-dir',
+        type=str,
+        default='results/phase1',
+        help='Output directory for manifests, CSV, and plots.',
+    )
+    parser.add_argument(
+        '--make-plots',
+        action='store_true',
+        help='Generate heatmap plots for alias failure metrics.',
+    )
+    parser.add_argument(
+        '--run-legacy-snr-sweep',
+        action='store_true',
+        help='Also execute the original Phase 1 SNR sweep.',
+    )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Resolve configuration, echo it, then exit without running the simulation.',
+    )
+    parser.add_argument(
+        '--echo-config',
+        action='store_true',
+        help='Print the resolved Phase 1 config (JSON) before execution.',
+    )
+    parser.add_argument(
+        '--tdl-profile',
+        type=str,
+        default=None,
+        help=(
+            'TDL profile string, e.g., "EXPO:50ns:K=6dB:L=5". '
+            'When provided, overrides the legacy two-ray stub.'
+        ),
+    )
+    parser.add_argument(
+        '--delta-t-us',
+        type=str,
+        default='0.0',
+        help='Comma-separated schedule of delta-t values (microseconds).',
+    )
+    parser.add_argument(
+        '--calib-mode',
+        type=str,
+        choices=['off', 'perfect', 'loopback'],
+        default='off',
+        help='Reciprocity calibration mode.',
+    )
+    parser.add_argument(
+        '--loopback-cal-noise-ps',
+        type=float,
+        default=10.0,
+        help='Std-dev of loopback calibration noise in picoseconds.',
+    )
+    parser.add_argument(
+        '--preamble-len',
+        type=int,
+        default=1024,
+        help='Preamble length (samples) used for coarse correlation.',
+    )
+    parser.add_argument(
+        '--preamble-bw-hz',
+        type=float,
+        default=40e6,
+        help='Coarse preamble bandwidth in Hz.',
+    )
+    parser.add_argument(
+        '--guard-us',
+        type=float,
+        default=10.0,
+        help='MAC guard interval in microseconds.',
+    )
+    parser.add_argument(
+        '--mac-asymmetry',
+        action='store_true',
+        help='Allow asymmetric MAC slot durations.',
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description='Phase 1 alias-failure mapping tool')
+    build_alias_map_cli(parser)
+    args = parser.parse_args()
+
+    snr_values = _parse_float_list(args.snr_db)
+    retune_offsets = _parse_float_list(args.retune_offsets_hz)
+    coarse_bandwidths = _parse_float_list(args.coarse_bw_hz)
+    channel_model = _parse_tdl_profile(args.tdl_profile) if args.tdl_profile else None
+    delta_t_values = _parse_float_list(args.delta_t_us)
+    if not delta_t_values:
+        delta_t_values = [0.0]
+    narrowband_len = max(1, int(Phase1Config.beat_duration_s * args.preamble_bw_hz))
+    mac_slots = MacSlots(
+        preamble_len=args.preamble_len,
+        narrowband_len=narrowband_len,
+        guard_us=args.guard_us,
+        asymmetric=args.mac_asymmetry,
+    )
+
+    if not snr_values:
+        raise ValueError('At least one SNR value must be provided via --snr-db')
+    if not retune_offsets:
+        raise ValueError('At least one retune offset must be provided via --retune-offsets-hz')
+    if not coarse_bandwidths:
+        raise ValueError('At least one coarse bandwidth must be provided via --coarse-bw-hz')
+
+    cfg = Phase1Config(
+        snr_values_db=snr_values,
+        n_monte_carlo=min(args.num_trials, 200),
+        retune_offsets_hz=(retune_offsets[0],),
+        coarse_bandwidth_hz=args.preamble_bw_hz,
+        save_results=True,
+        plot_results=args.make_plots,
+        results_dir=args.results_dir,
+        channel_model=channel_model,
+        tdl_profile=args.tdl_profile,
+        delta_t_us=tuple(delta_t_values),
+        calib_mode=args.calib_mode,
+        loopback_cal_noise_ps=args.loopback_cal_noise_ps,
+        coarse_duration_s=max(args.preamble_len / max(args.preamble_bw_hz, 1.0), 1e-6),
+        mac_slots=mac_slots,
+    )
+
+    if args.echo_config or args.dry_run:
+        print(echo_config(cfg, label='Phase1Config'))
+
+    if args.dry_run:
+        return
+
     simulator = Phase1Simulator(cfg)
-    simulator.run_full_simulation()
-    print("Phase 1 quick run complete.")
+
+    if cfg.save_results:
+        dump_run_config(cfg.results_dir, cfg, filename='phase1_config.json')
+
+    alias_summary = simulator.run_alias_failure_map(
+        retune_offsets_hz=retune_offsets,
+        coarse_bw_hz=coarse_bandwidths,
+        snr_db=snr_values,
+        num_trials=args.num_trials,
+        rng_seed=args.rng_seed,
+        make_plots=args.make_plots,
+    )
+
+    manifest_path = alias_summary['manifest_path']
+    csv_path = alias_summary['csv_path']
+    if manifest_path:
+        print(f"Alias-map manifest written to {manifest_path}")
+    if csv_path:
+        print(f"Alias-map CSV written to {csv_path}")
+    if alias_summary['plot_paths']:
+        print('Generated plots:')
+        for path in alias_summary['plot_paths']:
+            print(f"  {path}")
+
+    if args.run_legacy_snr_sweep:
+        simulator.run_full_simulation()
+
+
+if __name__ == '__main__':
+    main()

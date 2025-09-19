@@ -25,18 +25,28 @@ class NoiseGenerator:
         self.params = params
         self.sample_rate = sample_rate
         
-    def add_awgn(self, signal: np.ndarray) -> np.ndarray:
+    def add_awgn(
+        self,
+        signal: np.ndarray,
+        rng: Optional[np.random.Generator] = None,
+    ) -> np.ndarray:
         """Add additive white Gaussian noise to signal."""
         signal_power = np.mean(np.abs(signal) ** 2)
         snr_linear = 10 ** (self.params.snr_db / 10)
         noise_power = signal_power / snr_linear
-        
-        if np.iscomplexobj(signal):
-            noise = np.sqrt(noise_power / 2) * (np.random.randn(*signal.shape) + 
-                                               1j * np.random.randn(*signal.shape))
+
+        if rng is None:
+            randn = np.random.randn
         else:
-            noise = np.sqrt(noise_power) * np.random.randn(*signal.shape)
-            
+            randn = lambda *shape: rng.standard_normal(size=shape)
+
+        if np.iscomplexobj(signal):
+            noise_real = randn(*signal.shape)
+            noise_imag = randn(*signal.shape)
+            noise = np.sqrt(noise_power / 2) * (noise_real + 1j * noise_imag)
+        else:
+            noise = np.sqrt(noise_power) * randn(*signal.shape)
+
         return signal + noise
         
     def generate_phase_noise(self, n_samples: int) -> np.ndarray:

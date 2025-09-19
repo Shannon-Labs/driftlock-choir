@@ -1,0 +1,75 @@
+# Monte Carlo job specification for updated run_mc harness
+
+phase1_alias_map:
+  - name: alias_calibration_sweep
+    retune_offsets_hz: [1.0e6, 5.0e6]
+    coarse_bw_hz: [20.0e6, 40.0e6]
+    snr_db: [20.0, 10.0, 0.0]
+    num_trials: 180
+    rng_seed: 2025
+    delta_t_us: [0.0, 1.5]
+    calibration_modes: ['off', 'loopback']
+    loopback_noise_ps: 5.0
+    hardware_delays_ns:
+      d_tx: {0: 24.0, 1: 31.0}
+      d_rx: {0: 14.0, 1: 9.0}
+    make_plots: false
+    mac:
+      preamble_len: 1024
+      preamble_bw_hz: 40.0e6
+      guard_us: 10.0
+
+phase2_runs:
+  - name: dense_network_kf
+    nodes: 64
+    area_size_m: 350.0
+    density: 0.22
+    weighting: metropolis_var
+    local_kf: on
+    local_kf_sigma_T_ps: 5.0
+    local_kf_sigma_f_hz: 2.0
+    local_kf_init_var_T_ps: 5.0e3
+    local_kf_init_var_f_hz: 150.0
+    local_kf_max_abs_ps: 30.0
+    local_kf_max_abs_freq_hz: 2000.0
+    timestep_ms: 0.5
+    epsilon: 0.02
+    max_iterations: 2000
+    target_rmse_ps: 90.0
+    target_streak: 3
+    rng_seed: 4242
+    make_plots: false
+  - name: dense_network_no_kf
+    nodes: 64
+    area_size_m: 350.0
+    density: 0.22
+    weighting: metropolis
+    local_kf: off
+    target_rmse_ps: 90.0
+    target_streak: 3
+    rng_seed: 4242
+    make_plots: false
+  - name: small_network_kf_on
+    nodes: 25
+    area_size_m: 200.0
+    density: 0.3
+    weighting: inverse_variance
+    local_kf: on
+    local_kf_max_abs_ps: 30.0
+    local_kf_max_abs_freq_hz: 2000.0
+    epsilon: 0.02
+    max_iterations: 2000
+    target_rmse_ps: 120.0
+    target_streak: 2
+    rng_seed: 1337
+    make_plots: false
+  - name: small_network_kf_off
+    nodes: 25
+    area_size_m: 200.0
+    density: 0.3
+    weighting: inverse_variance
+    local_kf: off
+    target_rmse_ps: 120.0
+    target_streak: 2
+    rng_seed: 1337
+    make_plots: false

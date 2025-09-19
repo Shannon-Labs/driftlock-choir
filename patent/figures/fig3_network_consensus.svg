@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .node{fill:#ffffff;stroke:#000000;stroke-width:2}
+      .edge{stroke:#000000;stroke-width:2;fill:none}
+      .label{font-family:Arial, Helvetica, sans-serif;font-size:16px;fill:#000000}
+      .num{font-family:Arial, Helvetica, sans-serif;font-size:16px;font-weight:bold;fill:#000000}
+      .title{font-family:Arial, Helvetica, sans-serif;font-size:18px;font-weight:bold;fill:#000000}
+      .box{fill:#ffffff;stroke:#000000;stroke-width:2}
+    ]]></style>
+  </defs>
+  <text x="20" y="30" class="title">Fig. 3 — Network topology and variance-weighted consensus</text>
+
+  <!-- Nodes -->
+  <circle cx="140" cy="220" r="30" class="node"/>
+  <text x="132" y="225" class="label">1</text>
+  <text x="110" y="260" class="num">(300)</text>
+
+  <circle cx="300" cy="160" r="30" class="node"/>
+  <text x="292" y="165" class="label">2</text>
+  <text x="280" y="200" class="num">(301)</text>
+
+  <circle cx="300" cy="300" r="30" class="node"/>
+  <text x="292" y="305" class="label">3</text>
+  <text x="280" y="340" class="num">(302)</text>
+
+  <circle cx="480" cy="240" r="30" class="node"/>
+  <text x="472" y="245" class="label">4</text>
+  <text x="460" y="280" class="num">(303)</text>
+
+  <circle cx="620" cy="180" r="30" class="node"/>
+  <text x="612" y="185" class="label">5</text>
+  <text x="600" y="220" class="num">(304)</text>
+
+  <!-- Edges -->
+  <line x1="170" y1="210" x2="270" y2="170" class="edge"/>
+  <text x="210" y="185" class="label">W12</text>
+  <line x1="170" y1="230" x2="270" y2="290" class="edge"/>
+  <text x="210" y="270" class="label">W13</text>
+  <line x1="330" y1="160" x2="450" y2="240" class="edge"/>
+  <text x="380" y="200" class="label">W24</text>
+  <line x1="330" y1="300" x2="450" y2="240" class="edge"/>
+  <text x="380" y="280" class="label">W34</text>
+  <line x1="510" y1="230" x2="590" y2="190" class="edge"/>
+  <text x="545" y="215" class="label">W45</text>
+
+  <!-- Measurement and update rule -->
+  <rect x="120" y="380" width="640" height="100" class="box"/>
+  <text x="130" y="410" class="label">Edge measurements d_ij = [ΔT_ij, Δf_ij] (variance σ²)</text>
+  <text x="130" y="440" class="label">Update: x_i(k+1) = x_i(k) + ε Σ W_ij (d_ij − (x_i − x_j)),   W_ij = diag(1/σ²_τ, 1/σ²_Δf)</text>
+  <text x="730" y="375" class="num">(310)</text>
+
+</svg>
+

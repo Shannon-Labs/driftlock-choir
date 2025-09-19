@@ -121,6 +121,11 @@ results/
 *.h5
 *.hdf5
 
+# Allow patent images
+!patent/*.png
+!patent/*.jpg
+!patent/*.pdf
+
 # IDE files
 .vscode/
 .idea/
@@ -135,3 +140,4 @@ results/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+.vercel
