@@ -13,34 +13,25 @@
   <text x="20" y="30" class="title">Fig. 5 — Node/system block diagram</text>
 
   <rect x="40" y="120" width="170" height="70" class="box"/>
-  <text x="50" y="150" class="label">RF Transceiver</text>
-  <text x="50" y="170" class="label">(f1 / f2=f1+Δf)</text>
-  <text x="200" y="115" class="num">(400)</text>
+  <text x="125" y="155" class="num">(400)</text>
 
   <rect x="230" y="120" width="150" height="70" class="box"/>
-  <text x="240" y="150" class="label">Beat/Mixer</text>
-  <text x="370" y="115" class="num">(410)</text>
+  <text x="305" y="155" class="num">(410)</text>
 
   <rect x="400" y="120" width="170" height="70" class="box"/>
-  <text x="410" y="150" class="label">Sub-sampling ADC</text>
-  <text x="430" y="170" class="label">(~2×Δf)</text>
-  <text x="560" y="115" class="num">(420)</text>
+  <text x="485" y="155" class="num">(420)</text>
 
   <rect x="590" y="120" width="140" height="70" class="box"/>
-  <text x="600" y="150" class="label">DSP</text>
-  <text x="720" y="115" class="num">(430)</text>
+  <text x="660" y="155" class="num">(430)</text>
 
   <rect x="750" y="120" width="120" height="70" class="box"/>
-  <text x="760" y="150" class="label">Estimator</text>
-  <text x="820" y="115" class="num">(440)</text>
+  <text x="810" y="155" class="num">(440)</text>
 
   <rect x="590" y="240" width="280" height="70" class="box"/>
-  <text x="600" y="270" class="label">Consensus Engine</text>
-  <text x="800" y="235" class="num">(450)</text>
+  <text x="730" y="275" class="num">(450)</text>
 
   <rect x="400" y="240" width="160" height="70" class="box"/>
-  <text x="410" y="270" class="label">Network/MAC</text>
-  <text x="550" y="235" class="num">(460)</text>
+  <text x="480" y="275" class="num">(460)</text>
 
   <!-- Flow arrows -->
   <line x1="210" y1="155" x2="230" y2="155" class="line"/>

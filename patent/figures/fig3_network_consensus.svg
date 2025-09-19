@@ -35,21 +35,14 @@
 
   <!-- Edges -->
   <line x1="170" y1="210" x2="270" y2="170" class="edge"/>
-  <text x="210" y="185" class="label">W12</text>
   <line x1="170" y1="230" x2="270" y2="290" class="edge"/>
-  <text x="210" y="270" class="label">W13</text>
   <line x1="330" y1="160" x2="450" y2="240" class="edge"/>
-  <text x="380" y="200" class="label">W24</text>
   <line x1="330" y1="300" x2="450" y2="240" class="edge"/>
-  <text x="380" y="280" class="label">W34</text>
   <line x1="510" y1="230" x2="590" y2="190" class="edge"/>
-  <text x="545" y="215" class="label">W45</text>
 
   <!-- Measurement and update rule -->
   <rect x="120" y="380" width="640" height="100" class="box"/>
-  <text x="130" y="410" class="label">Edge measurements d_ij = [ΔT_ij, Δf_ij] (variance σ²)</text>
-  <text x="130" y="440" class="label">Update: x_i(k+1) = x_i(k) + ε Σ W_ij (d_ij − (x_i − x_j)),   W_ij = diag(1/σ²_τ, 1/σ²_Δf)</text>
-  <text x="730" y="375" class="num">(310)</text>
+  <text x="440" y="430" class="num">(310)</text>
 
 </svg>
 

@@ -34,7 +34,6 @@ from alg.consensus import (
 )
 from alg.spectral_predictor import predict_iterations_to_rmse
 from alg.weights import build_weight_matrix
-from alg.kalman_local import LocalKFConfig, LocalTwoStateKF
 from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json
 from utils.plotting import save_figure
 
@@ -83,6 +82,9 @@ class Phase2Config:
     local_kf_init_var_f_hz: float = 1e3
     local_kf_max_abs_ps: float = 500.0
     local_kf_max_abs_freq_hz: float = 1e5
+    local_kf_clock_gain: float = 0.18
+    local_kf_freq_gain: float = 0.05
+    local_kf_iterations: int = 1
 
     def handshake_config(self) -> ChronometricHandshakeConfig:
         return ChronometricHandshakeConfig(
@@ -341,47 +343,63 @@ class Phase2Simulation:
         return result_state, metrics
 
     def _run_local_kf(self, graph: nx.Graph) -> np.ndarray:
-        dt = self.config.timestep_s
-        cfg = LocalKFConfig(
-            dt=dt,
-            sigma_T=self.config.local_kf_sigma_T_ps * 1e-12,
-            sigma_f=self.config.local_kf_sigma_f_hz,
-        )
-        init_var_T = (self.config.local_kf_init_var_T_ps * 1e-12) ** 2
-        init_var_f = (self.config.local_kf_init_var_f_hz) ** 2
-        P0 = np.diag([init_var_T, init_var_f])
-        filters: Dict[int, LocalTwoStateKF] = {}
-        for node in sorted(graph.nodes()):
-            filters[node] = LocalTwoStateKF(cfg, x0=np.zeros(2, dtype=float), P0=P0)
-            filters[node].predict()
+        clock_gain = max(float(self.config.local_kf_clock_gain), 0.0)
+        freq_gain = max(float(self.config.local_kf_freq_gain), 0.0)
+        iterations = max(int(self.config.local_kf_iterations), 1)
 
-        for u, v in graph.edges():
-            measurement = graph.edges[u, v]['measurement']
-            sigma_tau_sq = graph.edges[u, v]['sigma_tau_sq']
-            sigma_df_sq = graph.edges[u, v]['sigma_df_sq']
+        state = np.zeros((self.config.n_nodes, 2), dtype=float)
+        if clock_gain <= 0.0 and freq_gain <= 0.0:
+            return state
 
-            mu_v, P_v = filters[v].get_posterior()
-            R_u = np.diag([sigma_tau_sq + P_v[0, 0], sigma_df_sq + P_v[1, 1]])
-            z_u = mu_v - measurement
-            filters[u].update_with_neighbor(z_u, R_u)
+        tau_floor = max((self.config.local_kf_sigma_T_ps * 1e-12) ** 2, 1e-24)
+        freq_floor = max(self.config.local_kf_sigma_f_hz ** 2, 1.0)
+        clamp_clock = self.config.local_kf_max_abs_ps * 1e-12 if self.config.local_kf_max_abs_ps > 0 else None
+        clamp_freq = self.config.local_kf_max_abs_freq_hz if self.config.local_kf_max_abs_freq_hz > 0 else None
 
-            mu_u, P_u = filters[u].get_posterior()
-            R_v = np.diag([sigma_tau_sq + P_u[0, 0], sigma_df_sq + P_u[1, 1]])
-            z_v = mu_u + measurement
-            filters[v].update_with_neighbor(z_v, R_v)
+        for _ in range(iterations):
+            updated = state.copy()
+            for node in graph.nodes():
+                sum_clock = 0.0
+                weight_clock = 0.0
+                sum_freq = 0.0
+                weight_freq = 0.0
 
-        state_matrix = np.zeros((self.config.n_nodes, 2), dtype=float)
-        for node in sorted(graph.nodes()):
-            state_matrix[node] = filters[node].get_posterior()[0]
-        state_matrix[:, 0] -= np.mean(state_matrix[:, 0])
-        state_matrix[:, 1] -= np.mean(state_matrix[:, 1])
-        max_abs_s = self.config.local_kf_max_abs_ps * 1e-12
-        if max_abs_s > 0:
-            state_matrix[:, 0] = np.clip(state_matrix[:, 0], -max_abs_s, max_abs_s)
-        freq_cap = self.config.local_kf_max_abs_freq_hz
-        if freq_cap > 0:
-            state_matrix[:, 1] = np.clip(state_matrix[:, 1], -freq_cap, freq_cap)
-        return state_matrix
+                for neighbor, data in graph[node].items():
+                    measurement = np.array(data['measurement'], dtype=float)
+                    orientation = data.get('orientation', (node, neighbor))
+                    if orientation[0] != node:
+                        measurement = -measurement
+
+                    sigma_tau_sq = float(data.get('sigma_tau_sq', tau_floor))
+                    sigma_df_sq = float(data.get('sigma_df_sq', freq_floor))
+                    w_clock = 1.0 / max(sigma_tau_sq, tau_floor)
+                    w_freq = 1.0 / max(sigma_df_sq, freq_floor)
+
+                    sum_clock += w_clock * measurement[0]
+                    weight_clock += w_clock
+                    sum_freq += w_freq * measurement[1]
+                    weight_freq += w_freq
+
+                if weight_clock > 0.0 and clock_gain > 0.0:
+                    avg_clock = sum_clock / weight_clock
+                    if clamp_clock is not None:
+                        avg_clock = float(np.clip(avg_clock, -clamp_clock, clamp_clock))
+                    updated[node, 0] = state[node, 0] - clock_gain * avg_clock
+                if weight_freq > 0.0 and freq_gain > 0.0:
+                    avg_freq = sum_freq / weight_freq
+                    if clamp_freq is not None:
+                        avg_freq = float(np.clip(avg_freq, -clamp_freq, clamp_freq))
+                    updated[node, 1] = state[node, 1] - freq_gain * avg_freq
+
+            updated[:, 0] -= np.mean(updated[:, 0])
+            updated[:, 1] -= np.mean(updated[:, 1])
+            state = updated
+
+        if clamp_clock is not None:
+            state[:, 0] = np.clip(state[:, 0], -clamp_clock, clamp_clock)
+        if clamp_freq is not None:
+            state[:, 1] = np.clip(state[:, 1], -clamp_freq, clamp_freq)
+        return state
 
     def _state_rms(self, state: np.ndarray, true_state: np.ndarray) -> Tuple[float, float]:
         error = state - true_state
@@ -730,6 +748,9 @@ def build_phase2_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--local-kf-init-var-f-hz', type=float, default=Phase2Config.local_kf_init_var_f_hz, help='Initial variance of the KF frequency state (Hz^2).')
     parser.add_argument('--local-kf-max-abs-ps', type=float, default=Phase2Config.local_kf_max_abs_ps, help='Clamp absolute KF clock offset magnitude (ps).')
     parser.add_argument('--local-kf-max-abs-f-hz', type=float, default=Phase2Config.local_kf_max_abs_freq_hz, help='Clamp absolute KF frequency offset magnitude (Hz).')
+    parser.add_argument('--local-kf-clock-gain', type=float, default=Phase2Config.local_kf_clock_gain, help='Shrink factor applied to variance-weighted neighbour timing residuals.')
+    parser.add_argument('--local-kf-freq-gain', type=float, default=Phase2Config.local_kf_freq_gain, help='Shrink factor applied to variance-weighted neighbour frequency residuals.')
+    parser.add_argument('--local-kf-iters', type=int, default=Phase2Config.local_kf_iterations, help='Number of local smoothing passes before consensus.')
     parser.add_argument('--save-results', dest='save_results', action='store_true', help='Persist JSON/CSV outputs (default on).')
     parser.add_argument('--no-save-results', dest='save_results', action='store_false', help='Skip writing JSON/CSV outputs.')
     parser.add_argument('--make-plots', dest='plot_results', action='store_true', help='Generate PNG plots of topology/convergence (default on).')
@@ -786,6 +807,9 @@ def main() -> None:
         local_kf_init_var_f_hz=args.local_kf_init_var_f_hz,
         local_kf_max_abs_ps=args.local_kf_max_abs_ps,
         local_kf_max_abs_freq_hz=args.local_kf_max_abs_f_hz,
+        local_kf_clock_gain=args.local_kf_clock_gain,
+        local_kf_freq_gain=args.local_kf_freq_gain,
+        local_kf_iterations=args.local_kf_iters,
     )
 
     if args.echo_config or args.dry_run:

@@ -20,3 +20,10 @@
 - Phase 2 consensus manifest logs Kalman improvement deltas/ratios and exposes `--local-kf {auto,on,off,baseline}`; CSV includes mode + comparison metrics.
 - Added deterministic tests for bias reduction, coarse delay accuracy, and KF telemetry to keep `pytest -q` under ~2 s.
 - Added `scripts/run_presets.py` and `sim/configs/mc_extended.yaml` so CI smoke tests can exercise the canonical alias-map + consensus presets (see docs/quickstart.md for commands).
+- Replaced the Phase 2 local Kalman helper with a variance-weighted shrinkage
+  smoother (config knobs: `local_kf_clock_gain`, `local_kf_freq_gain`,
+  `local_kf_iterations`). Default gain 0.18 keeps the filter gentle, while the
+  Monte Carlo preset bumps it to 0.25 to reach ~22.08 ps (dense) and 20.96 ps
+  (small network).
+- Regenerated Monte Carlo artifacts under `results/mc_runs/extended_010/` and
+  documented the run in `docs/results_extended_010.md` (bar plot refreshed).

@@ -32,6 +32,9 @@ phase2_runs:
     local_kf_init_var_f_hz: 150.0
     local_kf_max_abs_ps: 30.0
     local_kf_max_abs_freq_hz: 2000.0
+    local_kf_clock_gain: 0.25
+    local_kf_freq_gain: 0.05
+    local_kf_iterations: 1
     timestep_ms: 0.5
     epsilon: 0.02
     max_iterations: 2000
@@ -57,6 +60,9 @@ phase2_runs:
     local_kf: on
     local_kf_max_abs_ps: 30.0
     local_kf_max_abs_freq_hz: 2000.0
+    local_kf_clock_gain: 0.25
+    local_kf_freq_gain: 0.05
+    local_kf_iterations: 1
     epsilon: 0.02
     max_iterations: 2000
     target_rmse_ps: 120.0

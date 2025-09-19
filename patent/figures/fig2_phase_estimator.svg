@@ -13,40 +13,31 @@
   <text x="20" y="30" class="title">Fig. 2 — Phase extraction and closed-form estimator</text>
 
   <rect x="40" y="100" width="160" height="60" class="box"/>
-  <text x="50" y="135" class="label">Beat samples</text>
-  <text x="170" y="95" class="num">(200)</text>
+  <text x="120" y="135" class="num">(200)</text>
 
   <rect x="230" y="100" width="160" height="60" class="box"/>
-  <text x="240" y="135" class="label">Filter @ Δf</text>
-  <text x="360" y="95" class="num">(210)</text>
+  <text x="310" y="135" class="num">(210)</text>
 
   <rect x="420" y="100" width="160" height="60" class="box"/>
-  <text x="430" y="135" class="label">Sub-sample ~2×Δf</text>
-  <text x="560" y="95" class="num">(220)</text>
+  <text x="500" y="135" class="num">(220)</text>
 
   <rect x="610" y="100" width="160" height="60" class="box"/>
-  <text x="620" y="135" class="label">Angle + Unwrap</text>
-  <text x="740" y="95" class="num">(230)</text>
+  <text x="690" y="135" class="num">(230)</text>
 
   <rect x="150" y="220" width="200" height="60" class="box"/>
-  <text x="160" y="255" class="label">Linear fit φ(t)=at+b</text>
-  <text x="330" y="215" class="num">(240)</text>
+  <text x="250" y="255" class="num">(240)</text>
 
   <rect x="390" y="220" width="160" height="60" class="box"/>
-  <text x="400" y="255" class="label">Δf̂ = a/2π</text>
-  <text x="535" y="215" class="num">(250)</text>
+  <text x="470" y="255" class="num">(250)</text>
 
   <rect x="580" y="220" width="220" height="60" class="box"/>
-  <text x="590" y="255" class="label">τ candidate from b, f_carrier</text>
-  <text x="790" y="215" class="num">(260)</text>
+  <text x="690" y="255" class="num">(260)</text>
 
   <rect x="310" y="320" width="220" height="60" class="box"/>
-  <text x="320" y="355" class="label">Unwrap to hint (coarse/retunes)</text>
-  <text x="520" y="315" class="num">(270)</text>
+  <text x="420" y="355" class="num">(270)</text>
 
   <rect x="560" y="320" width="160" height="60" class="box"/>
-  <text x="570" y="355" class="label">τ̂ (output)</text>
-  <text x="700" y="315" class="num">(280)</text>
+  <text x="640" y="355" class="num">(280)</text>
 
   <!-- Arrows -->
   <line x1="200" y1="130" x2="230" y2="130" class="line"/>

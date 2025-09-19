@@ -147,10 +147,15 @@ Toggle the front-end filter with `--local-kf {auto,on,off,baseline}` to compare 
 For larger studies, drive both phases from the refreshed Monte Carlo harness:
 
 ```bash
-python scripts/run_mc.py all -c sim/configs/mc_extended.yaml -o results/mc_runs -r extended_001
+python scripts/run_mc.py all -c sim/configs/mc_extended.yaml -o results/mc_runs -r extended_010
 ```
 
 The YAML file lists Phase 1 alias-map jobs (with hardware delays + calibration modes) and Phase 2 consensus presets. Each job writes its own subdirectory and the tool stitches together `final_results.json` plus a human-readable `simulation_report.txt` summarizing bias reductions and consensus convergence.
+
+With the new shrinkage-based local pre-filter, the dense 64-node preset now
+lands at **22.08 ps** (vs. 22.45 ps without the pre-filter) and the 25-node
+topology drops to **20.96 ps**. Full telemetry lives under
+`results/mc_runs/<run_id>/phase2/*/phase2_results.json`.
 
 Want a quick smoke test instead? Use the lightweight wrapper:
 

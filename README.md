@@ -6,9 +6,9 @@
 [![Shannon Labs](https://img.shields.io/badge/by-Shannon_Labs-blue)](https://shannonlabs.dev)
 [![Website](https://img.shields.io/badge/Website-driftlock.net-purple)](https://driftlock.net)
 
-**Driftlock** achieves **22 picosecond wireless synchronization** without GPS by intentionally creating frequency offsets - turning what everyone thought was noise into a precision measurement tool.
+**Driftlock** achieves **22.08 picosecond wireless synchronization** without GPS by intentionally creating frequency offsets - turning what everyone thought was noise into a precision measurement tool.
 
-> 🚀 **Latest Results**: 22.45ps consensus (dense networks) in Monte Carlo validation. 2.65ps calibrated bias. [See full results →](docs/results_extended_009.md)
+> 🚀 **Latest Results**: 22.08ps with improved Kalman filter (dense networks). 20.96ps for small networks. [See full results →](docs/results_extended_010.md)
 
 ## 🚀 Revolutionary Insight
 
@@ -18,7 +18,7 @@ Driftlock intentionally creates controlled frequency differences between nodes, 
 
 ## ⚡ Proven Performance
 
-- **22 picoseconds** network consensus (Monte Carlo validated)
+- **22.08 picoseconds** WITH Kalman filter (NEW improvement!)
 - **2,273× better than GPS** (50ns → 22ps)
 - **4,500× bias reduction** via reciprocity calibration (12ns → 2.65ps)
 - **Single iteration convergence** for 25-64 node networks
@@ -71,12 +71,12 @@ Key innovations:
 
 [Read the full theory →](docs/theory.md)
 
-## 📊 Latest Validation Results ([Extended Run 009](docs/results_extended_009.md))
+## 📊 Latest Validation Results ([Extended Run 010](docs/results_extended_010.md))
 
 | Metric | Value | Significance |
 |--------|-------|-------------|
-| **Network Consensus** | **22.45 ps** (dense) | **3 orders of magnitude better than GPS** |
-| | 24.38 ps (small) | Achieved WITHOUT Kalman filtering |
+| **Network Consensus** | **22.08 ps** (dense w/ KF) | **NEW: Variance-weighted filter beats baseline!** |
+| | 20.96 ps (small w/ KF) | 14% improvement over no-filter |
 | **Reciprocity Calibration** | **2.65 ps** bias | **4,500× improvement** from 12ns hardware bias |
 | **Convergence** | **1 iteration** | Instant lock for production deployment |
 | **Monte Carlo Validation** | **600+ simulations** | Full statistical confidence |
@@ -92,7 +92,7 @@ python scripts/run_mc.py --config sim/configs/mc_extended.yaml --run-name my_val
 python scripts/run_presets.py phase2-consensus --job dense_network_no_kf
 ```
 
-[View RMSE comparison chart →](results/mc_runs/extended_009/phase2_rmse_bar.png)
+[View RMSE comparison chart →](results/mc_runs/extended_010/phase2_rmse_bar.png)
 
 ## 🏗️ Project Structure
 

@@ -142,6 +142,9 @@ def test_phase2_local_kf_metrics(tmp_path) -> None:
     assert kf_on['enabled']
     assert kf_on['mode'] == 'on'
     assert kf_on['clock_improvement_ps'] is not None
+    assert kf_on['clock_improvement_ps'] > 0.0
+    assert kf_on['freq_improvement_hz'] is not None
+    assert kf_on['freq_improvement_hz'] >= 0.0
     if kf_on['clock_ratio'] is not None:
         assert math.isfinite(kf_on['clock_ratio'])
 
