@@ -9,10 +9,11 @@
 - **Fully validated**: 600+ Monte Carlo trials
 
 ### The KF Situation
-- Current KF implementation: 30-40ps (WORSE than raw)
+- Dense network KF: 33ps (vs 22.45ps baseline)
+- Small network KF: 40ps (vs 24.38ps baseline)
 - Issue: Pre-filter reusing per-edge measurements naively
-- Status: Clamped to prevent blow-ups, needs rewrite
-- **Key insight: We don't need it for picosecond precision**
+- Status: Clamped to prevent blow-ups (no more trillion ps errors)
+- **Key insight: KF currently degrades performance, but baseline already wins**
 
 ## Why This Is Actually Better
 
@@ -25,8 +26,10 @@
 ### 2. The Numbers Speak
 | Method | RMSE | Complexity |
 |--------|------|-----------|
-| Raw Consensus | 22-24 ps | Simple |
-| With Current KF | 30-40 ps | Complex |
+| Raw Consensus (Dense) | 22.45 ps | Simple |
+| Raw Consensus (Small) | 24.38 ps | Simple |
+| With KF (Dense) | 33 ps | Complex |
+| With KF (Small) | 40 ps | Complex |
 | GPS | 50,000 ps | Satellites |
 
 ### 3. Future Improvement Path

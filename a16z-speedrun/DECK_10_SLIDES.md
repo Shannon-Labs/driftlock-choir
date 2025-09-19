@@ -81,7 +81,7 @@ Time Telemetry API
 ### MC Extended Run 006 - The Breakthrough
 | Metric | Result | Significance |
 |--------|--------|--------------|
-| **Network Consensus** | **22-24 ps** | **Raw, no filtering** |
+| **Network Consensus** | **22.45 ps (dense)** | **Raw, no filtering** |
 | **Calibrated Bias** | **2.65 ps** | **4,500× improvement** |
 | **Convergence** | **1 iteration** | **Instant lock** |
 | **Validation** | **600+ trials** | **Fully reproducible** |

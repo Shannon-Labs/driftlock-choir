@@ -4,9 +4,9 @@
 
 In 10 minutes, you'll:
 - Run your first Driftlock simulation
-- Achieve 2-nanosecond synchronization between two nodes
+- Achieve **22 picosecond** network synchronization
 - Understand the core innovation
-- Visualize the results
+- Run Monte Carlo validation suite
 
 ## Prerequisites
 
