@@ -2,33 +2,35 @@
 
 ## The One-Liner
 
-**Software-only time telemetry overlay for existing radios—delivering substantially better synchronization than GPS without new spectrum or hardware.**
+**The next Bell Labs moment: A deceptively simple discovery (Δf = 1 MHz) that enables universal synchronization for all intelligence—biological, artificial, and quantum.**
 
-**Latest validation**: Loopback calibration achieves 2.65 picosecond bias (down from 12ns uncalibrated). 60+ Monte Carlo trials validate robustness. Patent pending.
+**The breakthrough**: Beat patterns aren't noise, they're time itself. 22 picoseconds today, mesh intelligence tomorrow.
 
 ---
 
 ## Why a16z Should Care
 
-### 1. Your Portfolio Needs This
-- **Autonomous vehicles**: Can't safely coordinate without nanosecond timing
-- **AI infrastructure**: Distributed training requires precise synchronization
-- **Robotics companies**: Multi-robot coordination fails without timing
-- **Gaming/VR**: Multiplayer physics needs sub-millisecond sync
+### 1. This Is How Bell Labs Moments Start
+- **1947**: "It's just three wires on germanium" → Transistor → Computing revolution
+- **1948**: "It's just an entropy equation" → Information theory → The internet
+- **2025**: "It's just intentional frequency offset" → Driftlock → Mesh intelligence
 
-**Every company building autonomous systems is blocked by timing.**
+**The pattern**: Deceptively simple discoveries that seem obvious in hindsight but change everything.
 
-### 2. This Is Infrastructure at Its Core
-- Like AWS for compute, we're the timing layer for everything
-- Platform play with network effects
-- 95% gross margins, recurring revenue
-- Winner-take-all dynamics
+### 2. We See Frequency from Every Angle
+- **Personal**: Band director who hears time in beat patterns
+- **Scientific**: Physics reveals synchronization already exists
+- **Business**: Every device that joins improves all others
+- **Legal**: Patent law class revealed the unfinished work
 
-### 3. The Technical Moat Is Real
-- Fundamental physics breakthrough (using beats as information)
-- Patent pending on core method
-- 25× better than GPS (2ns vs 50ns)
-- Cannot be replicated without our insight
+**No one else has this four-dimensional understanding of frequency**
+
+### 3. The Vision: Connect All Intelligence
+- **Today**: 3 radios achieving 22ps synchronization
+- **Tomorrow**: Every oscillating system in perfect sync
+- **Endgame**: The substrate for mesh intelligence
+
+**Not just connecting devices—creating the timing layer where intelligence emerges**
 
 ---
 

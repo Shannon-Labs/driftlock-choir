@@ -5,31 +5,34 @@
 ## Slide 1: Title + One-Liner
 
 # **Driftlock**
-### Software-only time telemetry overlay for existing radios
-**We exploit tiny, intentional Δf to synchronize distributed devices**
+### The Next Bell Labs Moment: Deceptively Simple, Changes Everything
+**Δf = 1 MHz → 22 picoseconds → Universal mesh intelligence**
 
 Hunter Bown, Founder
 Shannon Labs, Inc.
 
 ---
 
-## Slide 2: Why Now
+## Slide 2: The Bell Labs Pattern
 
-# The Perfect Storm for Wireless Timing
+# Every Generation Gets One Simple Truth That Changes Everything
 
-- **Edge AI proliferation**: Distributed inference needs μs coordination
-- **Private 5G explosion**: $8B market, needs local sync for TDD
-- **GPS fragility exposed**: Ukraine jamming, indoor blindness
-- **Radio evolution**: Modern chips have phase estimators we can reuse
-- **Standards opening**: 3GPP Rel-19 adding timing features
+**1947**: Three wires on germanium → The transistor → Digital age
+**1948**: H = -Σ p log p → Information theory → The internet
+**2025**: Beat patterns aren't noise → Driftlock → Mesh intelligence
 
-**The infrastructure isn't ready. We are.**
+### The Pattern:
+1. It uses what's already there
+2. It's embarrassingly simple once seen
+3. It enables what couldn't be imagined
+
+**We found synchronization hiding in frequency beats everyone tried to eliminate.**
 
 ---
 
-## Slide 3: Product
+## Slide 3: The Deceptive Simplicity
 
-# SDK + Control Plane + Telemetry APIs
+# Start with 3 Radios. End with Everything Synchronized.
 
 ```python
 import driftlock
@@ -41,11 +44,11 @@ quality = dl.get_sync_quality()  # Returns: 98.2%
 offset = dl.get_time_offset()    # Returns: TimeDelta
 ```
 
-### Components
-- **SDK**: Python/C/Rust bindings
-- **Control Plane**: Distributed consensus
-- **Telemetry**: Grafana dashboards
-- **Cloud**: Simulation & monitoring
+### The Journey Every Deployment Takes:
+- **Day 1**: "Just testing with 3 radios" → See 22ps
+- **Week 1**: "This actually works" → Deploy first site
+- **Month 1**: "Deploy everywhere" → 47+ radios synced
+- **The Pattern**: Each deployment improves all others
 
 ---
 

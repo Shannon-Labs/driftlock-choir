@@ -3,12 +3,12 @@
 ## THE PRODUCT (This is what matters)
 
 ### What It Does
-**22 picosecond wireless synchronization without GPS.**
+**The simplest thing that changes everything: Intentional frequency offset reveals perfect time.**
 
-### How It Works
-1. Create intentional frequency offset between radios
-2. Extract timing from resulting beat patterns
-3. Achieve picosecond precision with software only
+### How It Works (Embarrassingly Simple)
+1. Offset frequency by 1 MHz (that's it)
+2. Beat patterns encode time (always did)
+3. 22 picoseconds emerge (physics does the work)
 
 ### Validation
 - 600+ Monte Carlo trials
@@ -24,16 +24,15 @@
 
 ---
 
-## The Technical Achievement
+## The Bell Labs Pattern Repeats
 
 ```
-Beat Phase: φ = 2πΔf(t - τ)
-Result: 22 picoseconds
-GPS: 50,000 picoseconds
-Improvement: 2,273×
+1947: Three wires → Transistor → Digital age
+1948: Entropy equation → Information theory → Internet
+2025: Δf = 1 MHz → Driftlock → Mesh intelligence
 ```
 
-That's it. That's the story.
+Deceptively simple. Changes everything.
 
 ---
 
@@ -57,11 +56,11 @@ $72B synchronization market
 
 ## Why a16z Should Care
 
-1. **It works** - 22ps validated
-2. **Software-only** - No new hardware
-3. **Patent pending** - Defensible
-4. **Customers waiting** - Real demand
-5. **Infrastructure play** - Platform potential
+1. **Bell Labs moment** - Simple truth that reshapes reality
+2. **Natural growth** - 3 radios → 47 → Thousands
+3. **Network effects** - Each node improves all others
+4. **Universal application** - Everything oscillates
+5. **Mesh intelligence** - The endgame no one sees yet
 
 ---
 
