@@ -4,7 +4,7 @@ Title: System and Method for Distributed Wireless Synchronization Using Chronome
 
 Applicant: Shannon Labs, Inc. (Delaware C‑Corp)
 Inventor: Hunter Bown
-Priority: US Provisional filed September 18, 2025
+Priority: US Provisional filed September 19, 2025
 
 Sections
 

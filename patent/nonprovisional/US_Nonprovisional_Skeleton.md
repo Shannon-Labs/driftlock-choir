@@ -8,7 +8,7 @@ Inventor: Hunter Bown
 Sections
 
 1. Title of the Invention
-2. Cross‑Reference to Related Applications (priority to provisional filed September 18, 2025)
+2. Cross‑Reference to Related Applications (priority to provisional filed September 19, 2025)
 3. Statement Regarding Federally Sponsored Research (if any)
 4. Background of the Invention
    - Field

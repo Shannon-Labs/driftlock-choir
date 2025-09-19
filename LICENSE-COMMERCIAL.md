@@ -2,7 +2,7 @@
 
 ## Commercial Use Requires License
 
-The Driftlock technology and associated Chronometric Interferometry method are **Patent Pending** (filed September 18, 2025) and proprietary to Shannon Labs, Inc.
+The Driftlock technology and associated Chronometric Interferometry method are **Patent Pending** (filed September 19, 2025) and proprietary to Shannon Labs, Inc.
 
 Commercial use of Driftlock requires a license agreement with Shannon Labs, Inc.
 
@@ -96,7 +96,7 @@ When contacting us, please include:
 ## Patent Information
 
 **Patent Pending**: Driftlock Method
-**Filed**: September 18, 2025
+**Filed**: September 19, 2025
 **Inventor**: Hunter Bown
 **Assignee**: Shannon Labs, Inc.
 

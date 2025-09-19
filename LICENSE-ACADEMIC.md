@@ -4,7 +4,7 @@
 
 Copyright (c) 2025 Shannon Labs, Inc.
 
-**IMPORTANT PATENT NOTICE**: The Driftlock method described in this software is Patent Pending as of September 18, 2025. This academic license grants rights to use the simulation software for research and educational purposes only.
+**IMPORTANT PATENT NOTICE**: The Driftlock method described in this software is Patent Pending as of September 19, 2025. This academic license grants rights to use the simulation software for research and educational purposes only.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction for **academic, research, and educational purposes only**, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

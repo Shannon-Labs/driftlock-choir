@@ -134,7 +134,7 @@ If you use Driftlock in your research, please cite:
 ## 🛡️ Patent Notice
 
 **Patent Pending**: Driftlock Method
-Provisional Patent Application Filed: September 18, 2025
+Provisional Patent Application Filed: September 19, 2025
 
 This repository contains:
 - ✅ **Simulation code**: Open source for validation and research

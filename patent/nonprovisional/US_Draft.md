@@ -4,7 +4,7 @@ Title: System and Method for Distributed Wireless Synchronization Using Chronome
 
 Applicant/Assignee: Shannon Labs, Inc. (Delaware C‑Corp)
 Inventor: Hunter Bown
-Priority Claim: This application claims priority to U.S. Provisional Patent Application filed on September 18, 2025, entitled “System and Method for Distributed Wireless Synchronization Using Chronometric Interferometry with Intentional Carrier Frequency Offset,” the entirety of which is incorporated by reference.
+Priority Claim: This application claims priority to U.S. Provisional Patent Application filed on September 19, 2025, entitled “System and Method for Distributed Wireless Synchronization Using Chronometric Interferometry with Intentional Carrier Frequency Offset,” the entirety of which is incorporated by reference.
 
 1. Title of the Invention
 

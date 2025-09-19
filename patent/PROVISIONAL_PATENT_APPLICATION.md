@@ -195,7 +195,7 @@ This invention continues a multi‑generational thread of precision communicatio
 
 Preparation and Priority Intent
 
-Prepared to establish a priority date corresponding to September 18, 2025, for conception and reduction to practice in simulation, with intent to pursue non‑provisional and international filings.
+Prepared to establish a priority date corresponding to September 19, 2025, for conception and reduction to practice in simulation, with intent to pursue non‑provisional and international filings.
 
 Inventor conception date: [insert date of first documentation]; supporting materials (e.g., lab notebooks, drafts, emails) may be incorporated by reference in the filing record.
 
