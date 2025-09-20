@@ -9,7 +9,7 @@ import numpy as np
 from typing import Optional
 from dataclasses import dataclass
 
-from ..phy.osc import OscillatorParams, AllanDeviationGenerator
+from phy.osc import OscillatorParams, AllanDeviationGenerator
 
 
 @dataclass

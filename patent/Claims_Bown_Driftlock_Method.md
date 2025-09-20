@@ -95,3 +95,15 @@ Dependent Claims (enumerated)
 44. The method of claim 1, wherein Δf is selected to avoid known interferers and spurs in the receiver chain.
 
 45. The method of claim 3, wherein edge orientation metadata is used to disambiguate directed measurements.
+
+Phase 2 – Closed-form Estimators (Additions)
+
+46. The method of claim 1, wherein a geometric closed-form estimator extracts Δf and τ by linear phase fitting in the complex plane.
+
+47. The method of claim 1, wherein an algebraic closed-form estimator solves polynomial constraints defined across multiple carrier frequencies or retune offsets to recover τ and Δf.
+
+48. The method of claim 1, wherein a hybrid approach computes both geometric and algebraic candidates and selects or fuses them using residual-based consistency checks.
+
+49. The method of claim 1, wherein Δf and retune spacings are selected using CRLB-based sensitivity analysis to minimize estimator variance, with performance improving with larger aggregate spacing subject to bandwidth limits.
+
+50. The method of claim 1, wherein RMSE is maintained within a bounded multiple of the CRLB and monitored online to trigger adaptive Δf or retune adjustments.

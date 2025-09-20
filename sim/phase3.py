@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from net.topo import RandomGeometricGraph, TopologyParams
 from phy.osc import OscillatorParams, AllanDeviationGenerator
 from hw.trx import TransceiverNode, TransceiverConfig
-from alg.consensus import DistributedSynchronization, ConsensusParams
+from alg.consensus import DecentralizedChronometricConsensus, ConsensusOptions
 
 
 @dataclass
@@ -479,35 +479,17 @@ class Phase3Simulator:
         
         start_time = time.time()
         
-        # Generate initial estimates
-        initial_estimates = np.random.randn(n_nodes, 2) * 1e-6
-        
-        # Run consensus
-        consensus_params = ConsensusParams(
-            max_iterations=1000,
-            tolerance=1e-8
-        )
-        
-        sync_system = DistributedSynchronization(consensus_params, use_acceleration=True)
-        
-        # Convert to node estimates format
-        node_estimates = {i: (initial_estimates[i, 0], initial_estimates[i, 1]) 
-                         for i in range(n_nodes)}
-        
-        results = sync_system.synchronize_network(node_estimates, adjacency_matrix)
-        
+        # Generate a synthetic true state (zero-mean) for timing/frequency
+        true_state = np.random.randn(n_nodes, 2) * np.array([100e-12, 5.0])  # 100 ps, 5 Hz
+        true_state[:, 0] -= np.mean(true_state[:, 0])
+        true_state[:, 1] -= np.mean(true_state[:, 1])
+
+        result = self._run_consensus_on_adjacency(adjacency_matrix, true_state)
         computation_time = time.time() - start_time
-        
-        # Calculate final synchronization error
-        final_estimates = np.array([[results['node_sync_params'][i]['delay'],
-                                   results['node_sync_params'][i]['frequency']] 
-                                  for i in range(n_nodes)])
-        
-        sync_error = np.max(np.std(final_estimates, axis=0))
-        
+
         return {
-            'final_sync_error': sync_error,
-            'convergence_time': results['convergence_metrics']['iterations'],
+            'final_sync_error': float(result['timing_rms_s']),
+            'convergence_time': result['convergence_iteration'],
             'computation_time': computation_time
         }
         
@@ -515,42 +497,57 @@ class Phase3Simulator:
                                            n_nodes: int, allan_dev: float,
                                            drift_rate: float) -> Dict[str, Any]:
         """Simulate synchronization with specific oscillator parameters."""
-        # Generate initial estimates with oscillator-dependent variations
-        base_delay = 1e-6
-        base_freq = 1e3
-        
-        # Oscillator-dependent variations
-        delay_variation = allan_dev * 1e3  # Scale Allan deviation for delay variation
-        freq_variation = drift_rate * 1e6   # Scale drift rate for frequency variation
-        
-        delays = base_delay + np.random.normal(0, delay_variation, n_nodes)
-        frequencies = base_freq + np.random.normal(0, freq_variation, n_nodes)
-        
-        initial_estimates = np.column_stack([delays, frequencies])
-        
-        # Run consensus
-        consensus_params = ConsensusParams(
-            max_iterations=1000,
-            tolerance=1e-8
-        )
-        
-        sync_system = DistributedSynchronization(consensus_params, use_acceleration=True)
-        
-        node_estimates = {i: (initial_estimates[i, 0], initial_estimates[i, 1]) 
-                         for i in range(n_nodes)}
-        
-        results = sync_system.synchronize_network(node_estimates, adjacency_matrix)
-        
-        # Calculate synchronization error
-        final_estimates = np.array([[results['node_sync_params'][i]['delay'],
-                                   results['node_sync_params'][i]['frequency']] 
-                                  for i in range(n_nodes)])
-        
-        sync_error = np.max(np.std(final_estimates, axis=0))
-        
+        # Build a synthetic true state informed by oscillator parameters
+        # Approximate: time bias sigma from Allan deviation (scaled), frequency sigma from drift rate
+        sigma_T = max(allan_dev, 1e-12) * 1.0  # seconds
+        sigma_f = max(drift_rate, 1e-3) * 1.0  # Hz
+        true_state = np.column_stack([
+            np.random.normal(0.0, sigma_T, n_nodes),
+            np.random.normal(0.0, sigma_f, n_nodes),
+        ])
+        true_state[:, 0] -= np.mean(true_state[:, 0])
+        true_state[:, 1] -= np.mean(true_state[:, 1])
+
+        result = self._run_consensus_on_adjacency(adjacency_matrix, true_state)
         return {
-            'final_sync_error': sync_error,
-            'convergence_time': results['convergence_metrics']['iterations']
+            'final_sync_error': float(result['timing_rms_s']),
+            'convergence_time': result['convergence_iteration']
+        }
+
+    def _run_consensus_on_adjacency(self, adjacency_matrix: np.ndarray, true_state: np.ndarray) -> Dict[str, Any]:
+        """Construct a graph from an adjacency matrix and run variance-weighted consensus.
+
+        - measurement on edge (u,v) is (x_true[v] - x_true[u])
+        - weights: simple inverse-variance diagonal using rough floors
+        """
+        import networkx as nx  # local import to avoid global dependency if unused
+        n_nodes = int(true_state.shape[0])
+        G = nx.Graph()
+        G.add_nodes_from(range(n_nodes))
+        for u in range(n_nodes):
+            for v in range(u + 1, n_nodes):
+                if adjacency_matrix[u, v] > 0:
+                    meas = (true_state[v] - true_state[u]).astype(float)
+                    W = np.eye(2, dtype=float) * 1e-3  # stable small weights
+                    G.add_edge(u, v, measurement=meas, weight_matrix=W, orientation=(u, v))
+
+        options = ConsensusOptions(
+            max_iterations=1000,
+            epsilon=None,
+            tolerance_ps=100.0,
+            asynchronous=False,
+            rng_seed=12345,
+            enforce_zero_mean=True,
+            spectral_margin=0.8,
+        )
+        solver = DecentralizedChronometricConsensus(G, options)
+        initial_state = np.zeros_like(true_state)
+        result = solver.run(initial_state=initial_state, true_state=true_state)
+        timing_rms_s = result.timing_rms_ps[-1] * 1e-12 if len(result.timing_rms_ps) else None
+        conv_it = result.convergence_iteration if result.convergence_iteration is not None else (result.state_history.shape[0] - 1)
+        return {
+            'timing_rms_s': timing_rms_s,
+            'convergence_iteration': int(conv_it),
         }
         
     def _save_results(self, results: Dict[str, Any]):

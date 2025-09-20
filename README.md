@@ -145,7 +145,7 @@ pytest tests/test_consensus.py::test_dense_kf_vs_baseline -q
 scripts/run_verification_checks.sh
 ```
 
-[View RMSE comparison chart →](results/mc_runs/extended_011/phase2_rmse_bar.png)
+[View Monte Carlo summary →](results/mc_runs/extended_011/SUMMARY.md)
 
 ## 🏗️ Project Structure
 
@@ -156,14 +156,17 @@ driftlock/
 │   ├── phase2.py          # Multi-node consensus
 │   └── phase3.py          # Hardware calibration
 ├── src/                    # Core algorithms (patent pending)
-│   ├── alg/               # Synchronization algorithms
-│   ├── phy/               # Physical layer models
-│   ├── mac/               # MAC layer scheduling
+│   ├── alg/               # Consensus, estimators, Kalman tools
+│   ├── phy/               # Oscillators, noise, signal models
+│   ├── hw/                # RF front-end abstractions
+│   ├── net/               # MAC/topology utilities
+│   ├── metrics/           # CRLB + bias/variance analysis
+│   ├── mac/               # Scheduling & control glue
 │   └── chan/              # Channel models
 ├── docs/                   # Documentation
 │   ├── theory.md          # Mathematical foundation
 │   ├── quickstart.md      # Getting started guide
-│   └── results.md         # Performance validation
+│   └── simulation_results.md  # Latest performance data
 ├── patent/                 # Patent materials (provisional, claims, figures, prior art)
 └── tests/                  # Test suite
 ```
@@ -224,7 +227,7 @@ The Entruptor + Driftlock stack enables revolutionary secure, synchronized syste
 - 📝 Cite us in your research
 
 ### Industry & Commercial
-- 📊 Evaluate the [performance data](docs/results.md)
+- 📊 Evaluate the [performance data](docs/simulation_results.md)
 - 💼 Contact for licensing: licensing@shannonlabs.com
 - 🔗 Visit [driftlock.net](https://driftlock.net)
 - 🤝 Partner with Shannon Labs
@@ -239,9 +242,10 @@ The Entruptor + Driftlock stack enables revolutionary secure, synchronized syste
 
 ## 📈 Status
 
-- ✅ **2.081 nanosecond** synchronization achieved in simulation
-- ✅ **500 Monte Carlo trials** validated
-- ✅ **Patent Pending** (September 2025)
+- ✅ **22.13 ps** dense-network consensus (extended_011, 0.32/0.03/1 preset)
+- ✅ **45.0 ps** Choir acceptance RMSE with RMSE/CRLB 0.83 (runtime 3.7 s)
+- ✅ **600+ Monte Carlo simulations** with seeded regression + sweep guardrails
+- ✅ **Patent pending** (September 2025)
 - 🚧 Hardware validation in progress
 - 📧 Commercial inquiries: licensing@shannonlabs.com
 

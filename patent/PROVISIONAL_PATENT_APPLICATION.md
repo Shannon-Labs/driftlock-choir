@@ -113,6 +113,8 @@ VII. Applications
 
 Claims
 
+[Editor’s note] An expanded, consolidated claim set that captures additional implementation details (calibration modes, online variance weighting, multipath phase-bias compensation, MAC scheduling, ADC/ENOB/jitter modeling, etc.) is provided in `patent/CLAIMS_CONSOLIDATED_2025-09-20.md` and is intended for inclusion in the filing. The condensed set below is preserved for readability.
+
 What is claimed is:
 
 Condensed Claim Set — Provisional (25 claims)
@@ -188,6 +190,24 @@ The invention has immediate applicability in 5G/6G base station coordination, di
 Best Mode and Scope
 
 The best mode contemplated by the inventor for carrying out the invention is described herein. While specific embodiments are described, variations and modifications will be apparent to those skilled in the art. The invention encompasses both methods and systems, as well as computer‑readable media storing instructions for performing the methods. Prior art universally treats frequency offset as an impairment requiring correction; the present approach exploits offset as a measurement tool, representing a fundamental departure from established practice.
+
+Phase 2 Breakthrough — Closed-form τ/Δf Estimators (Geometric / Algebraic / Hybrid)
+
+Summary of advances
+- Implemented three complementary closed-form estimators: geometric (complex-plane linear phase fit), algebraic (polynomial constraints across carriers/retunes), and hybrid (selection/fusion by residual consistency).
+- Demonstrated substantial reduction of RMSE relative to traditional methods, with frequency diversity improving performance as carrier spacing increases, and with robustness across 100+ Monte Carlo trials and multiple scenarios.
+- Established CRLB‑aware design: spacing of Δf and retune offsets selected via sensitivity/CRLB analysis; online monitoring of RMSE/CRLB ratio to trigger adaptive adjustments.
+
+Key implementation elements
+- Geometric estimator: unwrap phase φ(t), linear fit to derive Δf̂ and intercept‑based τ candidates; covariance from residuals informs variance weighting.
+- Algebraic estimator: formulate polynomial constraints over multi‑carrier observations, solve for τ and Δf, prune roots by physical and residual‑consistency checks.
+- Hybrid estimator: compute both; apply robust selection/fusion (e.g., residual‑weighted, M‑estimator) to handle edge cases and multipath bias.
+- Frequency diversity: choose retune spacings to maximize unwrapping margin and improve estimator conditioning subject to bandwidth limits.
+
+Claims mapping (non‑limiting)
+- Geometric/algebraic/hybrid estimators: see `patent/CLAIMS_CONSOLIDATED_2025-09-20.md` claims 41–45, 49–52.
+- CRLB‑aware selection and monitoring: claims 46, 48, 50–51.
+- Frequency diversity and spacing optimization: claims 45–46.
 
 Acknowledgment of Lineage
 

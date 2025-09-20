@@ -249,7 +249,10 @@ class Phase2Simulation:
             sigma_tau_sq = float(var_tau_u + var_tau_v)
             sigma_df_sq = float(var_df_u + var_df_v)
 
-            tau_variance_floor = (50e-12) ** 2  # seconds^2
+            tau_floor_s2 = (self.config.coarse_variance_floor_ps * 1e-12) ** 2
+            tau_variance_floor = tau_floor_s2  # seconds^2 floor
+            # Include coarse floor contribution for forward and reverse in predicted edge variance
+            sigma_tau_sq = sigma_tau_sq + 2.0 * tau_floor_s2
             freq_variance_floor = 1.0  # Hz^2 floor to avoid singular weights
             sigma_tau_sq = max(sigma_tau_sq, tau_variance_floor)
             sigma_df_sq = max(sigma_df_sq, freq_variance_floor)
@@ -274,9 +277,14 @@ class Phase2Simulation:
 
             graph.edges[u, v]['distance_m'] = distance
             graph.edges[u, v]['measurement'] = measurement
+            graph.edges[u, v]['measurement_true'] = np.array([
+                result.forward.tau_true_s - result.reverse.tau_true_s,
+                result.forward.delta_f_true_hz - result.reverse.delta_f_true_hz,
+            ], dtype=float)
             graph.edges[u, v]['weight_matrix'] = weight_matrix
             graph.edges[u, v]['sigma_tau_sq'] = sigma_tau_sq
             graph.edges[u, v]['sigma_df_sq'] = sigma_df_sq
+            graph.edges[u, v]['tau_variance_floor_s2'] = tau_floor_s2
             graph.edges[u, v]['orientation'] = (u, v)
             graph.edges[u, v]['residual_phase_rms'] = (
                 result.forward.residual_phase_rms + result.reverse.residual_phase_rms
@@ -287,6 +295,12 @@ class Phase2Simulation:
             )
             graph.edges[u, v]['carrier_count'] = len(result.forward.carrier_frequencies_hz)
             graph.edges[u, v]['weighting'] = self.config.weighting
+            # Store LS covariance diagnostics per direction for telemetry
+            graph.edges[u, v]['forward_cov'] = result.forward.covariance
+            graph.edges[u, v]['reverse_cov'] = result.reverse.covariance
+            # Alias-resolution diagnostics (if available)
+            graph.edges[u, v]['alias_resolved_forward'] = bool(result.forward.alias_resolved) if result.forward.alias_resolved is not None else None
+            graph.edges[u, v]['alias_resolved_reverse'] = bool(result.reverse.alias_resolved) if result.reverse.alias_resolved is not None else None
 
     def _oracle_state(self, nodes: Dict[int, ChronometricNode]) -> np.ndarray:
         clock_offsets = np.array([node.clock_bias_s for node in nodes.values()], dtype=float)
@@ -516,6 +530,22 @@ class Phase2Simulation:
                     if coarse_errors
                     else None
                 ),
+                # Estimator sanity telemetry (per-edge)
+                'measurement_rmse_tau_ps': _edge_rmse(graph, index=0, scale=1e12),
+                'measurement_rmse_df_hz': _edge_rmse(graph, index=1, scale=1.0),
+                'avg_ls_tau_std_ps': _edge_avg_ls_std(graph, index=0, scale=1e12),
+                'avg_ls_df_std_hz': _edge_avg_ls_std(graph, index=1, scale=1.0),
+                'predicted_tau_std_ps': _edge_predicted_std(graph, index=0, scale=1e12),
+                'predicted_df_std_hz': _edge_predicted_std(graph, index=1, scale=1.0),
+                'rmse_over_predicted_tau': _safe_ratio(
+                    _edge_rmse(graph, index=0, scale=1e12) or 0.0,
+                    _edge_predicted_std(graph, index=0, scale=1e12) or float('nan')
+                ),
+                'rmse_over_predicted_df': _safe_ratio(
+                    _edge_rmse(graph, index=1, scale=1.0) or 0.0,
+                    _edge_predicted_std(graph, index=1, scale=1.0) or float('nan')
+                ),
+                'alias_resolved_rate': _alias_resolved_rate(graph),
             },
             'local_kf': kf_metrics,
         }
@@ -610,6 +640,7 @@ class Phase2Simulation:
         self._plot_topology(graph, positions, result)
         self._plot_convergence(result)
         self._plot_residuals(result)
+        self._plot_measurement_diagnostics(graph)
 
     def _plot_topology(
         self,
@@ -705,6 +736,41 @@ class Phase2Simulation:
         save_figure(fig, path)
         print(f"Saved residual plot to {path}")
 
+    def _plot_measurement_diagnostics(self, graph: nx.Graph) -> None:
+        # Gather metrics
+        rmse_tau_ps = _edge_rmse(graph, index=0, scale=1e12) or 0.0
+        rmse_df_hz = _edge_rmse(graph, index=1, scale=1.0) or 0.0
+        ls_tau_std_ps = _edge_avg_ls_std(graph, index=0, scale=1e12) or 0.0
+        ls_df_std_hz = _edge_avg_ls_std(graph, index=1, scale=1.0) or 0.0
+        pred_tau_std_ps = _edge_predicted_std(graph, index=0, scale=1e12) or 0.0
+        pred_df_std_hz = _edge_predicted_std(graph, index=1, scale=1.0) or 0.0
+        alias_rate = _alias_resolved_rate(graph)
+
+        labels = ['τ (ps)', 'Δf (Hz)']
+        rmse_vals = [rmse_tau_ps, rmse_df_hz]
+        pred_vals = [pred_tau_std_ps, pred_df_std_hz]
+        ls_vals = [ls_tau_std_ps, ls_df_std_hz]
+
+        x = np.arange(len(labels))
+        width = 0.28
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.bar(x - width, rmse_vals, width, label='RMSE')
+        ax.bar(x,         pred_vals, width, label='Predicted σ (fwd+rev)')
+        ax.bar(x + width, ls_vals,   width, label='Avg LS σ (per-dir)')
+        ax.set_xticks(x, labels)
+        ax.set_title('Estimator Diagnostics')
+        ax.legend()
+        if alias_rate is not None:
+            ax.text(0.02, 0.90, f'Alias resolved: {alias_rate:.2f}', transform=ax.transAxes)
+        # Global Δf CRLB (approximate) annotation
+        df_crlb_std = _global_df_crlb_std(graph)
+        if df_crlb_std is not None:
+            ax.text(0.02, 0.82, f'Global Δf CRLB≈{df_crlb_std:.1f} Hz', transform=ax.transAxes)
+
+        path = os.path.join(self.config.results_dir, 'phase2_measurement_diag.png')
+        save_figure(fig, path)
+        print(f"Saved measurement diagnostics plot to {path}")
+
 
 def _clean_numeric(value: Optional[float]) -> Optional[float]:
     if value is None:
@@ -712,6 +778,115 @@ def _clean_numeric(value: Optional[float]) -> Optional[float]:
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return None
     return float(value)
+
+
+def _edge_rmse(graph: nx.Graph, index: int, scale: float) -> Optional[float]:
+    """Compute RMSE of measurement errors across edges for component index (0: tau, 1: df)."""
+    errors: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        m = data.get('measurement')
+        t = data.get('measurement_true')
+        if m is None or t is None:
+            continue
+        try:
+            errors.append(float(m[index] - t[index]))
+        except Exception:
+            continue
+    if not errors:
+        return None
+    return float(np.sqrt(np.mean(np.square(errors))) * scale)
+
+
+def _edge_avg_ls_std(graph: nx.Graph, index: int, scale: float) -> Optional[float]:
+    """Average LS-derived standard deviation across edges for component index.
+
+    index: 0 for tau, 1 for df; uses forward and reverse covariances averaged per edge.
+    """
+    vars_: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        f_cov = data.get('forward_cov')
+        r_cov = data.get('reverse_cov')
+        if f_cov is None or r_cov is None:
+            continue
+        try:
+            v = 0.5 * (float(f_cov[index, index]) + float(r_cov[index, index]))
+            vars_.append(v)
+        except Exception:
+            continue
+    if not vars_:
+        return None
+    return float(np.sqrt(np.mean(vars_)) * scale)
+
+
+def _alias_resolved_rate(graph: nx.Graph) -> Optional[float]:
+    flags: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        fr = data.get('alias_resolved_forward')
+        rr = data.get('alias_resolved_reverse')
+        if isinstance(fr, bool) and isinstance(rr, bool):
+            flags.append(1.0 if (fr and rr) else 0.0)
+    if not flags:
+        return None
+    return float(np.mean(flags))
+
+
+def _edge_predicted_std(graph: nx.Graph, index: int, scale: float) -> Optional[float]:
+    """Predicted standard deviation for edge measurement (difference of forward and reverse).
+
+    For τ and Δf, the edge measurement is forward - reverse, so Var = Var_fwd + Var_rev.
+    index: 0 for τ (seconds^2), 1 for Δf (Hz^2).
+    """
+    pred_vars: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        f_cov = data.get('forward_cov')
+        r_cov = data.get('reverse_cov')
+        if f_cov is None or r_cov is None:
+            continue
+        try:
+            v = float(f_cov[index, index]) + float(r_cov[index, index])
+            # Include coarse floor for τ (index 0) if available
+            if index == 0 and 'tau_variance_floor_s2' in data:
+                v += 2.0 * float(data['tau_variance_floor_s2'])
+            pred_vars.append(v)
+        except Exception:
+            continue
+    if not pred_vars:
+        return None
+    return float(np.sqrt(np.mean(pred_vars)) * scale)
+
+
+def _global_df_crlb_std(graph: nx.Graph) -> Optional[float]:
+    """Approximate a global Δf CRLB standard deviation using beat duration and ADC heuristic.
+
+    Uses per-edge average |Δf_true| to select an effective ADC rate (≈max(4·|Δf|, min_adc_rate)),
+    beat duration from the Phase 2 config defaults (20 µs), and residual phase RMS as σ_phase.
+    This is an approximation for quick telemetry only.
+    """
+    # Gather residual phase RMS and true Δf if present
+    df_abs: List[float] = []
+    sigma_phase: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        m_true = data.get('measurement_true')
+        if m_true is None:
+            continue
+        df_abs.append(abs(float(m_true[1])))
+        if 'residual_phase_rms' in data and isinstance(data['residual_phase_rms'], float):
+            sigma_phase.append(float(data['residual_phase_rms']))
+    if not df_abs or not sigma_phase:
+        return None
+    df_mean = float(np.mean(df_abs))
+    sigma_phase_mean = float(np.mean(sigma_phase))
+
+    beat_duration_s = 20e-6
+    min_adc_rate_hz = 20_000.0
+    adc_rate = max(4.0 * max(df_mean, 1.0), min_adc_rate_hz)
+    n = max(int(beat_duration_s * adc_rate), 8)
+    # Sum t^2 for t_k = k / adc_rate, k=0..n-1
+    k = np.arange(n)
+    sum_t2 = float(np.sum((k / adc_rate) ** 2))
+    # Var(Δf) ≈ Var(slope)/(2π)^2, Var(slope) ≈ σ_phase^2 / sum(t^2)
+    var_df = (sigma_phase_mean ** 2) / max(sum_t2, 1e-18) / ((2.0 * np.pi) ** 2)
+    return float(np.sqrt(max(var_df, 0.0)))
 
 
 def _safe_ratio(numerator: float, denominator: float) -> Optional[float]:

@@ -8,7 +8,8 @@ through Jacobian analysis and sensitivity metrics.
 import numpy as np
 from typing import Dict, List, Any, Optional, Callable, Tuple
 from dataclasses import dataclass
-from scipy.linalg import svd, norm, cond
+from scipy.linalg import svd, norm
+from numpy.linalg import cond
 from scipy.optimize import approx_fprime
 
 

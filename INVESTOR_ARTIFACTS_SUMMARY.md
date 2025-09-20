@@ -6,7 +6,7 @@
 ### 1. ✅ Lead With Live Artifacts
 **Hero Section Updates:**
 - Subheading now highlights **"22.13 ps dense-network synchronization"** with direct link to `docs/results_extended_011.md`
-- Primary button: `results/mc_runs/extended_011/phase2_rmse_bar.png`
+- Primary button: `results/mc_runs/extended_011/SUMMARY.md`
 - Secondary button: `results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json`
 - Badge copy: **"Tuned 0.32 / 0.03 / 1 combo"** with sweep link for verification
 
@@ -60,7 +60,7 @@ pytest tests/test_consensus.py::test_dense_kf_vs_baseline -q
 ### Primary Data Files
 1. **Full Results**: `results/mc_runs/extended_011/final_results.json`
 2. **KF Sweep**: `results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json`
-3. **RMSE Plot**: `results/mc_runs/extended_011/phase2_rmse_bar.png`
+3. **Run Summary**: `results/mc_runs/extended_011/SUMMARY.md`
 4. **Tech Brief**: `docs/results_extended_011.md`
 
 ### Verification Commands

@@ -9,10 +9,10 @@ import numpy as np
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from ..phy.osc import OscillatorParams, AllanDeviationGenerator
-from .lo import LocalOscillator
-from .adc import ADCModel
-from .iq import IQImbalance
+from phy.osc import OscillatorParams, AllanDeviationGenerator
+from hw.lo import LocalOscillator
+from hw.adc import ADCModel
+from hw.iq import IQImbalance
 
 
 @dataclass
