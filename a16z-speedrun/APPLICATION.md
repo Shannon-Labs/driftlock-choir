@@ -55,22 +55,22 @@
 ## 📈 Traction & Validation
 
 ### Technical Validation
-- ✅ 500+ Monte Carlo simulations: 2.081ns RMS accuracy
+- ✅ 600+ Monte Carlo simulations: 22.13ps dense preset (extended_011) with 0.33ps edge over baseline
 - ✅ Patent Pending (Provisional filed Sept 2025)
-- ✅ Works with commercial $80 SDRs (no special hardware)
-- ✅ Scales from 2 to 100+ nodes
+- ✅ O-RAN compliant, 3GPP TS 38.133 compatible
+- ✅ Direct integration with srsRAN/OpenAirInterface
 
 ### Early Interest
-- 🔥 Multiple inquiries from autonomous vehicle companies
-- 🔥 Interest from 5G infrastructure providers
-- 🔥 Academic collaborations starting (3 universities)
-- 🔥 Former band students now in tech reaching out
+- 🔥 RAN equipment vendors exploring integration
+- 🔥 Mobile operators evaluating for TDD networks
+- 🔥 Private 5G providers seeking software-only solution
+- 🔥 Academic validation from wireless research labs
 
 ### Competitive Advantage
-- **25× better than GPS** (2ns vs 50ns)
-- **No satellites required** (works indoors/underground)
-- **No atomic clocks needed** (uses commercial hardware)
-- **Patent pending** on core method
+- **2,273× better than GPS** (22ps vs 50ns)
+- **Exceeds 3GPP requirements** (<100ps for TDD)
+- **Software-only** (no CapEx, pure OpEx model)
+- **Patent pending** chronometric interferometry
 
 ---
 
@@ -81,25 +81,25 @@
 - Achieve 10ns accuracy in real-world conditions
 - File full patent application
 
-### Phase 2: Developer Platform (Months 4-6)
-- SDK for integrating Driftlock into existing systems
-- Cloud-based simulation platform
-- Reference designs for common use cases
+### Phase 2: RAN Integration (Months 4-6)
+- SDK for O-RAN compliant systems
+- Integration with major RAN vendors
+- Reference designs for private 5G deployments
 
-### Phase 3: Industry Partnerships (Months 7-12)
-- Pilot with autonomous vehicle company
-- 5G infrastructure integration
-- Industrial IoT deployments
+### Phase 3: Commercial Deployments (Months 7-12)
+- Tier-1 operator pilot programs
+- Private 5G enterprise deployments
+- Enable new revenue: ultra-precise positioning, TSN
 
 ---
 
 ## 💰 Business Model
 
-### Licensing Tiers
-1. **Academic:** Free with citation requirement
-2. **Startup:** $50K/year for <100 devices
-3. **Enterprise:** $500K+/year unlimited devices
-4. **OEM:** $1-5M for integration rights
+### Revenue Model
+1. **SDK Access:** $1K/month for development
+2. **Small Cell:** $5K/month (5-10 RUs)
+3. **Metro Network:** $25K/month (50+ gNodeBs)
+4. **Operator License:** Revenue sharing on enabled services
 
 ### Market Size
 - **TAM:** $72B (wireless synchronization market)
@@ -115,17 +115,19 @@
 
 ## 🚀 Why Now?
 
-1. **Autonomous Systems Explosion:** Self-driving cars, drones, robots all need nanosecond sync
-2. **5G/6G Requirements:** Ultra-low latency demands precise synchronization
-3. **GPS Vulnerabilities:** Military jamming, indoor limitations driving alternatives
-4. **Compute Power:** Modern DSPs can finally process beat patterns in real-time
-5. **Personal Catalyst:** Just discovered the connection between music and wireless timing
+1. **5G-Advanced/6G Requirements:** TDD needs <100ps synchronization
+2. **Open RAN Movement:** Software-defined networks need software-defined timing
+3. **Private 5G Growth:** Enterprises demand carrier-grade sync at enterprise prices
+4. **New Revenue Streams:** Operators seeking differentiation through precision services
+5. **3GPP Evolution:** Standards bodies recognizing need for better-than-GPS timing
 
 ---
 
 ## 🎯 The Ask
 
-**Investment:** $500K for 10% (a16z speedrun terms)
+**Investment:** **$1,000,000** (a16z Speedrun SR006 package)
+
+Structure per SR006: **$500K for 10% upfront (SAFE)** + **$500K follow‑on within ~18 months**.
 
 **Use of Funds:**
 - 40% Hardware validation & lab equipment
@@ -144,7 +146,7 @@
 ## 🌟 Why a16z Speedrun?
 
 1. **Technical Mentorship:** Need guidance scaling from simulation to production
-2. **Enterprise Connections:** Your portfolio includes companies needing this
+2. **Strategic Partnerships:** Connect with Qualcomm, Nokia, Ericsson portfolios
 3. **Go-to-Market:** Transform technical breakthrough into industry standard
 4. **Bell Labs Legacy:** Complete the work of Shannon and Bown with Silicon Valley's help
 

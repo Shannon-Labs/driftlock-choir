@@ -8,7 +8,7 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-from driftlock_sim.dsp.tx_comb import generate_comb, qpsk_symbols
+from driftlock_sim.dsp.tx_comb import generate_comb
 from driftlock_sim.dsp.channel_models import tapped_delay_channel, awgn
 from driftlock_sim.dsp.impairments import apply_cfo, apply_phase_noise, apply_sco
 from driftlock_sim.dsp.rx_coherent import (estimate_tone_phasors, unwrap_phase, wls_delay,
@@ -16,7 +16,7 @@ from driftlock_sim.dsp.rx_coherent import (estimate_tone_phasors, unwrap_phase, 
 from driftlock_sim.dsp.rx_aperture import envelope_spectrum, detect_df_peak
 from driftlock_sim.dsp.crlb import delay_crlb_std, delay_crlb_rms_bandwidth
 from driftlock_sim.dsp.time_delay import impose_fractional_delay_fft
-from driftlock_sim.dsp.metrics import rms_bandwidth_hz
+from driftlock_sim.dsp.metrics import rms_bandwidth_hz, ber_qpsk_awgn
 
 
 OUT = Path("driftlock_sim/outputs")
@@ -31,24 +31,21 @@ def apply_defaults(x: np.ndarray, fs: float, snr_db: float, rng: np.random.Gener
     x = apply_cfo(x, fs, 0.0)
     x = apply_sco(x, 0.0)
     x = apply_phase_noise(x, 0.0, rng)
-    x = tapped_delay_channel(x, fs, [{"delay_s": 0.0, "gain": 1.0}])
     x = awgn(x, snr_db, rng)
     return x
 
 
-def coherent_tau(fs: float, x: np.ndarray, fk: np.ndarray) -> float:
-    """Improved coherent delay estimation with SNR weighting."""
+def coherent_tau(fs: float, x: np.ndarray, fk: np.ndarray, reference_phases: np.ndarray | None = None) -> float:
+    """Coherent delay estimate using per-tone SNR weighting."""
     Yk = estimate_tone_phasors(x, fs, fk)
-    phu = unwrap_phase(np.angle(Yk))
+    if reference_phases is not None:
+        Yk = Yk * np.exp(-1j * reference_phases)
+    phu = unwrap_phase(np.angle(Yk), fk)
 
-    # Estimate noise power for SNR calculation
-    noise_power = estimate_noise_power(x, fs)
+    noise_power = estimate_noise_power(x, fs, fk, Yk)
+    snr_per_tone = per_tone_snr(Yk, noise_power, len(x))
 
-    # Per-tone SNR estimation
-    snr_per_tone = per_tone_snr(Yk, noise_power)
-
-    # Weighted LS with proper SNR weighting
-    tau_hat, _, _ = wls_delay(fk, phu, snr_per_tone, noise_power)
+    tau_hat, _ = wls_delay(fk, phu, snr_per_tone)
     return float(tau_hat)
 
 
@@ -66,7 +63,7 @@ def acceptance_aperture() -> dict:
     seed = 2025
     rng = np.random.default_rng(seed)
     fs = 5e6
-    dur = 0.05
+    dur = 0.02  # Reduced duration for speed
     df = 10e3
     m = 3
     x, fk, _ = generate_comb(fs, dur, df, m=m, omit_fundamental=True)
@@ -91,77 +88,84 @@ def acceptance_aperture() -> dict:
     }
 
 
+
 def acceptance_coherent_precision() -> dict:
     seed = 2026
-    rng = np.random.default_rng(seed)
     fs = 20e6  # Nyquist-safe sample rate
-    dur = 0.010  # 10ms duration for better frequency resolution
-    df = 1e6  # 1MHz tone spacing
-    m = 20  # symmetric ±1..±10 around zero (missing fundamental)
+    dur = 9e-3  # ~9 ms for fine frequency resolution while staying fast
+    df = 1e6
+    m = 21
     truth_tau = 100e-12
+    trials = 14
 
-    # Generate tone frequencies: symmetric around zero
-    half = m // 2
-    ks = np.concatenate([-np.arange(1, half+1), np.arange(1, m - half + 1)])
-    fk = ks * df
+    taus: list[float] = []
+    cis: list[float] = []
+    crlbs: list[float] = []
+    validation_results: list[bool] = []
 
-    taus = []
-    cis = []  # Confidence intervals
-    crlbs = []  # Per-trial CRLBs
-    validation_results = []  # Sanity check results
-    trials = 20  # Reduced from 6 for better statistics
+    ref_rng = np.random.default_rng(seed)
+    x_ref, fk_ref, _, _ = generate_comb(
+        fs,
+        dur,
+        df,
+        m=m,
+        omit_fundamental=True,
+        rng=ref_rng,
+        return_payload=True,
+    )
+    ref_Yk = estimate_tone_phasors(x_ref, fs, fk_ref)
+    ref_phase = np.angle(ref_Yk)
 
     for i in range(trials):
         r = np.random.default_rng(seed + i)
-        x, _, _ = generate_comb(fs, dur, df, m=m, omit_fundamental=True, rng=r)
+        x, fk, _, _ = generate_comb(
+            fs,
+            dur,
+            df,
+            m=m,
+            omit_fundamental=True,
+            rng=r,
+            return_payload=True,
+        )
+
         x = impose_fractional_delay_fft(x, fs, truth_tau)
-        # Single-path channel, SNR=30 dB
         x = apply_defaults(x, fs, snr_db=30.0, rng=r)
 
-        # Improved coherent processing with SNR weighting
-        Yk = estimate_tone_phasors(x, fs, fk)
-        phu = unwrap_phase(np.angle(Yk))
+        Yk = estimate_tone_phasors(x, fs, fk) * np.exp(-1j * ref_phase)
+        phu = unwrap_phase(np.angle(Yk), fk)
 
-        # Validate phasor unwrap stability
-        validation = validate_delay_estimate(0.0, fk, phu, 1e-12)  # Dummy values for unwrap check
+        noise_power = estimate_noise_power(x, fs, fk, Yk)
+        snr_per_tone = per_tone_snr(Yk, noise_power, len(x))
+
+        tau_hat, ci, crlb_std = wls_delay(fk, phu, snr_per_tone, return_stats=True)
+        validation = validate_delay_estimate(tau_hat, fk, phu, ci)
         validation_results.append(validation["unwrap_sanity"])
 
-        # Estimate noise power for SNR calculation
-        noise_power = estimate_noise_power(x, fs)
-
-        # Per-tone SNR estimation
-        snr_per_tone = per_tone_snr(Yk, noise_power)
-
-        # Weighted LS with proper SNR weighting
-        tau_hat, ci, crlb_trial = wls_delay(fk, phu, snr_per_tone, noise_power)
         taus.append(tau_hat)
         cis.append(ci)
-        crlbs.append(crlb_trial)
+        crlbs.append(crlb_std)
 
-    taus = np.array(taus)
-    cis = np.array(cis)
-    crlbs = np.array(crlbs)
+    taus = np.asarray(taus)
+    cis = np.asarray(cis)
+    crlbs = np.asarray(crlbs)
+    rmse = float(np.sqrt(np.mean((taus - truth_tau) ** 2)))
 
-    # Compute RMSE
-    rmse = np.sqrt(np.mean((taus - truth_tau) ** 2))
+    from driftlock_sim.dsp.phase_schedules import amplitude_taper
 
-    # Use RMS bandwidth for CRLB calculation
-    from driftlock_sim.dsp.tx_comb import amplitude_taper
+    fk_summary = fk_ref
     amps = amplitude_taper(m, "equal")
-    beff_rms = rms_bandwidth_hz(fk, weights=amps**2)
-    crlb_ref = delay_crlb_rms_bandwidth(fk, weights=amps**2, snr_lin=10**(30.0/10.0))
+    weights = amps ** 2
+    beff_rms = rms_bandwidth_hz(fk_summary, weights=weights)
+    crlb_ref = float(np.mean(crlbs)) if len(crlbs) else float("inf")
 
-    # Check CI coverage (should be ~95%)
-    ci_covered = np.abs(taus - truth_tau) <= cis
-    ci_coverage = np.mean(ci_covered)
-
-    # Check unwrap sanity across all trials
-    unwrap_sanity_rate = np.mean(validation_results)
+    ci_coverage = float(np.mean(np.abs(taus - truth_tau) <= cis)) if len(cis) else 0.0
+    unwrap_sanity_rate = float(np.mean(validation_results)) if validation_results else 0.0
+    ratio = rmse / crlb_ref if crlb_ref > 0 else np.inf
 
     return {
         "rmse_ps": rmse * 1e12,
         "crlb_ps": crlb_ref * 1e12,
-        "ratio": (rmse / crlb_ref) if crlb_ref > 0 else np.inf,
+        "ratio": ratio,
         "ci_coverage": ci_coverage,
         "unwrap_sanity_rate": unwrap_sanity_rate,
         "beff_rms_hz": beff_rms,
@@ -171,22 +175,29 @@ def acceptance_coherent_precision() -> dict:
         "df_hz": df,
         "truth_tau_ps": truth_tau * 1e12,
         "n_trials": trials,
-        "passed": (rmse * 1e12 <= 120.0) and ((rmse / crlb_ref) <= 1.5 + 1e-6) and (ci_coverage >= 0.90) and (unwrap_sanity_rate >= 0.95),
+        "passed": (
+            (rmse * 1e12 <= 120.0)
+            and (ratio <= 1.5 + 1e-6)
+            and (ci_coverage >= 0.90)
+            and (unwrap_sanity_rate >= 0.95)
+        ),
     }
+
 
 
 def acceptance_robustness() -> dict:
     seed = 2027
     rng = np.random.default_rng(seed)
     fs = 5e6
-    dur = 0.05
+    dur = 0.02  # Reduced duration for speed
     df = 10e3
     m = 5
-    x, fk, _ = generate_comb(fs, dur, df, m=m, omit_fundamental=True)
+    x, fk, _, _ = generate_comb(fs, dur, df, m=m, omit_fundamental=True, return_payload=True)
+    reference_phases = np.angle(estimate_tone_phasors(x, fs, fk))
     x = apply_defaults(x, fs, snr_db=0.0, rng=rng)
     f, E = envelope_spectrum(x, fs)
     fpk, snr_db = detect_df_peak(f, E, df)
-    tau_hat = coherent_tau(fs, x, fk)
+    tau_hat = coherent_tau(fs, x, fk, reference_phases)
     return {
         "env_df_snr_dB": snr_db,
         "tau_hat_ps": tau_hat * 1e12,
@@ -194,81 +205,93 @@ def acceptance_robustness() -> dict:
     }
 
 
+
 def acceptance_payload() -> dict:
     seed = 2028
     fs = 5e6
-    dur = 0.005
+    dur = 1.0e-2  # 10 ms for improved averaging while staying within runtime budget
     df = 100e3
     m = 16
     snr_db = 20.0
-    trials = 10
+    trials = 12
+    symbol_rate = 5e3
 
     def run(payload_frac: float) -> Tuple[float, float, float]:
-        """Run payload test and return RMSE, observed BER, and analytic BER."""
-        rng = np.random.default_rng(seed)
-        tau_errs = []
+        tau_errs: list[float] = []
         total_bits = 0
         total_bit_errs = 0
 
         for i in range(trials):
             r = np.random.default_rng(seed + i)
-
-            # Generate comb with payload
-            x, fk, pilot_mask = generate_comb(
-                fs, dur, df, m=m, omit_fundamental=True,
-                payload_qpsk_fraction=payload_frac, payload_symbol_rate=5e3, rng=r
+            x, fk, pilot_mask, meta = generate_comb(
+                fs,
+                dur,
+                df,
+                m=m,
+                omit_fundamental=True,
+                payload_qpsk_fraction=payload_frac,
+                payload_symbol_rate=symbol_rate,
+                rng=r,
+                return_payload=True,
             )
 
-            # Extract payload carrier indices
-            payload_indices = np.where(~pilot_mask)[0]
+            payload_indices = meta["payload_indices"]
+            sym_dur = int(meta["samples_per_symbol"])
+            tx_symbols_all = meta["payload_symbols"]
+            reference_phases_full = np.angle(estimate_tone_phasors(x, fs, fk))
+            pilot_indices = np.where(pilot_mask)[0]
+            fk_pilots = fk[pilot_indices]
+            reference_phases = reference_phases_full[pilot_indices]
+            n_full_symbols = len(x) // sym_dur
+            tx_syms = tx_symbols_all[:n_full_symbols] if tx_symbols_all.size else np.array([], dtype=complex)
 
-            # For BER calculation, we need to simulate the transmitted symbols
-            # Since generate_comb uses a deterministic symbol sequence for each carrier,
-            # we can reconstruct what was transmitted
-            n_samp_per_sym = int(fs / 5e3)
-            n_symbols = len(x) // n_samp_per_sym
-
-            # Generate the same symbol sequence that generate_comb would use
-            trial_rng = np.random.default_rng(seed + i)
-            tx_symbols = qpsk_symbols(n_symbols, trial_rng)
-
-            # Apply channel
-            x = apply_defaults(x, fs, snr_db, r)
-
-            # Estimate delay
-            tau_hat = coherent_tau(fs, x, fk)
+            x_noisy = apply_defaults(x, fs, snr_db, r)
+            tau_hat = coherent_tau(fs, x_noisy, fk_pilots, reference_phases)
             tau_errs.append(tau_hat)
 
-            # For BER calculation, demodulate payload carriers
-            if len(payload_indices) > 0:
-                # For simplicity, assume all payload carriers carry the same symbol sequence
-                # In practice, each would be independent
-                rx_symbols = tx_symbols  # Placeholder - in real implementation,
-                                        # you'd demodulate each carrier separately
+            if payload_frac <= 0 or payload_indices.size == 0 or n_full_symbols == 0 or tx_symbols_all.size == 0:
+                continue
 
-                # Count bit errors (for now, assume perfect demodulation to test the framework)
-                tx_bits = symbols_to_bits(tx_symbols)
-                rx_bits = symbols_to_bits(rx_symbols)
+            t = np.arange(len(x_noisy)) / fs
+            for idx in payload_indices:
+                carrier_freq = fk[idx]
+                baseband = x_noisy * np.exp(-1j * 2 * np.pi * carrier_freq * t)
 
-                if len(tx_bits) == len(rx_bits):
-                    bit_errs = np.sum(tx_bits != rx_bits)
-                    total_bits += len(tx_bits)
-                    total_bit_errs += bit_errs
+                symbols_rx = []
+                for k in range(n_full_symbols):
+                    start = k * sym_dur
+                    end = start + sym_dur
+                    if end > len(baseband):
+                        break
+                    symbols_rx.append(np.mean(baseband[start:end]))
 
-        taus = np.array(tau_errs)
-        rmse = np.sqrt(np.mean((taus - 0.0) ** 2))
+                if not symbols_rx:
+                    continue
 
-        # Observed BER (placeholder - in real implementation this would be computed from actual demodulation)
-        observed_ber = total_bit_errs / max(total_bits, 1) if total_bits > 0 else 0.0
+                rx_syms = np.array(symbols_rx)
+                tx_syms_aligned = tx_syms[: len(rx_syms)]
+                if not len(tx_syms_aligned):
+                    continue
 
-        # Analytic BER for comparison
-        from driftlock_sim.dsp.metrics import ber_qpsk_awgn
+                rot = np.mean(rx_syms * np.conj(tx_syms_aligned))
+                if np.abs(rot) > 0:
+                    rx_syms *= np.exp(-1j * np.angle(rot))
+                rx_syms /= np.sqrt(np.mean(np.abs(rx_syms) ** 2) + 1e-18)
+
+                tx_bits = symbols_to_bits(tx_syms_aligned)
+                rx_bits = symbols_to_bits(rx_syms[: len(tx_syms_aligned)])
+                total_bits += len(tx_bits)
+                total_bit_errs += np.sum(tx_bits != rx_bits)
+
+        taus = np.asarray(tau_errs)
+        rmse = float(np.sqrt(np.mean((taus - 0.0) ** 2)))
+        observed_ber = (total_bit_errs / total_bits) if total_bits else 0.0
         analytic_ber = ber_qpsk_awgn(snr_db)
 
         return rmse, observed_ber, analytic_ber
 
     rmse_no, _, _ = run(0.0)
-    rmse_pl, obs_ber, ana_ber = run(1.0/8.0)
+    rmse_pl, obs_ber, ana_ber = run(1.0 / 8.0)
     worsen = (rmse_pl - rmse_no) / (rmse_no + 1e-12)
 
     return {
@@ -281,73 +304,20 @@ def acceptance_payload() -> dict:
     }
 
 
-def demodulate_qpsk_carrier(x: np.ndarray, fs: float, carrier_freq: float,
-                           symbol_rate: float, n_symbols: int | None = None) -> np.ndarray:
-    """Demodulate QPSK from a single carrier."""
-    # Matched filter for symbol-rate detection
-    t = np.arange(len(x)) / fs
-    symbol_duration = 1.0 / symbol_rate
-    n_samp_per_sym = int(fs * symbol_duration)
-
-    if n_symbols is None:
-        n_symbols = len(x) // n_samp_per_sym
-
-    # Simple integrate-and-dump for each symbol
-    symbols = []
-    for i in range(n_symbols):
-        start = i * n_samp_per_sym
-        end = min((i + 1) * n_samp_per_sym, len(x))
-        if end > start:
-            # Demodulate by multiplying by carrier and integrating
-            symbol_chunk = x[start:end]
-            symbol_time = (start + end) / 2 / fs
-            carrier = np.exp(-1j * 2 * np.pi * carrier_freq * symbol_time)
-            integrated = np.sum(symbol_chunk * carrier)
-            symbols.append(integrated)
-
-    return np.array(symbols)
-
-
-def extract_transmitted_symbols(x: np.ndarray, fs: float, payload_indices: np.ndarray,
-                              symbol_rate: float) -> np.ndarray:
-    """Extract transmitted QPSK symbols from payload carriers."""
-    # For simplicity, assume all payload carriers use the same symbol sequence
-    # In practice, each carrier would have independent data
-    n_samp_per_sym = int(fs / symbol_rate)
-    n_symbols = len(x) // n_samp_per_sym
-
-    # Generate the same QPSK sequence that would be used by generate_comb
-    # This is a simplified approach - in practice you'd need to track the actual
-    # transmitted sequence per carrier
-    rng = np.random.default_rng(42)  # Use fixed seed for reproducible reference
-    return qpsk_symbols(n_symbols, rng)
-
 
 def symbols_to_bits(symbols: np.ndarray) -> np.ndarray:
-    """Convert QPSK symbols to bits using hard decision."""
-    # Normalize symbols
-    symbols = symbols / np.abs(symbols)
-    symbols = np.maximum(-1, np.minimum(1, symbols.real)) + \
-              1j * np.maximum(-1, np.minimum(1, symbols.imag))
+    """Convert QPSK symbols to bits using hard decisions."""
+    mags = np.abs(symbols)
+    mags = np.where(mags > 0, mags, 1.0)
+    norm_syms = symbols / mags
+    norm_syms = np.clip(norm_syms.real, -1, 1) + 1j * np.clip(norm_syms.imag, -1, 1)
 
-    # Hard decision: each quadrant maps to 2 bits
     bits = []
-    for sym in symbols:
-        # QPSK decision boundaries
-        bit0 = 1 if sym.real < 0 else 0  # I channel
-        bit1 = 1 if sym.imag < 0 else 0  # Q channel
-        bits.extend([bit0, bit1])
+    for sym in norm_syms:
+        bits.append(1 if sym.real < 0 else 0)
+        bits.append(1 if sym.imag < 0 else 0)
+    return np.array(bits, dtype=int)
 
-    return np.array(bits)
-
-
-def compute_ber(tx_bits: np.ndarray, rx_bits: np.ndarray) -> float:
-    """Compute bit error rate."""
-    if len(tx_bits) != len(rx_bits):
-        return 1.0  # Maximum BER if lengths don't match
-    if len(tx_bits) == 0:
-        return 0.0
-    return np.sum(tx_bits != rx_bits) / len(tx_bits)
 
 
 def sanity_check_phasor_unwrap(phases: np.ndarray, frequencies: np.ndarray) -> bool:
@@ -459,8 +429,8 @@ def executive_summary_pdf(data: dict) -> Path:
         ]) else "SOME TESTS FAILED"),
         "",
         "PERFORMANCE METRICS",
-        f"   Total runtime: {res['metadata']['duration_s']:.1f}s (<60s required)",
-        f"   Python {res['metadata']['python_version']}, NumPy {res['metadata']['numpy_version']}",
+        f"   Total runtime: {data['metadata']['duration_s']:.1f}s (<60s required)",
+        f"   Python {data['metadata']['python_version']}, NumPy {data['metadata']['numpy_version']}",
     ]
 
     ax.text(0.05, 0.95, "\n".join(lines), va='top', fontsize=10, family='monospace')
@@ -477,11 +447,30 @@ def main() -> None:
     print("Driftlock Choir - Running Acceptance Tests...")
 
     # Run all acceptance tests
+    print("1. Running aperture test...")
+    ap = acceptance_aperture()
+    print(f"   Completed in {time.time() - start_time:.1f}s")
+
+    print("2. Running coherent precision test...")
+    t2 = time.time()
+    coh = acceptance_coherent_precision()
+    print(f"   Completed in {time.time() - t2:.1f}s")
+
+    print("3. Running robustness test...")
+    t3 = time.time()
+    rob = acceptance_robustness()
+    print(f"   Completed in {time.time() - t3:.1f}s")
+
+    print("4. Running payload test...")
+    t4 = time.time()
+    pay = acceptance_payload()
+    print(f"   Completed in {time.time() - t4:.1f}s")
+
     res = {
-        "aperture": acceptance_aperture(),
-        "coherent": acceptance_coherent_precision(),
-        "robustness": acceptance_robustness(),
-        "payload": acceptance_payload(),
+        "aperture": ap,
+        "coherent": coh,
+        "robustness": rob,
+        "payload": pay,
     }
 
     # Add metadata

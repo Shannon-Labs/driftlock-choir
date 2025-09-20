@@ -48,6 +48,59 @@ def _oracle_state(nodes: dict[int, ChronometricNode]) -> np.ndarray:
     return np.column_stack((clock_offsets, freq_offsets))
 
 
+def _dense_phase2_config(local_kf: bool, rng_seed: int, results_dir: str) -> Phase2Config:
+    area_size = 350.0
+    density = 0.22
+    comm_range = math.sqrt(density) * area_size / math.sqrt(math.pi)
+    common_kwargs = dict(
+        n_nodes=64,
+        area_size_m=area_size,
+        comm_range_m=comm_range,
+        snr_db=20.0,
+        freq_offset_span_hz=80e3,
+        clock_bias_std_ps=25.0,
+        clock_ppm_std=2.0,
+        handshake_delta_f_hz=100e3,
+        retune_offsets_hz=(1e6,),
+        coarse_enabled=True,
+        coarse_bandwidth_hz=20e6,
+        coarse_duration_s=5e-6,
+        coarse_variance_floor_ps=50.0,
+        max_iterations=2000,
+        timestep_s=0.5e-3,
+        convergence_threshold_ps=90.0,
+        asynchronous=False,
+        rng_seed=rng_seed,
+        save_results=False,
+        plot_results=False,
+        spectral_margin=0.8,
+        epsilon_override=0.02,
+        target_rmse_ps=90.0,
+        target_streak=3,
+        results_dir=results_dir,
+    )
+    if local_kf:
+        return Phase2Config(
+            weighting='metropolis_var',
+            local_kf_enabled=True,
+            local_kf_sigma_T_ps=5.0,
+            local_kf_sigma_f_hz=2.0,
+            local_kf_init_var_T_ps=5.0e3,
+            local_kf_init_var_f_hz=150.0,
+            local_kf_max_abs_ps=30.0,
+            local_kf_max_abs_freq_hz=2000.0,
+            local_kf_clock_gain=0.32,
+            local_kf_freq_gain=0.03,
+            local_kf_iterations=1,
+            **common_kwargs,
+        )
+    return Phase2Config(
+        weighting='metropolis',
+        local_kf_enabled=False,
+        **common_kwargs,
+    )
+
+
 def test_variance_weighted_consensus_converges() -> None:
     rng = np.random.default_rng(2025)
     simulator = ChronometricHandshakeSimulator(
@@ -160,3 +213,18 @@ def test_phase2_local_kf_metrics(tmp_path) -> None:
     if kf_off['clock_ratio'] is not None:
         assert pytest.approx(1.0, abs=1e-6) == kf_off['clock_ratio']
     assert kf_on['clock_improvement_ps'] != kf_off['clock_improvement_ps']
+
+
+def test_dense_kf_vs_baseline(tmp_path) -> None:
+    seed = 5001
+    cfg_on = _dense_phase2_config(True, seed, str(tmp_path / 'dense_kf_on'))
+    sim_on = Phase2Simulation(cfg_on)
+    rmse_on = sim_on.run()['consensus']['timing_rms_ps'][-1]
+
+    cfg_off = _dense_phase2_config(False, seed, str(tmp_path / 'dense_kf_off'))
+    sim_off = Phase2Simulation(cfg_off)
+    rmse_off = sim_off.run()['consensus']['timing_rms_ps'][-1]
+
+    improvement_ps = rmse_off - rmse_on
+    assert rmse_on < rmse_off
+    assert improvement_ps >= 1.0

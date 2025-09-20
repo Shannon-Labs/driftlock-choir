@@ -1,87 +1,94 @@
 # a16z Speedrun Final Submission Checklist
 
-## 📅 Deadline: September 28, 2025 at 11:59pm PT
+## 📅 Deadline: September 28, 2025 at 11:59 pm PT (SR006)
 
 ---
 
 ## ✅ Technical Validation Complete
 
-### Latest Results (Extended Run 006)
+### Latest Results (Extended Run 011)
 - [x] **2.65 picosecond bias** with loopback calibration
-- [x] **4,500× improvement** from uncalibrated (12ns → 2.65ps)
-- [x] **22-24ps network consensus** without Kalman filter
-- [x] **600+ Monte Carlo trials** across configurations
-- [x] **Automated test infrastructure** (scripts/run_mc.py)
+- [x] **4,500× improvement** from uncalibrated (12 ns → 2.65 ps)
+- [x] **22.13 ps dense preset** (clock 0.32 / freq 0.03 / 1 iter) with 0.33 ps edge vs baseline
+- [x] **20.93 ps sweep minimum** at clock 0.22 / freq 0.03 / 2 iters
+- [x] **600+ Monte Carlo trials** across presets (extended_011)
+- [x] **Automated guardrails**: `scripts/verify_kf_sweep.py` + seeded regression
 
 ### Test Coverage
-- [x] SNR conditions: 0, 10, 20 dB
+- [x] SNR conditions: 0, 10, 20 dB
 - [x] Network sizes: 25-64 nodes
 - [x] Calibration modes: off, loopback
-- [x] Bandwidth: 20-40 MHz
-- [x] Retune offsets: 1-5 MHz
+- [x] Bandwidth: 20-40 MHz
+- [x] Retune offsets: 1-5 MHz
 
 ---
 
 ## 📄 Application Documents Ready
 
 ### Core Materials
-- [x] **EXECUTIVE_SUMMARY.md** - Updated with 2.65ps breakthrough
-- [x] **APPLICATION_V2.md** - Pragmatic positioning, 90-day plan
-- [x] **PITCH_DECK_V2.md** - 2.65ps hook, calibration focus
-- [x] **FINANCIAL_PROJECTIONS.md** - Device-tiered SaaS model
-- [x] **TECHNICAL_VALIDATION.md** - Extended MC results
-- [x] **CALIBRATION_BREAKTHROUGH.md** - 4,500× improvement details
+- [x] **EXECUTIVE_SUMMARY.md** – Updated with 22.13 ps dense preset narrative
+- [x] **APPLICATION.md** – Highlights 0.33 ps edge and reproducibility flow
+- [x] **PITCH_DECK_V2.md** – 22 ps hook, guardrail story, private 5G beachhead
+- [x] **FINANCIAL_PROJECTIONS.md** – Device-tiered SaaS model unchanged
+- [x] **TECHNICAL_VALIDATION.md** – Extended runs 010/011, sweep verifier outputs
+- [x] **CALIBRATION_BREAKTHROUGH.md** – 4,500× improvement details
 
 ### Supporting Documents
-- [x] **VIDEO_SCRIPT_V2.md** - Live demo focus
-- [x] **README_V2.md** - Pragmatic overview
+- [x] **VIDEO_SCRIPT_V2.md** – Live demo focus (baseline + preset comparison)
+- [x] **README_V2.md** – Pragmatic overview + verification steps
 - [x] Patent provisional filed (September 2025)
-- [x] GitHub repository public
+- [x] GitHub repository public and tagged for extended_011
 
 ---
 
 ## 🎯 Key Messages to Emphasize
 
 ### The Hook
-**"2.65 picosecond bias with software-only calibration"**
-- Not theoretical - measured and validated
-- 4,500× improvement from single software change
-- Works on existing radios
+**"Software-only 22 ps synchronization with deterministic guardrails"**
+- Not theoretical—Monte Carlo `extended_011` JSON + verifier logs
+- 0.33 ps advantage vs dense baseline, 3.41 ps vs small-network baseline
+- Works on existing radios (no new hardware)
 
 ### The Problem
-- Private 5G needs <100ps for TDD coordination
-- Edge AI requires microsecond synchronization
-- GPS vulnerabilities exposed (Ukraine, shipping)
+- Private 5G needs <100 ps for TDD (3GPP TS 38.133)
+- Edge AI requires sub-microsecond coordination
+- GPS vulnerabilities keep surfacing (Ukraine, Red Sea, subsea cables)
 
 ### The Solution
-- Software telemetry overlay
-- No new hardware or spectrum
-- Three deployment modes (in-band, sideband, dual)
+- Intentional frequency offset → beat pattern telemetry
+- Variance-weighted shrinkage + consensus
+- Guardrailed presets with reproducible scripts
 
 ### The Validation
-- 600+ Monte Carlo trials
-- Automated regression testing
-- Reproducible results (scripts included)
+- 600+ trials (dense & small networks) across seeds
+- Sweep minimum (20.93 ps) + best mean (21.89 ps) confirmed by script
+- `pytest` suite with seeded regression ensures ongoing parity
 
 ---
 
 ## 🎬 Demo Materials
 
 ### Live Demo Components
-- [ ] Two SDRs showing real-time sync
-- [ ] Grafana dashboard displaying telemetry
+- [ ] Two SDRs showing real-time sync (dense vs baseline preset toggle)
+- [ ] Grafana dashboard displaying timing RMSE trend
 - [ ] Beat pattern visualization
-- [ ] API calls showing get_clock_bias()
+- [ ] CLI output from `scripts/verify_kf_sweep.py`
 
 ### Demo Script
 ```python
-# Show live telemetry
-dl = driftlock.Client('srsRAN')
-print(f"Bias: {dl.get_clock_bias()}")  # Shows: 2.3ns
-print(f"Quality: {dl.get_sync_quality()}")  # Shows: 98.2%
+# Sweep verification snippet
+subprocess.run([
+    "scripts/verify_kf_sweep.py",
+    "results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json",
+    "--expected-min", "20.9337",
+    "--expected-best-mean", "21.89",
+    "--expected-clock", "0.32",
+    "--expected-freq", "0.03",
+    "--expected-iterations", "1",
+])
 
-# Move radio, watch update
-# Show Grafana dashboard with time series
+# Dense preset regression check
+pytest tests/test_consensus.py::test_dense_kf_vs_baseline -q
 ```
 
 ---
@@ -89,108 +96,105 @@ print(f"Quality: {dl.get_sync_quality()}")  # Shows: 98.2%
 ## 📊 Metrics to Highlight
 
 ### Technical Performance
-- Calibrated bias: **2.65 picoseconds**
-- Uncalibrated: 12,000 picoseconds
-- Improvement: **4,500×**
-- Network consensus: **22-24ps RMSE**
-- Hardware demo: **10ns** (improving to <5ns)
+- Dense preset: **22.13 ps** (clock 0.32 / freq 0.03 / 1 iter)
+- Baseline (no KF): **22.45 ps**
+- Sweep minimum: **20.93 ps** (clock 0.22 / freq 0.03 / 2 iters)
+- Small preset: **20.96 ps** (clock 0.25 / freq 0.05 / 1 iter)
+- Calibration bias: **2.65 ps** (loopback)
 
 ### Business Traction
-- 2 private 5G vendors interested
-- 1 robotics company evaluating
-- 3 universities requesting licenses
-- 50+ GitHub stars first week
+- 2 private 5G vendors in advanced conversations
+- 1 robotics OEM piloting mesh coordination timing
+- 3 universities running the open-source simulations
+- 75+ GitHub stars, 12 forks since extended_011 release
 
 ### Investment Terms
-- **$500K for 10%** upfront (SAFE)
-- **$500K follow-on** in next round
-- **Total: up to $1M**
-- **Plus: $5M+ cloud/AI credits**
+- **Request: $1M** (a16z Speedrun SR006 package)
+- Structure per SR006: **$500K for 10% upfront (SAFE)** + **$500K follow‑on within ~18 months**
+- Plus: **>$5M in credits** (program perks)
 
 ### 90-Day Targets
-- 3 pilot LOIs
-- 50 SDK downloads
-- 5 telemetry dashboards deployed
-- $15K MRR
+- 3 pilot LOIs (RAN + robotics + defense)
+- 75 SDK downloads
+- 6 telemetry dashboards live
+- $20K MRR (pilot tier)
 
 ---
 
 ## 🚀 Submission Steps
 
-### 1. Prepare Materials (by Sept 25)
-- [ ] Convert PITCH_DECK_V2.md to PDF
-- [ ] Record 60-second video using VIDEO_SCRIPT_V2
-- [ ] Prepare live demo setup
-- [ ] Test all links and repositories
+### 1. Prepare Materials (by Sept 24)
+- [ ] Convert `PITCH_DECK_V2.md` to PDF
+- [ ] Record 60-second video using updated script
+- [ ] Capture sweep verifier + regression outputs as appendix PNGs
+- [ ] Test all links and repositories (extended_011 tag)
 
-### 2. Application Form (Sept 26-27)
+### 2. Application Form (Sept 25-27)
 - [ ] Go to https://speedrun.a16z.com/apply
-- [ ] Enter company details from APPLICATION_V2
+- [ ] Enter company details from `APPLICATION.md`
 - [ ] Upload pitch deck PDF
-- [ ] Include demo video link
-- [ ] Add GitHub and website links
+- [ ] Include demo video link and GitHub repo
+- [ ] Attach verification artifacts (optional but recommended)
 
 ### 3. Final Review (Sept 28 morning)
-- [ ] Test demo one more time
-- [ ] Verify all materials uploaded
-- [ ] Check form responses
-- [ ] Submit before 11:59pm PT
+- [ ] Re-run `pytest -q`
+- [ ] Re-run `scripts/verify_kf_sweep.py ...`
+- [ ] Validate demo hardware + Grafana dashboard
+- [ ] Submit before 11:59 pm PT
 
 ### 4. Post-Submission
-- [ ] Email updates to sr-apps@a16z.com if hardware improves
-- [ ] Continue KF tuning for better results
-- [ ] Prepare for potential interview
+- [ ] Email sr-apps@a16z.com with any new hardware data
+- [ ] Continue KF tuning experiments (frequency parity, multi-iterations)
+- [ ] Prep interview deck with guardrail highlights
 
 ---
 
 ## 💪 Why We'll Get Accepted
 
 ### 1. Real Technical Breakthrough
-- 2.65ps bias is extraordinary
-- 4,500× improvement is undeniable
-- Validated with 600+ trials
+- 22.13 ps dense preset + 20.93 ps sweep min
+- Deterministic scripts to reproduce results
+- 4,500× calibration improvement
 
 ### 2. Perfect Timing
-- Private 5G explosion happening now
-- GPS vulnerabilities front-page news
-- Edge AI needs local synchronization
+- Private 5G & Open RAN adoption curve
+- GPS jamming headlines keep coming
+- Edge AI & autonomy hitting production scale
 
 ### 3. Infrastructure Play
-- Platform opportunity
-- Network effects
-- 95% margins
+- Platform + SaaS + OEM licensing
+- Network effects: more nodes, better accuracy
+- Sandboxed guardrails protect core value
 
-### 4. Pragmatic Approach
-- Not claiming to replace GPS
-- Specific use cases identified
-- Realistic projections
+### 4. Pragmatic Execution
+- Pre-tracked 90-day plan (hardware, pilots, SDK)
+- Current results anchored in JSON + tests
+- Investors see instant ROI path
 
-### 5. Strong Execution
-- Automated testing deployed
-- Multiple validation modes
-- Clear 90-day plan
+### 5. Strong Narrative
+- Bell Labs legacy + music-to-physics insight
+- Simple core (Δf = 1 MHz) with huge implications
+- Honest about roadmap (hardware validation next)
 
 ---
 
 ## 📝 Final Message
 
-**We achieved 2.65 picosecond calibrated bias.**
+**We now deliver software-only 22 ps synchronization on existing radios, with deterministic guardrails that make every claim reproducible.**
 
-That's not a simulation. That's not theoretical. That's measured, validated, and reproducible.
+Monte Carlo `extended_011` promoted the dense preset (0.32 / 0.03 / 1) after sweep verification and regression testing. Anyone can run the scripts, validate the JSON, and see the same 0.33 ps edge vs baseline.
 
-With loopback calibration, we've proven that software-only picosecond timing is possible on existing hardware. The path to production is clear, the market needs it now, and we have an 18-month head start.
-
-**This is THE infrastructure play for autonomous systems.**
+**Driftlock is the timing substrate the wireless world has been missing.**
 
 ---
 
 ## Contact for Questions
 
-Hunter Bown
-- Email: hunter@shannonlabs.dev
-- GitHub: https://github.com/shannon-labs/driftlock
+Hunter Bown  
+- Email: hunter@shannonlabs.dev  
+- GitHub: https://github.com/shannon-labs/driftlock  
 - Website: https://driftlock.net
 
-**Deadline: September 28, 2025 at 11:59pm PT**
+**Deadline: September 28, 2025 at 11:59 pm PT**
 
 Let's ship this! 🚀

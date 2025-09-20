@@ -23,6 +23,8 @@ from utils.io import ensure_directory
 @dataclass
 class SweepResult:
     gain_clock: float
+    gain_freq: float
+    iterations: int
     seed: int
     final_rmse_ps: float
     filtered_clock_rms_ps: float
@@ -63,38 +65,46 @@ def _parse_int_list(text: str) -> List[int]:
 
 def run_sweep(
     gains: Sequence[float],
+    freq_gains: Sequence[float],
+    iterations: Sequence[int],
     seeds: Sequence[int],
     base_config: Phase2Config,
 ) -> List[SweepResult]:
     results: List[SweepResult] = []
-    for gain in gains:
-        for seed in seeds:
-            cfg = Phase2Config(
-                **{
-                    **asdict(base_config),
-                    'rng_seed': seed,
-                    'local_kf_clock_gain': gain,
-                }
-            )
-            # Ensure we never persist artifacts during sweeps unless requested
-            cfg.save_results = base_config.save_results
-            cfg.plot_results = base_config.plot_results
-            sim = Phase2Simulation(cfg)
-            telemetry = sim.run()
-            kf = telemetry['local_kf']
-            consensus = telemetry['consensus']
-            results.append(
-                SweepResult(
-                    gain_clock=gain,
-                    seed=seed,
-                    final_rmse_ps=float(consensus['timing_rms_ps'][-1]),
-                    filtered_clock_rms_ps=float(kf['filtered_clock_rms_ps']),
-                    improvement_ps=float(kf['clock_improvement_ps']),
-                    freq_improvement_hz=float(kf['freq_improvement_hz']),
-                    converged=bool(consensus['converged']),
-                    consensus_iterations=consensus['convergence_iteration'],
-                )
-            )
+    base_dict = asdict(base_config)
+    for gain_clock in gains:
+        for gain_freq in freq_gains:
+            for iters in iterations:
+                for seed in seeds:
+                    cfg_dict = {
+                        **base_dict,
+                        'rng_seed': seed,
+                        'local_kf_clock_gain': gain_clock,
+                        'local_kf_freq_gain': gain_freq,
+                        'local_kf_iterations': iters,
+                    }
+                    cfg = Phase2Config(**cfg_dict)
+                    # Ensure we never persist artifacts during sweeps unless requested
+                    cfg.save_results = base_config.save_results
+                    cfg.plot_results = base_config.plot_results
+                    sim = Phase2Simulation(cfg)
+                    telemetry = sim.run()
+                    kf = telemetry['local_kf']
+                    consensus = telemetry['consensus']
+                    results.append(
+                        SweepResult(
+                            gain_clock=gain_clock,
+                            gain_freq=gain_freq,
+                            iterations=iters,
+                            seed=seed,
+                            final_rmse_ps=float(consensus['timing_rms_ps'][-1]),
+                            filtered_clock_rms_ps=float(kf['filtered_clock_rms_ps']),
+                            improvement_ps=float(kf['clock_improvement_ps']),
+                            freq_improvement_hz=float(kf['freq_improvement_hz']),
+                            converged=bool(consensus['converged']),
+                            consensus_iterations=consensus['convergence_iteration'],
+                        )
+                    )
     return results
 
 
@@ -105,23 +115,29 @@ def summarise(results: Sequence[SweepResult]) -> Dict[str, object]:
     improvements = np.array([res.improvement_ps for res in results], dtype=float)
     best = min(results, key=lambda r: r.final_rmse_ps)
 
-    per_gain: Dict[float, Dict[str, float]] = {}
-    gain_groups: Dict[float, List[SweepResult]] = {}
+    combo_groups: Dict[Tuple[float, float, int], List[SweepResult]] = {}
     for res in results:
-        gain_groups.setdefault(res.gain_clock, []).append(res)
+        key = (res.gain_clock, res.gain_freq, res.iterations)
+        combo_groups.setdefault(key, []).append(res)
 
-    for gain, group in gain_groups.items():
+    combo_stats: List[Dict[str, float]] = []
+    for (gain_clock, gain_freq, iters), group in combo_groups.items():
         rmse_vals = np.array([entry.final_rmse_ps for entry in group], dtype=float)
         imp_vals = np.array([entry.improvement_ps for entry in group], dtype=float)
-        per_gain[gain] = {
-            'mean_rmse_ps': float(np.mean(rmse_vals)),
-            'std_rmse_ps': float(np.std(rmse_vals, ddof=1)) if len(rmse_vals) > 1 else 0.0,
-            'min_rmse_ps': float(np.min(rmse_vals)),
-            'max_rmse_ps': float(np.max(rmse_vals)),
-            'mean_improvement_ps': float(np.mean(imp_vals)),
-        }
+        combo_stats.append(
+            {
+                'gain_clock': float(gain_clock),
+                'gain_freq': float(gain_freq),
+                'iterations': int(iters),
+                'mean_rmse_ps': float(np.mean(rmse_vals)),
+                'std_rmse_ps': float(np.std(rmse_vals, ddof=1)) if len(rmse_vals) > 1 else 0.0,
+                'min_rmse_ps': float(np.min(rmse_vals)),
+                'max_rmse_ps': float(np.max(rmse_vals)),
+                'mean_improvement_ps': float(np.mean(imp_vals)),
+            }
+        )
 
-    best_gain_avg = min(per_gain.items(), key=lambda item: item[1]['mean_rmse_ps'])
+    best_combo_avg = min(combo_stats, key=lambda item: item['mean_rmse_ps']) if combo_stats else None
 
     summary = {
         'n_runs': len(results),
@@ -137,11 +153,8 @@ def summarise(results: Sequence[SweepResult]) -> Dict[str, object]:
             'mean': float(np.mean(improvements)),
         },
         'best': best.to_dict(),
-        'per_gain': per_gain,
-        'best_gain_avg': {
-            'gain': float(best_gain_avg[0]),
-            **best_gain_avg[1],
-        },
+        'combo_stats': combo_stats,
+        'best_combo_avg': best_combo_avg,
     }
     return summary
 
@@ -176,8 +189,8 @@ def build_phase2_config(args: argparse.Namespace) -> Phase2Config:
         local_kf_max_abs_ps=args.local_kf_max_abs_ps,
         local_kf_max_abs_freq_hz=args.local_kf_max_abs_f_hz,
         local_kf_clock_gain=args.gains[0],
-        local_kf_freq_gain=args.local_kf_freq_gain,
-        local_kf_iterations=args.local_kf_iterations,
+        local_kf_freq_gain=args.freq_gains[0],
+        local_kf_iterations=args.iters[0],
         save_results=args.save_results,
         plot_results=args.plot_results,
         retune_offsets_hz=tuple(args.retune_offsets_hz),
@@ -207,6 +220,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument('--local-kf-max-abs-f-hz', type=float, default=2000.0)
     parser.add_argument('--local-kf-freq-gain', type=float, default=0.05)
     parser.add_argument('--local-kf-iterations', type=int, default=1)
+    parser.add_argument('--freq-gains', type=str, default=None, help='Comma-separated frequency gain values (defaults to --local-kf-freq-gain)')
+    parser.add_argument('--iters', type=str, default=None, help='Comma-separated iteration counts (defaults to --local-kf-iterations)')
     parser.add_argument('--gains', type=str, required=True, help='Comma-separated clock gain values to evaluate')
     parser.add_argument('--seeds', type=str, required=True, help='Comma-separated RNG seeds to evaluate')
     parser.add_argument('--output-dir', type=str, default='results/kf_sweeps')
@@ -228,6 +243,18 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     args.retune_offsets_hz = _parse_float_list(args.retune_offsets_hz)
     if not args.retune_offsets_hz:
         args.retune_offsets_hz = [1e6]
+    if args.freq_gains is not None:
+        args.freq_gains = _parse_float_list(args.freq_gains)
+    else:
+        args.freq_gains = [args.local_kf_freq_gain]
+    if not args.freq_gains:
+        args.freq_gains = [args.local_kf_freq_gain]
+    if args.iters is not None:
+        args.iters = _parse_int_list(args.iters)
+    else:
+        args.iters = [args.local_kf_iterations]
+    if not args.iters:
+        args.iters = [args.local_kf_iterations]
     return args
 
 
@@ -259,7 +286,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
     base_cfg = build_phase2_config(args)
 
-    results = run_sweep(args.gains, args.seeds, base_cfg)
+    results = run_sweep(args.gains, args.freq_gains, args.iters, args.seeds, base_cfg)
     summary = summarise(results)
     baseline = maybe_run_baseline(args, base_cfg)
     if baseline is not None:
@@ -267,22 +294,34 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     print('=== Phase 2 KF Sweep ===')
     print(f"Config: nodes={base_cfg.n_nodes} area={base_cfg.area_size_m}m density={args.density}" )
-    print(f"Gains tested: {sorted(args.gains)} (freq gain {base_cfg.local_kf_freq_gain})")
+    print(f"Clock gains: {sorted(args.gains)}")
+    print(f"Freq gains: {sorted(args.freq_gains)} | Iterations: {sorted(args.iters)}")
     print(f"Seeds: {sorted(args.seeds)}")
     print('---')
     print(f"RMSE ps -> min {summary['rmse_ps']['min']:.3f} | mean {summary['rmse_ps']['mean']:.3f} | std {summary['rmse_ps']['std']:.3f}")
     if baseline is not None:
         print(f"Baseline (KF off) rmse: {baseline['final_rmse_ps']:.3f} ps")
     best = summary['best']
-    print(f"Best gain {best['gain_clock']:.3f} (seed {best['seed']}) -> {best['final_rmse_ps']:.3f} ps")
-    best_avg = summary['best_gain_avg']
     print(
-        "Best mean gain {gain:.3f} -> mean {mean:.3f} ps (std {std:.3f})".format(
-            gain=best_avg['gain'],
-            mean=best_avg['mean_rmse_ps'],
-            std=best_avg['std_rmse_ps'],
+        "Best single run: clock {gc:.3f} freq {gf:.3f} iters {it:d} (seed {seed}) -> {rmse:.3f} ps".format(
+            gc=best['gain_clock'],
+            gf=best['gain_freq'],
+            it=best['iterations'],
+            seed=best['seed'],
+            rmse=best['final_rmse_ps'],
         )
     )
+    best_avg = summary['best_combo_avg']
+    if best_avg is not None:
+        print(
+            "Best mean combo: clock {gc:.3f} freq {gf:.3f} iters {it:d} -> {mean:.3f} ps (std {std:.3f})".format(
+                gc=best_avg['gain_clock'],
+                gf=best_avg['gain_freq'],
+                it=best_avg['iterations'],
+                mean=best_avg['mean_rmse_ps'],
+                std=best_avg['std_rmse_ps'],
+            )
+        )
 
     if args.write_json:
         out_root = Path(ensure_directory(args.output_dir))
@@ -292,6 +331,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             'config': {
                 'base': asdict(base_cfg),
                 'gains': list(args.gains),
+                'freq_gains': list(args.freq_gains),
+                'iterations': list(args.iters),
                 'seeds': list(args.seeds),
             },
             'summary': summary,

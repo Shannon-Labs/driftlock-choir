@@ -11,7 +11,7 @@ import yaml
 from driftlock_sim.dsp.tx_comb import generate_comb
 from driftlock_sim.dsp.channel_models import tapped_delay_channel, awgn
 from driftlock_sim.dsp.impairments import apply_cfo, apply_phase_noise, apply_sco, rapp_soft_clip, aperture_branch
-from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay
+from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay, per_tone_snr, estimate_noise_power
 from driftlock_sim.dsp.rx_aperture import envelope_spectrum, detect_df_peak
 from driftlock_sim.dsp.metrics import papr_db
 from driftlock_sim.dsp.crlb import delay_crlb_std
@@ -60,7 +60,7 @@ def main() -> None:
                 for df in df_list:
                     for beff in beff_list:
                         rng = np.random.default_rng(base_seed + int(snr) + m + int(df) + int(beff))
-                        x, fk, _ = generate_comb(
+                        x, fk, _, meta = generate_comb(
                             fs=fs,
                             duration=dur,
                             df=df,
@@ -69,17 +69,20 @@ def main() -> None:
                             amp_mode=str(txc.get("amplitudes", "equal")),
                             phase_mode=str(txc.get("phase_schedule", "newman")),
                             rng=rng,
+                            return_payload=True,
                         )
                         # Scale fk to desired Beff by spacing adjustment if needed
+                        tx_phases = meta.get("phases")
                         if len(fk) > 1:
                             scale = beff / (np.max(fk) - np.min(fk))
                             fk_scaled = fk * scale
-                            # Re-synthesize quickly by re-mixing
+                            # Re-synthesize quickly by re-mixing with zero phases
                             n = len(x)
                             t = np.arange(n) / fs
                             x = np.sum(np.exp(1j * (2 * np.pi * fk_scaled[:, None] * t)), axis=0)
                             x /= np.sqrt(np.mean(np.abs(x) ** 2) + 1e-12)
                             fk = fk_scaled
+                            tx_phases = np.zeros_like(fk)
 
                         x = apply_cfo(x, fs, float(ch.get("cfo_hz", 0.0)))
                         x = apply_sco(x, float(ch.get("sco_ppm", 0.0)))
@@ -90,8 +93,12 @@ def main() -> None:
                         x = awgn(x, snr, rng)
 
                         Yk = estimate_tone_phasors(x, fs, fk)
-                        phu = unwrap_phase(np.angle(Yk))
-                        tau_hat, ci95 = wls_delay(fk, phu, np.ones_like(fk))
+                        if tx_phases is not None:
+                            Yk = Yk * np.exp(-1j * tx_phases)
+                        phu = unwrap_phase(np.angle(Yk), fk)
+                        noise_var = estimate_noise_power(x, fs, fk, Yk)
+                        snr_w = per_tone_snr(Yk, noise_var, len(x))
+                        tau_hat, ci95 = wls_delay(fk, phu, snr_w)
                         f_env, E_env = envelope_spectrum(x, fs)
                         _, env_snr = detect_df_peak(f_env, E_env, df)
                         crlb = delay_crlb_std(beff, 10 ** (snr / 10.0))

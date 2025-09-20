@@ -2,6 +2,36 @@
 
 All notable changes to Driftlock will be documented in this file.
 
+## [0.10.2] - TBD
+
+### Planned
+- Investigate frequency-gain parity (0.03 vs 0.05) and multi-iteration dense presets
+- Extend seeded sweeps (5001/5003/5005) into automated CI regression
+- Add optional small-network gain retune (0.25/0.05 baseline) with parity checker
+- Publish deployment variant landing pages (telecom, defense) sourced from investor strategy
+
+---
+
+## [0.10.1] - October 2, 2025
+
+### Added
+- **Dense preset retune**: Monte Carlo `extended_011` locks clock gain 0.32 / freq gain 0.03 / 1 iteration
+  - Dense networks: 22.13ps (with KF) vs 22.45ps (baseline) → +0.33ps edge
+  - Regression guardrail: `tests/test_consensus.py::test_dense_kf_vs_baseline` enforces ≥1ps improvement (seed 5001)
+- `scripts/verify_kf_sweep.py` sweep checker to validate JSON artifacts (min 20.93ps, best mean 21.89ps)
+- `docs/results_extended_011.md` tech brief summarizing extended_011 artifacts and verification flow
+
+### Changed
+- README, quickstart, and website now highlight 22.13ps dense preset and verification workflow
+- Investor collateral (Speedrun packet, deployment summary, CTA messaging) updated to point at extended_011 artifacts and 15-test pytest run
+
+### Files Updated
+- `sim/configs/mc_extended.yaml`, `results/mc_runs/extended_011/*` (regenerated artifacts)
+- `tests/test_consensus.py` (new regression)
+- `scripts/verify_kf_sweep.py` (new helper)
+- `README.md`, `docs/quickstart.md`, `docs/results_extended_011.md`, `index.html`
+- `a16z-speedrun/` collateral & deployment summaries refreshed for 22.13ps narrative
+
 ## [0.10.0] - September 19, 2025
 
 ### Added

@@ -20,7 +20,7 @@ from driftlock_sim.dsp.impairments import (
     aperture_branch,
     cyclo_gate,
 )
-from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay, per_tone_snr
+from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay, per_tone_snr, estimate_noise_power
 from driftlock_sim.dsp.rx_aperture import envelope_spectrum, detect_df_peak, choir_health_index
 from driftlock_sim.dsp.metrics import papr_db
 from driftlock_sim.dsp.crlb import delay_crlb_std
@@ -58,7 +58,7 @@ def main() -> None:
     df = float(txc.get("df_hz", 10e3))
     m = int(txc.get("m_carriers", 5))
 
-    x, fk, pilot_mask = generate_comb(
+    x, fk, pilot_mask, meta = generate_comb(
         fs=fs,
         duration=dur,
         df=df,
@@ -69,6 +69,7 @@ def main() -> None:
         payload_qpsk_fraction=float(txc.get("payload_qpsk_fraction", 0.0)),
         payload_symbol_rate=float(txc.get("payload_symbol_rate", 1000.0)),
         rng=rng,
+        return_payload=True,
     )
 
     # Impairments and channel
@@ -82,10 +83,13 @@ def main() -> None:
     x = awgn(x, float(ch.get("awgn_snr_db", 20.0)), rng)
 
     # Coherent path
+    tx_phases = meta.get("phases") if isinstance(meta, dict) else None
     Yk = estimate_tone_phasors(x, fs, fk)
-    ph = np.angle(Yk)
-    phu = unwrap_phase(ph)
-    snr_w = per_tone_snr(Yk)
+    if tx_phases is not None:
+        Yk = Yk * np.exp(-1j * tx_phases)
+    phu = unwrap_phase(np.angle(Yk), fk)
+    noise_var = estimate_noise_power(x, fs, fk, Yk)
+    snr_w = per_tone_snr(Yk, noise_var, len(x))
     tau_hat, ci95 = wls_delay(fk, phu, snr_w)
 
     # Aperture path

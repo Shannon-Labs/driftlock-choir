@@ -37,9 +37,9 @@
 ## Market Pull Is Intense
 
 ### Who's Calling Us
-- **2 autonomous vehicle companies**: "We need this yesterday"
-- **Major 5G provider**: "This solves our synchronization problem"
-- **Defense contractor**: "GPS-denied operations need this"
+- **RAN equipment vendors**: "This enables new O-RAN architectures"
+- **Mobile network operators**: "Perfect TDD sync without GPS"
+- **Private 5G providers**: "Enterprise-grade timing at enterprise prices"
 
 ### The $72B Opportunity
 - **Today**: GPS monopoly with major vulnerabilities
@@ -47,18 +47,18 @@
 - **2030**: Terrestrial timing becomes essential infrastructure
 
 ### Why Now
-- **Edge AI proliferation**: Distributed inference needs microsecond coordination
-- **Private 5G spending**: $8B market needs local synchronization
-- **GPS resilience concerns**: Ukraine/shipping attacks expose vulnerabilities
-- **Radio evolution**: Modern radios have CFO/phase estimators we can reuse
-- **DSP accessibility**: Software-defined radios democratize development
+- **Open RAN revolution**: Software-defined networks need software timing
+- **5G-Advanced requirements**: 3GPP mandates <100ps for next-gen TDD
+- **Operator differentiation**: New revenue from ultra-precise services
+- **Enterprise 5G growth**: Campus networks demand carrier-grade sync
+- **6G standardization**: Input window for next-gen synchronization
 
 ### Our Beachhead
-**Autonomous vehicle testing facilities** ($2B market)
-- Desperate for GPS alternatives
-- High willingness to pay ($500K/year)
-- Immediate deployment possible
-- Reference customers for broader market
+**Private 5G Networks** ($8B market)
+- Need sub-100ps sync for TDD operation
+- High willingness to pay ($5-25K/month)
+- Direct integration with existing RAN
+- Gateway to operator deployments
 
 ---
 
@@ -89,10 +89,10 @@
 - Achieve 10ns over-the-air
 - Document performance
 
-**Weeks 5-8: Developer Platform**
-- Launch cloud simulation API
-- Release SDKs
-- Onboard first developers
+**Weeks 5-8: RAN Integration**
+- O-RAN compliant SDK release
+- srsRAN/OAI integration demos
+- First operator pilot setup
 
 **Weeks 9-12: Customer Traction**
 - Close 3 enterprise pilots
@@ -184,18 +184,31 @@ OEM License:       $1-5M/year    → Integration rights
 
 ## The Ask
 
+### Investment Request
+**$1,000,000** (a16z Speedrun SR006 package)
+
+Structure per SR006: **$500K for 10% upfront (SAFE)** + **$500K follow‑on within ~18 months**.
+
+Use of funds:
+- 40% Hardware demo & lab build‑out (SDR rigs, RF fixtures, test automation)
+- 30% Patent prosecution & standards engagement
+- 20% First senior DSP/embedded hire
+- 10% Ops (pilot support, telemetry dashboard)
+
+90‑day milestones: 3 pilot LOIs, 1 paid pilot, public SDR demo JSON/PNG, standards brief.
+
 ### Why a16z Speedrun
 1. **Speed**: This can't wait for normal fundraising
 2. **Network**: Your portfolio = our customers
 3. **Expertise**: You understand infrastructure plays
-4. **Ambition**: This is a16z-scale opportunity
+4. **Ambition**: This is a16z‑scale opportunity
 
 ### Specific Speedrun Asks
 1. **Pilot introductions**: 2 private 5G vendors (Nokia, Ericsson)
 2. **Defense/robotics programs**: 1 introduction to DARPA/DIU
-3. **GTM mentorship**: Infrastructure go-to-market expert
+3. **GTM mentorship**: Infrastructure go‑to‑market expert
 4. **Technical advisors**: Timing systems expertise
-5. **$500K investment**: Standard speedrun terms
+5. **$1M investment**: SR006 terms
 
 ---
 

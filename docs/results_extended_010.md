@@ -1,5 +1,7 @@
 # Monte Carlo Summary (extended_010)
 
+> **Heads-up:** extended_011 supersedes this run with the tuned dense preset (clock 0.32 / freq 0.03 / 1 iter → 22.13 ps). See `docs/results_extended_011.md` for the latest artifacts and guardrail workflow.
+
 ## Major Improvement: Variance-Weighted Local Pre-Filter
 
 This run introduces a **shrinkage-based local Kalman pre-filter** that finally beats the baseline consensus. The new variance-weighted smoother in `_run_local_kf()` properly handles per-edge measurements, achieving:
@@ -68,6 +70,26 @@ phase2:
       nodes: 25
       local_kf: off
 ```
+
+## Gain Sweep Highlights
+
+After this run, we swept the shrinkage gains (clock + frequency) and iteration
+count to see how close we are to the physics limit. Use
+`scripts/sweep_phase2_kf.py` (artifacts under `results/kf_sweeps/`).
+
+- **Dense (64 nodes, density 0.22)** — clock gains 0.18–0.32, freq gains
+  0.03–0.07, iterations 1–2, seeds {4040, 4141, 4242}. Minimum RMSE reached
+  **20.93 ps** at clock 0.22, freq 0.03, iterations 2 (seed 4040). The best
+  mean combo is clock 0.32, freq 0.03, iterations 1 with **21.89 ± 0.75 ps**—
+  still ~1.07 ps under the 22.96 ps no-KF baseline.
+- **Small (25 nodes, density 0.30)** — clock gains 0.18–0.34, freq gains
+  0.03–0.07, iterations 1–2, seeds {1101, 1201, 1337}. Minimum RMSE hits
+  **18.69 ps** at clock 0.18, freq 0.03, iteration 1 (seed 1101), essentially
+  matching the 18.70 ps baseline; best mean (clock 0.26, freq 0.03, iteration 1)
+  lands at **20.29 ± 1.02 ps**.
+
+Each sweep emits a `kf_sweep_summary.json` with per-combo statistics and
+baseline comparisons for downstream analysis.
 
 ## Next Steps
 

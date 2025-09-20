@@ -11,7 +11,7 @@ from matplotlib.animation import FFMpegWriter
 from driftlock_sim.dsp.tx_comb import generate_comb
 from driftlock_sim.dsp.channel_models import tapped_delay_channel, awgn
 from driftlock_sim.dsp.impairments import apply_cfo, apply_phase_noise, apply_sco, rapp_soft_clip, aperture_branch
-from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay
+from driftlock_sim.dsp.rx_coherent import estimate_tone_phasors, unwrap_phase, wls_delay, per_tone_snr, estimate_noise_power
 from driftlock_sim.dsp.rx_aperture import envelope_spectrum
 
 
@@ -41,7 +41,7 @@ def main() -> None:
     m = int(txc.get("m_carriers", 5))
 
     # Precompute signal
-    x, fk, _ = generate_comb(
+    x, fk, _, meta = generate_comb(
         fs=fs,
         duration=dur,
         df=df,
@@ -52,6 +52,7 @@ def main() -> None:
         payload_qpsk_fraction=float(txc.get("payload_qpsk_fraction", 0.0)),
         payload_symbol_rate=float(txc.get("payload_symbol_rate", 1000.0)),
         rng=rng,
+        return_payload=True,
     )
 
     x = apply_cfo(x, fs, float(ch.get("cfo_hz", 0.0)))
@@ -61,6 +62,8 @@ def main() -> None:
     x = rapp_soft_clip(x, p=float(ch.get("rapp_p", 2.0)), sat=float(ch.get("rapp_sat", 1.5)))
     x = aperture_branch(x, alpha=float(ch.get("aperture_alpha", 2.0)), mix=float(ch.get("aperture_mix", 0.0)))
     x = awgn(x, float(ch.get("awgn_snr_db", 20.0)), rng)
+
+    tx_phases = meta.get("phases") if isinstance(meta, dict) else None
 
     # Prepare movie layout
     fig = plt.figure(figsize=(12, 6))
@@ -109,7 +112,12 @@ def main() -> None:
             # Jitter SNR slightly per frame to keep visuals dynamic
             xi = x + np.random.default_rng(i).normal(scale=0.01, size=x.shape)
             Yk = estimate_tone_phasors(xi, fs, fk)
-            tau_hat, _ = wls_delay(fk, np.unwrap(np.angle(Yk)), np.ones_like(fk))
+            if tx_phases is not None:
+                Yk = Yk * np.exp(-1j * tx_phases)
+            phu = unwrap_phase(np.angle(Yk), fk)
+            noise_var = estimate_noise_power(xi, fs, fk, Yk)
+            snr_w = per_tone_snr(Yk, noise_var, len(xi))
+            tau_hat, _ = wls_delay(fk, phu, snr_w)
             # Update tau plot
             xs = np.arange(i+1)
             ys = np.full(i+1, np.nan)

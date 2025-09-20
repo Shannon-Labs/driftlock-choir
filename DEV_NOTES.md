@@ -23,7 +23,21 @@
 - Replaced the Phase 2 local Kalman helper with a variance-weighted shrinkage
   smoother (config knobs: `local_kf_clock_gain`, `local_kf_freq_gain`,
   `local_kf_iterations`). Default gain 0.18 keeps the filter gentle, while the
-  Monte Carlo preset bumps it to 0.25 to reach ~22.08 ps (dense) and 20.96 ps
-  (small network).
-- Regenerated Monte Carlo artifacts under `results/mc_runs/extended_010/` and
-  documented the run in `docs/results_extended_010.md` (bar plot refreshed).
+  dense Monte Carlo preset now locks to clock 0.32 / freq 0.03 / one pass based
+  on the sweep best-mean combo (small-network preset stays at 0.25 / 0.05).
+- Regenerated Monte Carlo artifacts under `results/mc_runs/extended_011/` and
+  documented the run in `docs/results_extended_011.md`; dense KF now lands at
+  22.13 ps vs 22.45 ps baseline (Δ ≈ 0.33 ps) while the small network remains
+  20.96 vs 24.38 ps.
+- Added `scripts/sweep_phase2_kf.py` to scan shrinkage gains/seeds; dense and
+  small network sweeps live under `results/kf_sweeps/` with per-gain stats and
+  baseline comparisons. Latest combo scan (clock vs. freq gain, 1–2 passes)
+  pushes the dense preset down to 20.93 ps (clock 0.22, freq 0.03, 2 iters) and
+  finds a best-mean combo at 21.89 ± 0.75 ps; the small-net scan bottoms out at
+  18.69 ps, roughly matching the 18.70 ps baseline.
+- Added `scripts/verify_kf_sweep.py` plus
+  `tests/test_consensus.py::test_dense_kf_vs_baseline`; the regression pins RNG
+  seed 5001 and asserts ≥1 ps improvement for the dense preset, keeping the
+  sweep-backed shrinkage gains reproducible.
+- `scripts/run_verification_checks.sh` bundles the regression and sweep verifier
+  for pre-commit/CI hooks (callable via `scripts/run_verification_checks.sh`).

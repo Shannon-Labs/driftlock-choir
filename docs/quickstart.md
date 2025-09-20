@@ -153,9 +153,32 @@ python scripts/run_mc.py all -c sim/configs/mc_extended.yaml -o results/mc_runs 
 The YAML file lists Phase 1 alias-map jobs (with hardware delays + calibration modes) and Phase 2 consensus presets. Each job writes its own subdirectory and the tool stitches together `final_results.json` plus a human-readable `simulation_report.txt` summarizing bias reductions and consensus convergence.
 
 With the new shrinkage-based local pre-filter, the dense 64-node preset now
-lands at **22.08 ps** (vs. 22.45 ps without the pre-filter) and the 25-node
+lands at **22.13 ps** (vs. 22.45 ps without the pre-filter) and the 25-node
 topology drops to **20.96 ps**. Full telemetry lives under
 `results/mc_runs/<run_id>/phase2/*/phase2_results.json`.
+
+Want to probe optimal gains? Run the sweep helper, then validate the JSON via
+`scripts/verify_kf_sweep.py` to confirm the best-mean combo sticks to 0.32 / 0.03 / 1 iteration.
+
+Regression guardrails now live in `tests/test_consensus.py::test_dense_kf_vs_baseline`; run it standalone to make sure the tuned preset keeps ≥1 ps over the baseline (or execute `scripts/run_verification_checks.sh` to run both the regression and sweep verifier in one command):
+
+```bash
+pytest tests/test_consensus.py::test_dense_kf_vs_baseline -q
+# or
+scripts/run_verification_checks.sh
+```
+
+Then iterate with the sweep helper:
+
+```bash
+python scripts/sweep_phase2_kf.py --nodes 64 --density 0.22 \
+  --gains 0.18,0.22,0.25,0.28,0.32 --freq-gains 0.03,0.05,0.07 \
+  --iters 1,2 --seeds 4040,4141,4242 --epsilon 0.02 --timestep-ms 0.5 \
+  --write-json --output-dir results/kf_sweeps --run-id dense_combo_scan --baseline
+```
+
+This emits `kf_sweep_summary.json` files summarising per-gain RMSE and baseline
+comparisons so you can keep pushing the front-end toward the physics limit.
 
 Want a quick smoke test instead? Use the lightweight wrapper:
 
