@@ -267,4 +267,4 @@ Every robot, drone, vehicle, and smart device needs to know precisely when thing
 
 ---
 
-Contact: hunter@shannonlabs.dev | https://driftlock.net
+Contact: hunter@shannonlabs.dev | https://driftlock choir.net

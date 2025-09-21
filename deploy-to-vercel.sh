@@ -39,7 +39,7 @@ echo "════════════════════════�
 echo "✅ Deployment complete!"
 echo ""
 echo "Next steps:"
-echo "1. Check deployment at: https://driftlock.vercel.app"
+echo "1. Check deployment at: https://driftlock choir.vercel.app"
 echo "2. Submit a16z application by Oct 15"
 echo "3. Prepare demo for investor meetings"
 echo ""

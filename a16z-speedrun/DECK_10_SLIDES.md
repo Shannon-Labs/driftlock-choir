@@ -35,10 +35,10 @@ Shannon Labs, Inc.
 # Start with 3 Radios. End with Everything Synchronized.
 
 ```python
-import driftlock
+import driftlock choir
 
 # Simple integration
-dl = driftlock.Client(radio='srsRAN')
+dl = driftlock choir.Client(radio='srsRAN')
 bias = dl.get_clock_bias()      # Returns: 2.3ns
 quality = dl.get_sync_quality()  # Returns: 98.2%
 offset = dl.get_time_offset()    # Returns: TimeDelta
@@ -211,4 +211,4 @@ Enterprise:  Custom     (unlimited + SLA)
 - Enterprise sales
 - Patent strategy
 
-**hunter@shannonlabs.dev | github.com/shannon-labs/driftlock**
+**hunter@shannonlabs.dev | github.com/shannon-labs/driftlock choir**

@@ -1,0 +1,93 @@
+# Default configuration for DriftLock simulations, extended for GNSS/PTP baseline emulation
+
+# Network Parameters
+network:
+  n_nodes: 50
+  area_size: 1000.0  # meters
+  comm_range: 200.0  # meters
+  topology_type: "rgg"  # random geometric graph
+  connectivity_prob: 0.3
+
+# Physical Layer Parameters
+physical:
+  carrier_freq: 2.4e9  # Hz
+  sample_rate: 1.0e6   # Hz
+  bandwidth: 1.0e6     # Hz
+  snr_db: 15.0
+
+# Oscillator Parameters (higher variances for legacy emulation)
+oscillator:
+  allan_dev_1s: 1.0e-6     # Allan deviation at 1 second (increased for GNSS/PTP)
+  drift_rate: 1.0e-6       # Linear frequency drift rate (Hz/s, increased)
+  flicker_corner: 1000.0   # Flicker noise corner frequency (Hz)
+  white_noise_level: 1.0e-12  # White noise floor level
+
+# Hardware Parameters (degraded specs for legacy)
+hardware:
+  adc_bits: 8
+  enob: 7.5
+  aperture_jitter: 5.0e-12  # seconds (increased)
+  iq_imbalance_db: 0.5
+  phase_imbalance_deg: 3.0
+  dc_offset: 0.05
+
+# Noise Parameters (higher noise floors)
+noise:
+  snr_db: 10.0
+  phase_noise_psd: -70.0  # dBc/Hz (worse)
+  jitter_rms: 5.0e-12     # seconds (increased)
+
+# Channel Parameters
+channel:
+  k_factor: 10.0          # Rician K-factor (dB)
+  doppler_freq: 100.0     # Maximum Doppler frequency (Hz)
+  delay_spread: 1.0e-6    # RMS delay spread (s)
+  path_loss_exp: 2.0      # Path loss exponent
+
+# Algorithm Parameters (reduced consensus effectiveness)
+algorithms:
+  estimation_method: "ml"  # Maximum likelihood
+  consensus_type: "vanilla"  # Simpler consensus for baseline
+  max_iterations: 1000
+  tolerance: 1.0e-6
+  step_size: 0.001
+
+# Simulation Parameters
+simulation:
+  duration: 10.0          # seconds
+  n_monte_carlo: 100
+  save_results: true
+  plot_results: true
+  results_dir: "results"
+
+# MAC Layer Parameters
+mac:
+  beacon_interval: 1.0     # seconds
+  response_timeout: 0.1    # seconds
+  backoff_min: 0.001      # seconds
+  backoff_max: 0.01       # seconds
+  packet_error_rate: 0.01
+  max_queue_size: 100
+
+# Mobility Parameters (for Phase 3)
+mobility:
+  enabled: false
+  model: "random_walk"     # or "linear", "circular"
+  speed: 1.0              # m/s
+  update_interval: 0.1    # seconds
+
+# Measurement Ranges for Sweeps
+ranges:
+  snr_db: [-10, 30, 2]    # [min, max, step]
+  bandwidth: [1.0e5, 1.0e7, "log"]  # [min, max, "log" or step]
+  duration: [1.0e-4, 1.0e-2, "log"]
+  network_size: [10, 100, 10]
+  allan_dev: [1.0e-11, 1.0e-7, "log"]
+  drift_rate: [1.0e-10, 1.0e-6, "log"]
+
+# Output Configuration
+output:
+  save_intermediate: false
+  compression: "gzip"
+  precision: 6
+  include_metadata: true

@@ -284,7 +284,7 @@ Your portfolio companies need this technology TODAY
 **Three generations to change the world twice**
 
 📧 hunter@shannonlabs.dev
-🌐 https://driftlock.net
-💻 https://github.com/shannon-labs/driftlock
+🌐 https://driftlock choir.net
+💻 https://github.com/shannon-labs/driftlock choir
 
 **Ready to build the timing infrastructure for the next century?**

@@ -10,7 +10,7 @@
 - **Founder**: Hunter Bown (Solo Technical Founder)
 - **Stage**: Pre-seed, Patent Pending
 - **Contact**: hunter@shannonlabs.dev
-- **GitHub**: https://github.com/shannon-labs/driftlock
+- **GitHub**: https://github.com/shannon-labs/driftlock choir
 - **Demo**: Run `python experiment/run_demo.py` for instant results
 
 ---
@@ -156,8 +156,8 @@ Enterprise:    Custom      (unlimited + SLA)
 
 ### GitHub Repository
 ```bash
-git clone https://github.com/shannon-labs/driftlock
-cd driftlock/experiment
+git clone https://github.com/shannon-labs/driftlock choir
+cd driftlock choir/experiment
 python run_demo.py  # Single command
 # Outputs: timing.npy + beat_pattern.png
 ```
@@ -182,7 +182,7 @@ Available for in-person demonstration at a16z offices
 Hunter Bown
 - Email: hunter@shannonlabs.dev
 - Phone: [Available on request]
-- GitHub: https://github.com/shannon-labs/driftlock
+- GitHub: https://github.com/shannon-labs/driftlock choir
 - Location: [Willing to relocate to SF]
 
 **Ready to turn beat patterns into the timing layer for everything.**

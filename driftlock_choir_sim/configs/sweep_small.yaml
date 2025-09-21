@@ -1,0 +1,31 @@
+seed: 2025
+sample_rate_hz: 5.0e6
+duration_s: 0.020
+
+sweep:
+  snr_db: [-5, 0, 10, 20, 30, 40]
+  m_carriers: [3, 5, 9]
+  df_hz: [1000.0, 10000.0]
+  beff_mhz: [5, 10, 20]
+
+tx:
+  omit_fundamental: true
+  amplitudes: equal
+  phase_schedule: newman
+
+channel:
+  taps: [ { delay_s: 0.0e-6, gain: 1.0 } ]
+  cfo_hz: 0.0
+  sco_ppm: 0.0
+  phase_noise_rad2: 0.0
+  rapp_p: 2.0
+  rapp_sat: 1.5
+  aperture_alpha: 2.0
+  aperture_mix: 0.2
+
+truth:
+  tau_s: 80e-12
+
+output:
+  dir: driftlock_choir_sim/outputs
+  run_id: sweep_small

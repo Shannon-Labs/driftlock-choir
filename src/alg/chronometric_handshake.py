@@ -155,6 +155,8 @@ class ChronometricHandshakeConfig:
     loopback_cal_noise_ps: float = 10.0
     mac: Optional[MacSlots] = None
     channel_model: Optional[TappedDelayLine] = None
+    use_phase_slope_fit: bool = True  # Use phase slope for multi-carrier tau estimation
+    use_theoretical_variance: bool = False  # Use theoretical phase variance for covariance
 
 
 @dataclass
@@ -337,6 +339,7 @@ class ChronometricHandshakeSimulator:
         tau_hint = tau_coarse if tau_coarse is not None else tau_true
         hardware_delay = self._hardware_delay(tx.node_id, rx.node_id)
 
+        # Base (primary) carrier
         (
             base_measurement,
             base_trace,
@@ -344,6 +347,8 @@ class ChronometricHandshakeSimulator:
             base_len_adc,
             base_decimation,
             base_phase_bias,
+            base_intercept,
+            base_theoretical_var,
         ) = self._single_carrier_measurement(
             tx=tx,
             rx=rx,
@@ -356,9 +361,17 @@ class ChronometricHandshakeSimulator:
         )
 
         carrier_frequencies = [tx.carrier_freq_hz]
+        intercepts = [base_intercept]
         raw_candidates = [(tx.carrier_freq_hz, base_raw_tau)]
         traces: Optional[HandshakeTrace] = base_trace
+        all_covariances = [base_measurement.covariance]
+        all_delta_f_est = [base_measurement.delta_f_est_hz]
+        all_residual_rms = [base_measurement.residual_phase_rms]
+        all_theoretical_vars: List[float] = []
+        if base_theoretical_var is not None:
+            all_theoretical_vars.append(base_theoretical_var)
 
+        # Multi-carrier retunes (comb tones)
         for offset in retune_offsets_hz:
             if np.isclose(offset, 0.0):
                 continue
@@ -371,6 +384,8 @@ class ChronometricHandshakeSimulator:
                 _,
                 _,
                 _,
+                intercept,
+                theoretical_var,
             ) = self._single_carrier_measurement(
                 tx=retuned_tx,
                 rx=retuned_rx,
@@ -382,17 +397,70 @@ class ChronometricHandshakeSimulator:
                 capture_trace=False,
             )
             carrier_frequencies.append(retuned_tx.carrier_freq_hz)
+            intercepts.append(intercept)
             raw_candidates.append((retuned_tx.carrier_freq_hz, raw_tau))
+            all_covariances.append(measurement.covariance)
+            all_delta_f_est.append(measurement.delta_f_est_hz)
+            all_residual_rms.append(measurement.residual_phase_rms)
+            if theoretical_var is not None:
+                all_theoretical_vars.append(theoretical_var)
 
+        # Coarse correction for primary if available
         if tau_coarse is not None and raw_candidates:
             primary_freq, primary_raw = raw_candidates[0]
             correction_cycles = np.round((tau_hint - primary_raw) * primary_freq)
             tau_hint = primary_raw + correction_cycles / max(primary_freq, 1.0)
 
-        tau_est_final, tau_unwrapped_candidates = self._unwrap_candidates(
-            raw_candidates,
-            tau_hint,
+        # Multi-carrier estimation: phase slope fit if multiple carriers
+        num_carriers = len(carrier_frequencies)
+        use_phase_slope = (
+            hasattr(self.cfg, 'use_phase_slope_fit') and self.cfg.use_phase_slope_fit and num_carriers > 1
         )
+        if use_phase_slope and num_carriers > 1:
+            # Fit intercept_k = theta - 2 pi f_k tau + noise
+            # Linear: intercept ~ f, slope = -2 pi tau
+            f_arr = np.array(carrier_frequencies, dtype=float)
+            intercept_arr = np.array(intercepts, dtype=float)
+            A_slope = np.vstack([f_arr, np.ones_like(f_arr)]).T
+            slope, theta_est = np.linalg.lstsq(A_slope, intercept_arr, rcond=None)[0]
+            tau_est_from_slope = -slope / (2.0 * np.pi)
+
+            # Variance of slope: assume independent intercepts, var_intercept_k ≈ sigma_phase_k^2 / N_k
+            # Use theoretical if available, else average residual
+            if self.cfg.use_theoretical_variance and all_theoretical_vars:
+                var_intercept_avg = float(np.mean(all_theoretical_vars))
+            else:
+                avg_sigma_phase_sq = np.mean([rms**2 * (base_len_adc - 2) for rms in all_residual_rms])
+                var_intercept_avg = avg_sigma_phase_sq
+            # LS var(slope) = sigma^2 / sum( (f_i - fbar)^2 )
+            f_mean = np.mean(f_arr)
+            sum_dev_sq = np.sum((f_arr - f_mean) ** 2)
+            if sum_dev_sq <= 0:
+                var_slope = np.inf
+                tau_var_from_slope = np.inf
+            else:
+                var_slope = var_intercept_avg / sum_dev_sq
+                tau_var_from_slope = var_slope / ((2.0 * np.pi) ** 2)
+
+            # Update base_measurement with slope-based tau
+            tau_est_final = float(tau_est_from_slope)
+            # Combine delta_f: average
+            delta_f_est_final = float(np.mean(all_delta_f_est))
+            # Covariance: approximate diagonal for tau, average for delta_f
+            avg_delta_f_var = np.mean([cov[1,1] for cov in all_covariances])
+            covariance_final = np.diag([tau_var_from_slope, avg_delta_f_var])
+            tau_unwrapped_candidates = None  # Slope fit resolves ambiguity globally
+        else:
+            # Fallback to existing weighted tau average
+            tau_est_final, tau_unwrapped_candidates = self._unwrap_candidates(
+                raw_candidates,
+                tau_hint,
+            )
+            # Average delta_f and covariance
+            delta_f_est_final = float(np.mean(all_delta_f_est))
+            avg_tau_var = np.mean([cov[0, 0] for cov in all_covariances])
+            avg_delta_f_var = np.mean([cov[1, 1] for cov in all_covariances])
+            covariance_final = np.diag([avg_tau_var / num_carriers, avg_delta_f_var / num_carriers])  # Weighted approx
 
         calibration_offset = self._calibration_offset(tx.node_id, rx.node_id)
         if tau_unwrapped_candidates:
@@ -410,11 +478,11 @@ class ChronometricHandshakeSimulator:
             abs(tau_est_final - tau_true_calibrated) <= abs(base_raw_tau - tau_true)
         )
         base_measurement.phase_bias_rad = base_phase_bias
+        base_measurement.delta_f_est_hz = delta_f_est_final
         base_measurement.hardware_delay_s = hardware_delay
         base_measurement.calibration_offset_s = calibration_offset
-        base_measurement.effective_tau_variance_s2 = (
-            float(base_measurement.covariance[0, 0]) / max(len(carrier_frequencies), 1)
-        )
+        base_measurement.covariance = covariance_final
+        base_measurement.effective_tau_variance_s2 = float(covariance_final[0, 0])
 
         cache_key = self._stats_cache_key(
             tx_id=tx.node_id,
@@ -444,7 +512,7 @@ class ChronometricHandshakeSimulator:
         snr_db: float,
         rng: np.random.Generator,
         capture_trace: bool,
-    ) -> Tuple[DirectionalMeasurement, Optional[HandshakeTrace], float, int, int, Optional[float]]:
+    ) -> Tuple[DirectionalMeasurement, Optional[HandshakeTrace], float, int, int, Optional[float], float, Optional[float]]:
         delta_f_true = rx.carrier_freq_hz - tx.carrier_freq_hz
         baseband_rate = max(
             self.cfg.baseband_rate_factor * max(abs(delta_f_true), 1.0),
@@ -479,6 +547,12 @@ class ChronometricHandshakeSimulator:
         )
         beat_noisy = noise_gen.add_awgn(beat_clean, rng=rng)
 
+        # Theoretical phase variance for covariance (integrated over beat BW ≈ baseband_rate / 2)
+        theoretical_phase_var = None
+        if self.cfg.use_theoretical_variance:
+            beat_bw = baseband_rate / 2.0  # Approximate beat bandwidth
+            theoretical_phase_var = noise_gen.integrated_phase_variance(beat_bw, tx.carrier_freq_hz)
+
         beat_filtered = self._bandpass_filter(beat_noisy, baseband_rate, delta_f_true)
         adc_time, adc_samples, decimation = self._downsample_adc(beat_filtered, baseband_rate, delta_f_true)
 
@@ -490,12 +564,14 @@ class ChronometricHandshakeSimulator:
             fitted_phase,
             unwrapped_phase,
             covariance,
+            intercept,
         ) = self._estimate_parameters(
             tx=tx,
             rx=rx,
             adc_time=adc_time,
             adc_samples=adc_samples,
             tau_hint=tau_hint,
+            theoretical_phase_var=theoretical_phase_var,
         )
 
         trace: Optional[HandshakeTrace] = None
@@ -530,7 +606,7 @@ class ChronometricHandshakeSimulator:
             trace=trace,
         )
 
-        return measurement, trace, tau_raw, len(adc_samples), decimation, phase_bias
+        return measurement, trace, tau_raw, len(adc_samples), decimation, phase_bias, intercept, theoretical_phase_var
 
     def _apparent_tau(self, tx: ChronometricNode, rx: ChronometricNode, distance_m: float) -> float:
         """Propagation delay plus relative clock bias perceived during measurement."""
@@ -617,7 +693,8 @@ class ChronometricHandshakeSimulator:
         adc_time: NDArray[np.float64],
         adc_samples: NDArray[np.complex128],
         tau_hint: float,
-    ) -> Tuple[float, float, float, float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+        theoretical_phase_var: Optional[float] = None,
+    ) -> Tuple[float, float, float, float, NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], float]:
         """Closed-form τ / Δf estimator from phase samples using optional hint."""
         if len(adc_samples) < 8:
             raise RuntimeError('Insufficient ADC samples for estimation')
@@ -642,7 +719,16 @@ class ChronometricHandshakeSimulator:
         residual = unwrapped_phase - fitted_phase
         residual_rms = float(np.sqrt(np.mean(residual**2)))
 
-        sigma_phase_sq = float(np.dot(residual, residual) / max(len(adc_samples) - 2, 1))
+        # Use theoretical phase variance if configured and provided
+        if (
+            hasattr(self.cfg, 'use_theoretical_variance')
+            and self.cfg.use_theoretical_variance
+            and theoretical_phase_var is not None
+        ):
+            sigma_phase_sq = float(theoretical_phase_var)
+        else:
+            sigma_phase_sq = float(np.dot(residual, residual) / max(len(adc_samples) - 2, 1))
+        
         cov_params = sigma_phase_sq * xtx_inv
 
         var_slope = cov_params[0, 0]
@@ -672,6 +758,7 @@ class ChronometricHandshakeSimulator:
             fitted_phase,
             unwrapped_phase,
             covariance,
+            float(intercept),
         )
 
     def _unwrap_single_tau(

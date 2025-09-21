@@ -32,7 +32,7 @@
 "**Driftlock Sync**: 22 picosecond wireless synchronization."
 **[VISUAL: Oscilloscope showing beat patterns, sync accuracy display]**
 ```python
-> driftlock.get_clock_bias()
+> driftlock choir.get_clock_bias()
 < 2.65 picoseconds
 ```
 

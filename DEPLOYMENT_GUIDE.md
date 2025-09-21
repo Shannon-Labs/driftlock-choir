@@ -40,12 +40,12 @@ This creates a `deploy/` directory with all necessary files.
    git push origin main
    ```
 
-3. **Access**: `https://yourusername.github.io/driftlock`
+3. **Access**: `https://yourusername.github.io/driftlock choir`
 
 #### Custom Domain (Optional)
 1. Add `CNAME` file to docs folder:
    ```bash
-   echo "driftlock.dev" > docs/CNAME
+   echo "driftlock choir.dev" > docs/CNAME
    ```
 2. Configure DNS records with your domain provider
 
@@ -96,7 +96,7 @@ vercel --prod
 
 ### Update Repository Links
 Edit `index.html` and replace:
-- `https://github.com/yourusername/driftlock` with your actual repo URL
+- `https://github.com/yourusername/driftlock choir` with your actual repo URL
 - Email addresses with your actual contact information
 
 ### Add Analytics
@@ -220,9 +220,9 @@ Add to your server configuration:
 ## 📞 Support
 
 For deployment issues:
-- **Technical Support**: dev@driftlock.dev
-- **Hosting Questions**: hello@driftlock.dev
-- **Custom Domain Setup**: support@driftlock.dev
+- **Technical Support**: dev@driftlock choir.dev
+- **Hosting Questions**: hello@driftlock choir.dev
+- **Custom Domain Setup**: support@driftlock choir.dev
 
 ## ✅ Deployment Checklist
 

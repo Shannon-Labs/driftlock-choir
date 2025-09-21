@@ -17,8 +17,8 @@ In 10 minutes, you'll:
 
 ```bash
 # Clone the repository
-git clone https://github.com/shannon-labs/driftlock
-cd driftlock
+git clone https://github.com/shannon-labs/driftlock choir
+cd driftlock choir
 
 # Create virtual environment (recommended)
 python -m venv .venv
@@ -324,7 +324,7 @@ pytest tests/test_consensus.py      # Network consensus tests
 
 ### Common Issues
 
-**Import errors**: Ensure you're in the driftlock directory and virtual environment is activated
+**Import errors**: Ensure you're in the driftlock choir directory and virtual environment is activated
 
 **Numerical warnings**: Some extreme test cases may generate warnings - this is expected
 
@@ -332,7 +332,7 @@ pytest tests/test_consensus.py      # Network consensus tests
 
 ### Getting Help
 
-- GitHub Issues: https://github.com/shannon-labs/driftlock/issues
+- GitHub Issues: https://github.com/shannon-labs/driftlock choir/issues
 - Documentation: See `/docs` folder
 - Contact: hello@shannonlabs.dev
 
@@ -341,7 +341,7 @@ pytest tests/test_consensus.py      # Network consensus tests
 If you use Driftlock in research:
 
 ```bibtex
-@software{driftlock2025,
+@software{driftlock choir2025,
   title = {Driftlock: Sub-Nanosecond Wireless Synchronization},
   author = {Bown, Hunter},
   year = {2025},

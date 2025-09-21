@@ -8,7 +8,7 @@
 ## 📊 Company Details
 
 **Company:** Shannon Labs, Inc.
-**Website:** https://driftlock.net
+**Website:** https://driftlock choir.net
 **Stage:** Pre-seed (Patent Pending, Simulation Validated)
 **Founded:** September 2025
 **Location:** Currently remote, relocating to SF for program
@@ -160,7 +160,7 @@ Structure per SR006: **$500K for 10% upfront (SAFE)** + **$500K follow‑on with
 3. Convergence to 2-nanosecond accuracy
 4. Comparison with GPS timing
 
-**Simulation Available:** https://driftlock.net/demo
+**Simulation Available:** https://driftlock choir.net/demo
 
 ---
 
@@ -178,8 +178,8 @@ Structure per SR006: **$500K for 10% upfront (SAFE)** + **$500K follow‑on with
 ## 📞 Contact
 
 **Email:** hunter@shannonlabs.dev
-**GitHub:** https://github.com/shannon-labs/driftlock
-**Website:** https://driftlock.net
+**GitHub:** https://github.com/shannon-labs/driftlock choir
+**Website:** https://driftlock choir.net
 **LinkedIn:** [Hunter Bown]
 
 ---

@@ -192,8 +192,8 @@ Monte Carlo `extended_011` promoted the dense preset (0.32 / 0.03 / 1) after swe
 
 Hunter Bown  
 - Email: hunter@shannonlabs.dev  
-- GitHub: https://github.com/shannon-labs/driftlock  
-- Website: https://driftlock.net
+- GitHub: https://github.com/shannon-labs/driftlock choir  
+- Website: https://driftlock choir.net
 
 **Deadline: September 28, 2025 at 11:59 pm PT**
 

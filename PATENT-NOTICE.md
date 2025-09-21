@@ -103,7 +103,7 @@ Any unauthorized commercial use of the patented method may result in legal actio
 
 **Shannon Labs, Inc.**
 - Website: https://shannonlabs.dev
-- Driftlock: https://driftlock.net
+- Driftlock: https://driftlock choir.net
 - Licensing: licensing@shannonlabs.com
 - General: hello@shannonlabs.dev
 

@@ -36,8 +36,8 @@ def convert_svg_to_png(svg_path, png_path, dpi=600):
     return True
 
 def main():
-    figures_dir = "/Volumes/VIXinSSD/driftlock/patent/figures"
-    output_dir = "/Volumes/VIXinSSD/driftlock/dist/patent_packet/figures/png"
+    figures_dir = "/Volumes/VIXinSSD/driftlock choir/patent/figures"
+    output_dir = "/Volumes/VIXinSSD/driftlock choir/dist/patent_packet/figures/png"
 
     # Create output directory if needed
     os.makedirs(output_dir, exist_ok=True)

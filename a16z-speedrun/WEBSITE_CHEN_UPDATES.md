@@ -29,7 +29,7 @@ Join them.
       <span class="stage-number">1</span>
       <h3>Download the SDK</h3>
       <p>Measure your current timing drift in seconds</p>
-      <code>pip install driftlock</code>
+      <code>pip install driftlock choir</code>
     </div>
 
     <!-- Stage 2: Magic Moment -->

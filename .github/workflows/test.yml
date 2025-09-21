@@ -46,6 +46,18 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+    - name: Run smoke tests
+      run: |
+        python scripts/smoke.py
+
+    - name: Upload smoke artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: smoke-results
+        path: results/smoke/
+        retention-days: 5
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

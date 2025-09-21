@@ -24,10 +24,10 @@
 
 **[VISUAL: Terminal showing API calls]**
 ```
-> driftlock.get_clock_bias()
+> driftlock choir.get_clock_bias()
 < 2.3 nanoseconds
 
-> driftlock.get_sync_quality()
+> driftlock choir.get_sync_quality()
 < 98.2%
 ```
 
@@ -48,7 +48,7 @@
 
 "I'm Hunter Bown. Band director turned engineer. I heard what everyone else was filtering out. This is Driftlock—software-first timing for existing radios."
 
-**[END CARD: driftlock.net | See live demo at booth]**
+**[END CARD: driftlock choir.net | See live demo at booth]**
 
 ---
 

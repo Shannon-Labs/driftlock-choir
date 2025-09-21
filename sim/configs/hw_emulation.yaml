@@ -1,0 +1,60 @@
+# Hardware Emulation Config for Driftlock
+
+# Base simulation parameters
+sample_rate_hz: 20e6
+duration_s: 0.01
+
+# TX parameters with hardware-like impairments
+tx:
+  df_hz: 1e6
+  m_carriers: 21
+  omit_fundamental: true
+  amplitudes: equal
+  phase_schedule: newman
+  payload_qpsk_fraction: 0.125
+  payload_symbol_rate: 1000.0
+
+# Channel with S-parameter injection
+channel:
+  awgn_snr_db: 25.0
+  taps:
+    - { delay_s: 0.0e-6, gain: 1.0 }  # Direct path
+    - { delay_s: 1e-9, gain: 0.1 }  # Multipath
+  cfo_hz: 100.0  # Slight carrier offset
+  sco_ppm: 0.5  # Slight clock offset
+  phase_noise_rad2: 0.01  # Phase noise
+  rapp_p: 2.0
+  rapp_sat: 1.5
+  aperture_alpha: 2.0
+  aperture_mix: 0.3
+
+# Hardware S-parameters (example values)
+hardware:
+  d_tx_ns:
+    0: 10.0  # TX delay at DC
+    1: 12.5  # Slight frequency dependence
+  d_rx_ns:
+    0: 8.0
+    1: 9.2
+  noise_psd_dbm_hz: -100  # Noise power spectral density
+
+# Truth
+truth:
+  tau_s: 100e-12
+
+# Movie settings for emulation
+movie:
+  fps: 24
+  seconds: 30
+  annotate: true
+  telemetry: true
+  jitter_noise_std: 0.005
+  history_frames: 300
+  tau_ylim_ps: 400
+  nfft: 8196
+  dpi: 140
+
+# Output
+output:
+  dir: driftlock_choir_sim/outputs
+  run_id: hw_emulation

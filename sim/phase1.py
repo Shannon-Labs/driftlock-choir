@@ -21,6 +21,9 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
+
+from pathlib import Path
 
 # Add src/ to import path for local execution
 import sys
@@ -80,6 +83,18 @@ class Phase1Config:
     mac_slots: Optional[MacSlots] = field(
         default_factory=lambda: MacSlots(preamble_len=1024, narrowband_len=512, guard_us=10.0)
     )
+    # Atomic mode parameters (overridden by YAML if atomic_mode)
+    atomic_mode: bool = False
+    atomic_config_path: str = 'sim/configs/atomic_reconciliation.yaml'
+    atomic_phase_noise_psd: float = -140.0
+    atomic_jitter_rms_s: float = 1e-13
+    atomic_clock_bias_std_ps: float = 1.0
+    atomic_clock_ppm_std: float = 0.1
+    atomic_snr_db: float = 40.0
+    atomic_beat_duration_s: float = 1.0
+    atomic_retune_offsets_hz: Tuple[float, ...] = (1e6, 2e6, 5e6)
+    atomic_coarse_bw_hz: float = 100e6
+    atomic_delta_f_hz: float = 1e3
 
     def handshake_config(self) -> ChronometricHandshakeConfig:
         return ChronometricHandshakeConfig(
@@ -112,10 +127,66 @@ class Phase1Simulator:
 
     def __init__(self, config: Phase1Config):
         self.config = config
+        if self.config.atomic_mode:
+            self._apply_atomic_overrides()
         if self.config.save_results:
             ensure_directory(self.config.results_dir)
         self.handshake = ChronometricHandshakeSimulator(self.config.handshake_config())
         self._base_handshake_cfg = self.config.handshake_config()
+
+    def _apply_atomic_overrides(self) -> None:
+        """Apply atomic baseline configuration overrides."""
+        if not self.config.results_dir or self.config.results_dir == 'results/phase1':
+            self.config.results_dir = 'results/phase1_atomic'
+
+        common_overrides: Dict[str, Any] = {}
+        phase1_overrides: Dict[str, Any] = {}
+        config_path = Path(self.config.atomic_config_path)
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as handle:
+                    data = yaml.safe_load(handle) or {}
+                common_overrides = data.get('common', {}) or {}
+                phase1_overrides = data.get('phase1', {}) or {}
+            except (OSError, yaml.YAMLError):
+                common_overrides = {}
+                phase1_overrides = {}
+
+        def _coerce_numeric(value: Any) -> Any:
+            if isinstance(value, str):
+                try:
+                    return float(value)
+                except ValueError:
+                    return value
+            if isinstance(value, (list, tuple)):
+                coerced = [_coerce_numeric(v) for v in value]
+                return type(value)(coerced)
+            return value
+
+        def _lookup(key: str, fallback: Any) -> Any:
+            return _coerce_numeric(common_overrides.get(key, fallback))
+
+        self.config.phase_noise_psd = _lookup('phase_noise_psd', self.config.atomic_phase_noise_psd)
+        self.config.jitter_rms_s = _lookup('jitter_rms_s', self.config.atomic_jitter_rms_s)
+        self.config.retune_offsets_hz = tuple(_lookup('retune_offsets_hz', list(self.config.atomic_retune_offsets_hz)))
+        self.config.coarse_bandwidth_hz = _lookup('coarse_bw_hz', self.config.atomic_coarse_bw_hz)
+        self.config.snr_values_db = [_lookup('snr_db', self.config.atomic_snr_db)]
+        self.config.clock_bias_std_ps = _lookup('clock_bias_std_ps', self.config.atomic_clock_bias_std_ps)
+        self.config.clock_ppm_std = _lookup('clock_ppm_std', self.config.atomic_clock_ppm_std)
+        self.config.beat_duration_s = _lookup('beat_duration_s', self.config.atomic_beat_duration_s)
+        self.config.delta_f_hz = _lookup('delta_f_hz', self.config.atomic_delta_f_hz)
+
+        if phase1_overrides:
+            for attr in (
+                'baseband_rate_factor',
+                'min_baseband_rate_hz',
+                'min_adc_rate_hz',
+                'filter_relative_bw',
+                'coarse_duration_s',
+                'coarse_variance_floor_ps',
+            ):
+                if attr in phase1_overrides and phase1_overrides[attr] is not None:
+                    setattr(self.config, attr, _coerce_numeric(phase1_overrides[attr]))
 
     # ------------------------------------------------------------------
     # Legacy sweep utilities
@@ -136,6 +207,25 @@ class Phase1Simulator:
             self._save_results(results)
         if self.config.plot_results:
             self._generate_plots(snr_results, exemplar_trace)
+
+        # Atomic mode: add CRLB comparison
+        if self.config.atomic_mode:
+            from metrics.crlb import MultiFrequencyCRLBCalculator, CRLBParams
+            # Use config params for CRLB
+            crlb_params = CRLBParams(
+                snr_db=self.config.atomic_snr_db,
+                bandwidth=self.config.atomic_coarse_bw_hz,
+                duration=self.config.atomic_beat_duration_s,
+                carrier_freq=self.config.carrier_freq_hz,
+                sample_rate=self.config.min_baseband_rate_hz,
+                carrier_frequencies=self.config.atomic_retune_offsets_hz,
+                sigma_phase_rad=np.sqrt(10 ** (self.config.atomic_phase_noise_psd / 10) * self.config.min_baseband_rate_hz / 2),  # Approx
+            )
+            multi_crlb = MultiFrequencyCRLBCalculator(crlb_params)
+            crlb_results = multi_crlb.compute_crlb()
+            results['crlb'] = crlb_results
+            # Plot simulated vs CRLB
+            self._plot_atomic_validation(snr_results, crlb_results)
 
         return results
 
@@ -292,6 +382,23 @@ class Phase1Simulator:
         if trace:
             self._plot_waveforms(trace)
         self._plot_error_curves(snr_results)
+    
+    def _plot_atomic_validation(self, snr_results: Dict[str, Any], crlb_results: Dict[str, Any]) -> None:
+        """Plot simulated RMSE vs CRLB for atomic validation."""
+        fig, ax = plt.subplots(figsize=(8, 6))
+        snr = np.array(snr_results['snr_db'])
+        simulated_rmse_ps = np.array(snr_results['tof_rmse_ps'])
+        crlb_std_ps = crlb_results['delay_crlb_std'] * 1e12  # Convert to ps
+        ax.loglog(simulated_rmse_ps, 'bo-', label='Simulated RMSE')
+        ax.loglog(crlb_std_ps, 'r--', label='CRLB std')
+        ax.set_xlabel('Simulated RMSE (ps)')
+        ax.set_ylabel('CRLB std (ps)')
+        ax.set_title('Atomic Validation: Simulated vs CRLB')
+        ax.legend()
+        ax.grid(True)
+        plot_path = os.path.join(self.config.results_dir, 'atomic_crlb_validation.png')
+        save_figure(fig, plot_path)
+        print(f"Atomic validation plot saved to {plot_path}")
 
     def _plot_waveforms(self, trace: HandshakeTrace) -> None:
         fig, axes = plt.subplots(3, 1, figsize=(10, 10))
@@ -899,6 +1006,17 @@ def build_alias_map_cli(parser: argparse.ArgumentParser) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description='Phase 1 alias-failure mapping tool')
     build_alias_map_cli(parser)
+    parser.add_argument(
+        '--atomic-mode',
+        action='store_true',
+        help='Run in atomic baseline mode using atomic_reconciliation.yaml',
+    )
+    parser.add_argument(
+        '--atomic-config-path',
+        type=str,
+        default='sim/configs/atomic_reconciliation.yaml',
+        help='Path to atomic reconciliation config file',
+    )
     args = parser.parse_args()
 
     snr_values = _parse_float_list(args.snr_db)
@@ -924,6 +1042,8 @@ def main() -> None:
         raise ValueError('At least one coarse bandwidth must be provided via --coarse-bw-hz')
 
     cfg = Phase1Config(
+        atomic_mode=args.atomic_mode,
+        atomic_config_path=args.atomic_config_path,
         snr_values_db=snr_values,
         n_monte_carlo=min(args.num_trials, 200),
         retune_offsets_hz=(retune_offsets[0],),
@@ -951,28 +1071,33 @@ def main() -> None:
     if cfg.save_results:
         dump_run_config(cfg.results_dir, cfg, filename='phase1_config.json')
 
-    alias_summary = simulator.run_alias_failure_map(
-        retune_offsets_hz=retune_offsets,
-        coarse_bw_hz=coarse_bandwidths,
-        snr_db=snr_values,
-        num_trials=args.num_trials,
-        rng_seed=args.rng_seed,
-        make_plots=args.make_plots,
-    )
+    if cfg.atomic_mode:
+        # Run atomic validation
+        atomic_results = simulator.run_full_simulation()
+        print("Atomic baseline simulation completed.")
+    else:
+        alias_summary = simulator.run_alias_failure_map(
+            retune_offsets_hz=retune_offsets,
+            coarse_bw_hz=coarse_bandwidths,
+            snr_db=snr_values,
+            num_trials=args.num_trials,
+            rng_seed=args.rng_seed,
+            make_plots=args.make_plots,
+        )
 
-    manifest_path = alias_summary['manifest_path']
-    csv_path = alias_summary['csv_path']
-    if manifest_path:
-        print(f"Alias-map manifest written to {manifest_path}")
-    if csv_path:
-        print(f"Alias-map CSV written to {csv_path}")
-    if alias_summary['plot_paths']:
-        print('Generated plots:')
-        for path in alias_summary['plot_paths']:
-            print(f"  {path}")
+        manifest_path = alias_summary['manifest_path']
+        csv_path = alias_summary['csv_path']
+        if manifest_path:
+            print(f"Alias-map manifest written to {manifest_path}")
+        if csv_path:
+            print(f"Alias-map CSV written to {csv_path}")
+        if alias_summary['plot_paths']:
+            print('Generated plots:')
+            for path in alias_summary['plot_paths']:
+                print(f"  {path}")
 
-    if args.run_legacy_snr_sweep:
-        simulator.run_full_simulation()
+        if args.run_legacy_snr_sweep:
+            simulator.run_full_simulation()
 
 
 if __name__ == '__main__':

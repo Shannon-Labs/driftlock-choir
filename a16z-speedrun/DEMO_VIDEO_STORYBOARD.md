@@ -46,8 +46,8 @@ curl -X POST https://api.entruptor.com/v1/detect \
 
 **[RIGHT SCREEN: Python script showing Driftlock sync]**
 ```python
-import driftlock
-dl = driftlock.Client()
+import driftlock choir
+dl = driftlock choir.Client()
 bias = dl.get_clock_bias()      # 2.65ps
 quality = dl.get_sync_quality() # 98.2%
 ```

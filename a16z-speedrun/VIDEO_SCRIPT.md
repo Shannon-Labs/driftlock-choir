@@ -40,7 +40,7 @@
 
 "Join us at Shannon Labs to complete Bell Labs' unfinished symphony. Let's make atomic clocks obsolete and build the timing layer for every wireless device on Earth. This is Driftlock."
 
-**[END CARD: driftlock.net | hunter@shannonlabs.dev]**
+**[END CARD: driftlock choir.net | hunter@shannonlabs.dev]**
 
 ---
 

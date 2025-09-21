@@ -71,7 +71,7 @@ To discuss commercial licensing:
 
 **Email**: licensing@shannonlabs.com
 **Phone**: Contact via website
-**Website**: https://driftlock.net
+**Website**: https://driftlock choir.net
 **Company**: https://shannonlabs.dev
 
 ### Information to Provide
@@ -122,5 +122,5 @@ Advancing the frontiers of information theory and wireless communications.
 
 **Headquarters**: USA
 **Website**: https://shannonlabs.dev
-**Driftlock**: https://driftlock.net
+**Driftlock**: https://driftlock choir.net
 **Email**: licensing@shannonlabs.com

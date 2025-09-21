@@ -6,7 +6,7 @@ of time delay and frequency offset parameters.
 """
 
 import numpy as np
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, List
 from dataclasses import dataclass
 from scipy.linalg import inv, det
 
@@ -20,6 +20,8 @@ class CRLBParams:
     carrier_freq: float      # Carrier frequency (Hz)
     sample_rate: float       # Sampling rate (Hz)
     pulse_shape: str = 'rect'  # Pulse shape ('rect', 'rrc', 'gaussian')
+    carrier_frequencies: Optional[List[float]] = None  # For multi-frequency CRLB
+    sigma_phase_rad: float = 0.1  # Phase noise std dev (rad)
 
 
 class JointCRLBCalculator:
@@ -297,6 +299,47 @@ class JointCRLBCalculator:
                                  0.5 < crlb_vs_ls_freq < 2.0 and
                                  0.5 < delay_efficiency < 5.0 and
                                  0.5 < freq_efficiency < 5.0)
+        }
+
+
+class MultiFrequencyCRLBCalculator:
+    """Approximate CRLB for multi-carrier phase-slope delay estimation."""
+
+    def __init__(self, params: CRLBParams):
+        self.params = params
+
+    def compute_crlb(self) -> Dict[str, Any]:
+        carriers = self.params.carrier_frequencies or []
+        if len(carriers) < 2:
+            joint = JointCRLBCalculator(self.params)
+            result = joint.compute_joint_crlb()
+            result['model'] = 'single_carrier_fallback'
+            result['carrier_count'] = len(carriers) or 1
+            return result
+
+        freqs = np.array(carriers, dtype=float)
+        sigma_phase = float(self.params.sigma_phase_rad)
+        if sigma_phase <= 0 or not np.isfinite(sigma_phase):
+            raise ValueError('sigma_phase_rad must be positive for multi-frequency CRLB.')
+
+        f_mean = float(np.mean(freqs))
+        denom = float(np.sum((freqs - f_mean) ** 2))
+        if denom <= 0:
+            raise ValueError('Carrier frequencies must not be identical for multi-frequency CRLB.')
+
+        slope_variance = sigma_phase ** 2 / denom
+        tau_variance = slope_variance / ((2 * np.pi) ** 2)
+        tau_std = float(np.sqrt(tau_variance)) if np.isfinite(tau_variance) else np.inf
+
+        return {
+            'model': 'multi_frequency_phase_slope',
+            'carrier_count': len(freqs),
+            'carrier_span_hz': float(np.max(freqs) - np.min(freqs)),
+            'phase_variance_rad2': float(sigma_phase ** 2),
+            'slope_crlb_variance': float(slope_variance),
+            'delay_crlb_variance': float(tau_variance),
+            'delay_crlb_std': tau_std,
+            'reference_frequency_hz': f_mean,
         }
 
 

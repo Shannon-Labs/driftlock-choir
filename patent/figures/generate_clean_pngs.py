@@ -199,7 +199,7 @@ def create_fig5():
     return fig
 
 def main():
-    output_dir = "/Volumes/VIXinSSD/driftlock/dist/patent_packet/figures/png"
+    output_dir = "/Volumes/VIXinSSD/driftlock choir/dist/patent_packet/figures/png"
 
     figures = [
         (create_fig1, "fig1_beat_handshake.png"),

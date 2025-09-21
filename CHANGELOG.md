@@ -75,4 +75,4 @@ All notable changes to Driftlock will be documented in this file.
 
 ---
 
-*For full commit history, see [GitHub](https://github.com/shannon-labs/driftlock)*
+*For full commit history, see [GitHub](https://github.com/shannon-labs/driftlock choir)*

@@ -68,8 +68,8 @@ result = client.detect(data, threshold=0.3)
 **Driftlock Sync**: Intentional frequency offset creates beat patterns
 ```python
 # 22ps accuracy, software-only
-bias = driftlock.get_clock_bias()      # Returns: 2.65ps
-quality = driftlock.get_sync_quality() # Returns: 98.2%
+bias = driftlock choir.get_clock_bias()      # Returns: 2.65ps
+quality = driftlock choir.get_sync_quality() # Returns: 98.2%
 ```
 
 **Both systems extract signal from what others treat as noise**

@@ -38,9 +38,9 @@
 ## 🎬 Demo
 
 - **Live Demo**: Two SDRs achieving 2ns synchronization
-- **Simulation**: https://driftlock.net/demo
-- **GitHub**: https://github.com/shannon-labs/driftlock
-- **Website**: https://driftlock.net
+- **Simulation**: https://driftlock choir.net/demo
+- **GitHub**: https://github.com/shannon-labs/driftlock choir
+- **Website**: https://driftlock choir.net
 
 ---
 
@@ -96,8 +96,8 @@
 
 **Hunter Bown**
 - Email: hunter@shannonlabs.dev
-- Website: https://driftlock.net
-- GitHub: https://github.com/shannon-labs/driftlock
+- Website: https://driftlock choir.net
+- GitHub: https://github.com/shannon-labs/driftlock choir
 
 ---
 

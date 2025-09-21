@@ -1,0 +1,42 @@
+seed: 2025
+sample_rate_hz: 2.0e7
+duration_s: 0.009
+
+tx:
+  df_hz: 1.0e6
+  m_carriers: 21
+  omit_fundamental: true
+  amplitudes: equal         # equal|hann|taylor
+  phase_schedule: newman    # none|newman
+  payload_qpsk_fraction: 0.125
+  payload_symbol_rate: 1000.0
+
+channel:
+  awgn_snr_db: 30.0
+  taps:
+    - { delay_s: 0.0e-6, gain: 1.0 }
+  cfo_hz: 0.0
+  sco_ppm: 0.0
+  phase_noise_rad2: 0.0
+  rapp_p: 2.0
+  rapp_sat: 1.5
+  aperture_alpha: 2.0
+  aperture_mix: 0.3
+  cyclo_gate_rate_hz: 0.0
+
+truth:
+  tau_s: 100e-12
+
+movie:
+  fps: 24
+  seconds: 15
+  annotate: true
+  jitter_noise_std: 0.005
+  history_frames: 300      # show last ~12.5 s of τ̂
+  tau_ylim_ps: 400
+  nfft: 8192
+  dpi: 140
+
+output:
+  dir: driftlock_choir_sim/outputs
+  run_id: demo_teaser

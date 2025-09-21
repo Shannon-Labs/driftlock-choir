@@ -7,8 +7,8 @@ from reportlab.pdfgen import canvas
 import os
 
 def main():
-    output_path = "/Volumes/VIXinSSD/driftlock/dist/patent_packet/drawings.pdf"
-    figures_dir = "/Volumes/VIXinSSD/driftlock/dist/patent_packet/figures/png"
+    output_path = "/Volumes/VIXinSSD/driftlock choir/dist/patent_packet/drawings.pdf"
+    figures_dir = "/Volumes/VIXinSSD/driftlock choir/dist/patent_packet/figures/png"
 
     # List of figure files in order
     figure_files = [

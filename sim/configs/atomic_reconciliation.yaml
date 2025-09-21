@@ -1,0 +1,20 @@
+# Atomic Clock Reconciliation Configuration for Driftlock Phase 1
+
+common:
+  phase_noise_psd: -140.0  # dBc/Hz, low for atomic-like stability
+  jitter_rms_s: 1e-13  # s, <1 ps RMS jitter
+  retune_offsets_hz: [1e6, 2e6, 5e6]  # Multi-frequency comb for slope fit
+  coarse_bw_hz: 100e6  # Wideband for low variance coarse
+  snr_db: 40.0  # High SNR for low noise
+  clock_bias_std_ps: 1.0  # ps, atomic precision
+  clock_ppm_std: 0.1  # ppm, stable oscillators
+  beat_duration_s: 1.0  # Longer integration for low Δf
+  delta_f_hz: 1e3  # Narrow beat for phase sensitivity
+
+phase1:
+  baseband_rate_factor: 20.0
+  min_baseband_rate_hz: 200_000.0
+  min_adc_rate_hz: 20_000.0
+  filter_relative_bw: 1.4
+  coarse_duration_s: 5e-6
+  coarse_variance_floor_ps: 1.0  # Tight for atomic

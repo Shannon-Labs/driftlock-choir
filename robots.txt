@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://driftlock.net/sitemap.xml
+Sitemap: https://driftlock choir.net/sitemap.xml
 

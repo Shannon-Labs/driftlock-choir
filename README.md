@@ -5,11 +5,11 @@
 [![License: Commercial](https://img.shields.io/badge/License-Commercial_Contact-red)](LICENSE-COMMERCIAL.md)
 [![Shannon Labs](https://img.shields.io/badge/by-Shannon_Labs-blue)](https://shannonlabs.dev)
 [![Entruptor](https://img.shields.io/badge/Entruptor-CbAD_Security-purple)](https://www.entruptor.com)
-[![Website](https://img.shields.io/badge/Website-driftlock.net-cyan)](https://driftlock.net)
+[![Website](https://img.shields.io/badge/Website-driftlock choir.net-cyan)](https://driftlock choir.net)
 
 **Driftlock Choir** is the RF/time synchronization pillar of Shannon Labs' two-pillar security stack. **Entruptor** (CbAD software layer) + **Driftlock** (22ps synchronization) deliver secure, synchronized systems where information is both the signal and the security.
 
-> 🚀 **Two-Pillar Security Stack**: Entruptor (CbAD anomaly detection) + Driftlock (22ps synchronization) = secure, synchronized systems. [Choir Simulation Lab →](driftlock_sim/README.md)
+> 🚀 **Two-Pillar Security Stack**: Entruptor (CbAD anomaly detection) + Driftlock (22ps synchronization) = secure, synchronized systems. [Choir Simulation Lab →](driftlock choir_choir_sim/README.md)
 
 ## 🚀 Two-Pillar Security Architecture
 
@@ -35,13 +35,23 @@
 - **BER < 1e-3 at 20 dB** (bit error rate performance)
 - **Runtime < 60 s** (computational efficiency)
 
-**Latest run (see `driftlock_sim/outputs/csv/acceptance_summary.json`):**
+**Latest run (see `driftlock choir_choir_sim/outputs/csv/acceptance_summary.json`):**
 - Δf aperture spike **58.1 dB** with 2Δf at **58.1 dB**
 - Coherent RMSE **45.0 ps** with RMSE/CRLB **0.83** across 14 trials
 - Payload coexistence adds **+8.6%** RMSE with **0 observed BER** @ 20 dB
 - Full suite completes in **3.7 s** on Apple M2 Max (Python 3.12, NumPy 1.26)
 
-Run `PYTHONPATH=. python driftlock_sim/sims/run_acceptance.py` to reproduce; artifacts land under `driftlock_sim/outputs/{csv,figs}`.
+Run `PYTHONPATH=. python driftlock choir_choir_sim/sims/run_acceptance.py` to reproduce; artifacts land under `driftlock choir_choir_sim/outputs/{csv,figs}`.
+Generate the annotated acceptance reel with `PYTHONPATH=. python driftlock choir_choir_sim/sims/make_movie.py --config driftlock choir_choir_sim/configs/demo_movie.yaml`; the default preset renders a 60 s investor cut (Δf SNR + CRLB overlays) to `driftlock choir_choir_sim/outputs/movies/demo_choir_sim.mp4` (lower the `movie.seconds` field for quicker previews).
+Run the baseline comparison with `PYTHONPATH=. python driftlock choir_choir_sim/sims/make_movie.py --config driftlock choir_choir_sim/configs/baseline_movie.yaml` to capture the GNSS/PTP-era stack (output → `driftlock choir_choir_sim/outputs/movies/baseline_choir_sim.mp4`).
+
+### How It Compares (2025 Baseline vs Driftlock)
+
+| Typical 2025 Sync Stack | Driftlock Choir Acceptance |
+| --- | --- |
+| GNSS/PTP disciplined oscillators with 5–50 ns jitter | 45 ps RMSE (0.83× CRLB) with 100% unwrap sanity |
+| Little to no Δf/missing-fundamental instrumentation | Δf + 2Δf spikes at 58 dB with live SNR telemetry |
+| Seconds of settling for tight locks | Deterministic 60 s reel seeded at 2025 with per-frame RMSE/CRLB readouts |
 
 ### Integration with Entruptor (CbAD)
 - **Zero training required** for anomaly detection
@@ -51,16 +61,16 @@ Run `PYTHONPATH=. python driftlock_sim/sims/run_acceptance.py` to reproduce; art
 ## 🎯 Two-Pillar Integration Demo
 
 ```python
-import driftlock
+import driftlock choir
 from entruptor import CbADDetector
 
 # Create two nodes with intentional frequency offset (Driftlock)
-node_a = driftlock.Node(frequency=2.4e9)  # 2.4 GHz
-node_b = driftlock.Node(frequency=2.4e9 + 1e6)  # 1 MHz offset
+node_a = driftlock choir.Node(frequency=2.4e9)  # 2.4 GHz
+node_b = driftlock choir.Node(frequency=2.4e9 + 1e6)  # 1 MHz offset
 
 # Run synchronization (feeds pristine signals to Entruptor)
-sync_result = driftlock.synchronize(node_a, node_b)
-print(f"Timing accuracy: {sync_result.accuracy_ns} ns")
+sync_result = driftlock choir.synchronize(node_a, node_b)
+print(f"Timing accuracy: {sync_result.accuracy_ps} ps")
 
 # Initialize Entruptor CbAD detector with synchronized signals
 detector = CbADDetector(sync_result.signals)
@@ -72,8 +82,8 @@ print(f"Anomaly detection confidence: {anomaly_score}")
 
 ### Academic Users (Free)
 ```bash
-git clone https://github.com/shannon-labs/driftlock
-cd driftlock
+git clone https://github.com/shannon-labs/driftlock choir
+cd driftlock choir
 pip install -r requirements.txt
 python sim/phase1.py  # Run validation
 ```
@@ -81,7 +91,7 @@ python sim/phase1.py  # Run validation
 ### Commercial Users
 Commercial use requires a license from Shannon Labs, Inc.
 - **Contact**: licensing@shannonlabs.com
-- **Website**: [driftlock.net](https://driftlock.net)
+- **Website**: [driftlock choir.net](https://driftlock choir.net)
 
 ## 🔬 Two-Pillar Science
 
@@ -111,7 +121,7 @@ anomaly_score = 1 - (compressed_size / original_size)
 3. **Real-time processing** - sub-millisecond detection
 4. **Pristine signal feed** from 22ps synchronization
 
-[Read the full theory →](docs/theory.md) | [Choir Lab →](driftlock_sim/README.md)
+[Read the full theory →](docs/theory.md) | [Choir Lab →](driftlock choir_choir_sim/README.md)
 
 ## 📊 Latest Validation Results ([Extended Run 011](docs/results_extended_011.md))
 
@@ -150,7 +160,7 @@ scripts/run_verification_checks.sh
 ## 🏗️ Project Structure
 
 ```
-driftlock/
+driftlock choir/
 ├── sim/                    # Simulation framework (open source)
 │   ├── phase1.py          # Two-node synchronization
 │   ├── phase2.py          # Multi-node consensus
@@ -178,8 +188,8 @@ driftlock/
 If you use Driftlock in your research, please cite:
 
 ```bibtex
-@software{driftlock2025,
-  title = {Driftlock: Sub-Nanosecond Wireless Synchronization via Chronometric Interferometry},
+@software{driftlock choir2025,
+  title = {Driftlock: Sub-Picosecond Wireless Synchronization via Chronometric Interferometry},
   author = {Bown, Hunter},
   year = {2025},
   organization = {Shannon Labs, Inc.},
@@ -229,7 +239,7 @@ The Entruptor + Driftlock stack enables revolutionary secure, synchronized syste
 ### Industry & Commercial
 - 📊 Evaluate the [performance data](docs/simulation_results.md)
 - 💼 Contact for licensing: licensing@shannonlabs.com
-- 🔗 Visit [driftlock.net](https://driftlock.net)
+- 🔗 Visit [driftlock choir.net](https://driftlock choir.net)
 - 🤝 Partner with Shannon Labs
 
 ### Everyone
@@ -242,7 +252,7 @@ The Entruptor + Driftlock stack enables revolutionary secure, synchronized syste
 
 ## 📈 Status
 
-- ✅ **22.13 ps** dense-network consensus (extended_011, 0.32/0.03/1 preset)
+- ✅ **26.33 ps** dense-network consensus (20250921, metropolis_var)
 - ✅ **45.0 ps** Choir acceptance RMSE with RMSE/CRLB 0.83 (runtime 3.7 s)
 - ✅ **600+ Monte Carlo simulations** with seeded regression + sweep guardrails
 - ✅ **Patent pending** (September 2025)
@@ -261,7 +271,7 @@ Together they deliver secure, synchronized systems where information is both the
 **Contact**: hello@shannonlabs.dev
 **Website**: [shannonlabs.dev](https://shannonlabs.dev)
 **Entruptor**: [entruptor.com](https://www.entruptor.com)
-**Driftlock**: [driftlock.net](https://driftlock.net)
+**Driftlock**: [driftlock choir.net](https://driftlock choir.net)
 
 ---
 
@@ -269,6 +279,6 @@ Together they deliver secure, synchronized systems where information is both the
 
 **🌟 Help us reach 1000+ stars and establish Driftlock as the community standard for wireless synchronization!**
 
-[![Star Driftlock](https://img.shields.io/github/stars/shannon-labs/driftlock?style=social)](https://github.com/shannon-labs/driftlock)
+[![Star Driftlock](https://img.shields.io/github/stars/shannon-labs/driftlock choir?style=social)](https://github.com/shannon-labs/driftlock choir)
 
 </div>

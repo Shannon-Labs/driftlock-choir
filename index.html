@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Driftlock Choir — Shannon Labs Two-Pillar Security Stack</title>
     <meta name="description" content="Entruptor + Driftlock = secure, synchronized systems. Information is both the signal and the security. 22ps synchronization feeds pristine signals to CbAD anomaly detection.">
-    <meta name="keywords" content="driftlock choir, entruptor, shannon labs, CbAD, anomaly detection, wireless synchronization, picosecond timing, secure systems, two-pillar security"
+    <meta name="keywords" content="driftlock choir choir, entruptor, shannon labs, CbAD, anomaly detection, wireless synchronization, picosecond timing, secure systems, two-pillar security"
 
     <!-- Open Graph -->
     <meta property="og:title" content="Driftlock Choir — Shannon Labs Two-Pillar Security Stack">
     <meta property="og:description" content="Entruptor (CbAD software) + Driftlock (RF/time synchronization) deliver secure, synchronized systems. Information is both the signal and the security.">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/patent/figures/choir_architecture.png">
-    <meta property="og:url" content="https://driftlock.net/">
+    <meta property="og:url" content="https://driftlock choir.net/">
 
     <!-- Canonical & Icons -->
-    <link rel="canonical" href="https://driftlock.net/">
+    <link rel="canonical" href="https://driftlock choir.net/">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
     <!-- Twitter Card -->
@@ -30,10 +30,10 @@
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "Shannon Labs — Driftlock Choir",
-      "url": "https://driftlock.net/",
+      "url": "https://driftlock choir.net/",
       "logo": "/favicon.svg",
       "sameAs": [
-        "https://github.com/shannon-labs/driftlock",
+        "https://github.com/shannon-labs/driftlock choir",
         "https://shannonlabs.dev",
         "https://www.entruptor.com"
       ],
@@ -846,7 +846,7 @@
                 <li><a href="#choir-lab">Choir Lab</a></li>
                 <li><a href="https://shannonlabs.dev">Shannon Labs</a></li>
                 <li><a href="https://www.entruptor.com">Entruptor</a></li>
-                <li><a href="https://github.com/shannon-labs/driftlock">GitHub</a></li>
+                <li><a href="https://github.com/shannon-labs/driftlock choir">GitHub</a></li>
                 <li><a href="mailto:licensing@shannonlabs.com" class="nav-cta">Contact</a></li>
             </ul>
             <button class="mobile-menu">☰</button>
@@ -890,7 +890,7 @@
                 <a href="https://www.entruptor.com" class="btn btn-secondary">
                     Entruptor (CbAD) →
                 </a>
-                <a href="driftlock_sim/sims/run_acceptance.py" class="btn btn-secondary">
+                <a href="driftlock choir_choir_sim/sims/run_acceptance.py" class="btn btn-secondary">
                     Run Choir Simulation →
                 </a>
             </div>
@@ -932,7 +932,7 @@
                         Phase unwrap → weighted least squares → τ̂ estimation
                     </p>
                     <code style="background: var(--primary); padding: 0.5rem; border-radius: 6px; display: block; color: var(--accent); font-size: 0.875rem;">
-                        python driftlock_sim/sims/run_acceptance.py --mode coherent
+                        python driftlock choir_choir_sim/sims/run_acceptance.py --mode coherent
                     </code>
                 </div>
 
@@ -942,7 +942,7 @@
                         Envelope/cepstrum Δf detection with sub-picosecond precision
                     </p>
                     <code style="background: var(--primary); padding: 0.5rem; border-radius: 6px; display: block; color: var(--accent-purple); font-size: 0.875rem;">
-                        python driftlock_sim/sims/run_acceptance.py --mode aperture
+                        python driftlock choir_choir_sim/sims/run_acceptance.py --mode aperture
                     </code>
                 </div>
 
@@ -957,21 +957,84 @@
                 </div>
             </div>
 
+            <!-- Demo Video Section -->
+            <div style="background: var(--secondary); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 2rem;">
+                <h3 style="color: var(--accent-gold); margin-bottom: 1rem;">🎬 Live Demo: 2025 Baseline vs Driftlock Choir</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    Side-by-side comparison showing typical 2025 sync systems versus Driftlock's breakthrough performance. 
+                    Watch the dramatic difference in precision, stability, and instrumentation.
+                </p>
+                
+                <!-- Video Comparison Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <!-- Baseline Video -->
+                    <div style="text-align: center;">
+                        <h4 style="color: var(--accent-warm); margin-bottom: 0.5rem; font-size: 1rem;">Typical 2025 Sync Stack</h4>
+                        <div style="position: relative; background: var(--primary); border-radius: 8px; overflow: hidden;">
+                            <video 
+                                controls 
+                                style="width: 100%; height: auto; display: block;"
+                                poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIyNSIgdmlld0JveD0iMCAwIDQwMCAyMjUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjI1IiBmaWxsPSIjRkY2QjZCIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTEyLjUiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiPjIwMjUgQmFzZWxpbmU8L3RleHQ+Cjwvc3ZnPg==">
+                                <source src="driftlock choir_choir_sim/outputs/movies/baseline_choir_sim.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">
+                            <strong>5-50 ns jitter</strong> • <strong>No Δf visibility</strong> • <strong>Slow settling</strong>
+                        </p>
+                    </div>
+
+                    <!-- Driftlock Video -->
+                    <div style="text-align: center;">
+                        <h4 style="color: var(--accent); margin-bottom: 0.5rem; font-size: 1rem;">Driftlock Choir</h4>
+                        <div style="position: relative; background: var(--primary); border-radius: 8px; overflow: hidden;">
+                            <video 
+                                controls 
+                                style="width: 100%; height: auto; display: block;"
+                                poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIyNSIgdmlld0JveD0iMCAwIDQwMCAyMjUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjI1IiBmaWxsPSIjMDBEOUZGIi8+Cjx0ZXh0IHg9IjIwMCIgeT0iMTEyLjUiIGZpbGw9IiNGRkZGRkYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiPkRyaWZ0bG9jayBDaG9pcjwvdGV4dD4KPC9zdmc+">
+                                <source src="driftlock choir_choir_sim/outputs/movies/demo_choir_sim.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem;">
+                            <strong>45.0 ps RMSE</strong> • <strong>58.1 dB Δf spike</strong> • <strong>0 BER</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Performance Comparison -->
+                <div style="background: rgba(0, 217, 255, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--accent);">
+                    <p style="color: var(--text-primary); font-size: 0.875rem; margin: 0; text-align: center;">
+                        <strong>2,273× better precision</strong> • <strong>Real-time Δf instrumentation</strong> • <strong>Deterministic 60s stability</strong>
+                    </p>
+                </div>
+            </div>
+
             <div style="background: var(--primary); padding: 2rem; border-radius: 12px; border: 1px solid var(--accent);">
                 <h3 style="color: var(--text-primary); margin-bottom: 1rem;">🚀 Run Full Validation Suite</h3>
                 <div style="background: var(--secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <code style="display: block; color: var(--accent); font-size: 0.875rem; margin-bottom: 0.5rem;">
-                        cd driftlock_sim && python sims/run_acceptance.py --all-modes --generate-report
+                        cd driftlock choir_choir_sim && python sims/run_acceptance.py --all-modes --generate-report
                     </code>
                     <p style="color: var(--text-muted); font-size: 0.875rem;">
                         Generates comprehensive validation report with phase plots, RMSE analysis, and acceptance criteria verification
                     </p>
                 </div>
+                <div style="background: var(--secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <code style="display: block; color: var(--accent-purple); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        PYTHONPATH=. python driftlock choir_choir_sim/sims/make_movie.py --config driftlock choir_choir_sim/configs/demo_movie.yaml
+                    </code>
+                    <p style="color: var(--text-muted); font-size: 0.875rem;">
+                        Renders the 60 s annotated acceptance movie (Δf SNR + CRLB overlays) to <code style="color: var(--accent-gold);">driftlock choir_choir_sim/outputs/movies/demo_choir_sim.mp4</code>; lower <code>movie.seconds</code> for preview passes.
+                    </p>
+                </div>
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <a href="driftlock_sim/sims/run_acceptance.py" class="btn btn-primary">View Source Code →</a>
-                    <a href="driftlock_sim/README.md" class="btn btn-secondary">Lab Documentation →</a>
-                    <a href="driftlock_sim/outputs/csv/acceptance_summary.json" class="btn btn-secondary">Latest Summary JSON →</a>
-                    <a href="driftlock_sim/outputs/figs/executive_summary.pdf" class="btn btn-secondary">Executive PDF →</a>
+                    <a href="driftlock choir_choir_sim/sims/run_acceptance.py" class="btn btn-primary">View Source Code →</a>
+                    <a href="driftlock choir_choir_sim/README.md" class="btn btn-secondary">Lab Documentation →</a>
+                    <a href="driftlock choir_choir_sim/outputs/csv/acceptance_summary.json" class="btn btn-secondary">Latest Summary JSON →</a>
+                    <a href="driftlock choir_choir_sim/outputs/figs/executive_summary.pdf" class="btn btn-secondary">Executive PDF →</a>
+                    <a href="driftlock choir_choir_sim/outputs/movies/demo_choir_sim.mp4" class="btn btn-secondary">Acceptance Video →</a>
+                    <a href="driftlock choir_choir_sim/outputs/movies/baseline_choir_sim.mp4" class="btn btn-secondary">Baseline Video →</a>
                 </div>
             </div>
 
@@ -982,6 +1045,16 @@
                     <li><strong>Coherent RMSE:</strong> 45.0 ps (RMSE/CRLB 0.83, 14 trials)</li>
                     <li><strong>Payload delta:</strong> +8.6% RMSE, 0 observed BER @ 20 dB</li>
                     <li><strong>Total runtime:</strong> 3.7 s on Apple M2 Max</li>
+                </ul>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding: 2rem; background: rgba(255, 215, 0, 0.08); border-radius: 12px; border-left: 4px solid var(--accent-gold);">
+                <h4 style="color: var(--accent-gold); margin-bottom: 0.75rem;">2025 Baseline vs Driftlock Reel</h4>
+                <ul style="color: var(--text-secondary); list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem;">
+                    <li><strong>Typical stack:</strong> GNSS/PTP disciplined oscillators, 5–50 ns jitter, little Δf visibility.</li>
+                    <li><strong>Driftlock reel:</strong> 45 ps RMSE (0.83× CRLB) with live Δf/2Δf SNR badges and seeded reproducibility.</li>
+                    <li><strong>Lock time:</strong> Legacy systems settle in seconds; our deterministic 60 s clip shows frame-by-frame stability.</li>
+                    <li><strong>Artifacts:</strong> `baseline_choir_sim.mp4` vs `demo_choir_sim.mp4` under `driftlock choir_choir_sim/outputs/movies/`.</li>
                 </ul>
             </div>
 
@@ -1439,15 +1512,15 @@ python scripts/sweep_phase2_kf.py --nodes 25 --density 0.30 \
 
             <div class="footer-column">
                 <h3>Technical</h3>
-                <a href="driftlock_sim/sims/run_acceptance.py">Run Choir Simulation</a>
-                <a href="https://github.com/shannon-labs/driftlock">Source Code</a>
-                <a href="driftlock_sim/README.md">Lab Documentation</a>
+                <a href="driftlock choir_choir_sim/sims/run_acceptance.py">Run Choir Simulation</a>
+                <a href="https://github.com/shannon-labs/driftlock choir">Source Code</a>
+                <a href="driftlock choir_choir_sim/README.md">Lab Documentation</a>
                 <a href="mailto:licensing@shannonlabs.com">Commercial License</a>
             </div>
 
             <div class="footer-column">
                 <h3>Technical</h3>
-                <a href="https://github.com/shannon-labs/driftlock">Source Code</a>
+                <a href="https://github.com/shannon-labs/driftlock choir">Source Code</a>
                 <a href="/docs/theory.md">Mathematical Theory</a>
                 <a href="/docs/quickstart.md">Quick Start</a>
                 <a href="/patent/PROVISIONAL_PATENT_APPLICATION.md">Patent Application</a>

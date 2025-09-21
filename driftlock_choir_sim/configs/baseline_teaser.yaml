@@ -1,0 +1,61 @@
+seed: 2025
+sample_rate_hz: 5.0e6
+duration_s: 0.050
+
+tx:
+  df_hz: 10000.0
+  m_carriers: 5
+  omit_fundamental: false
+  amplitudes: equal
+  phase_schedule: none
+  payload_qpsk_fraction: 0.0
+  payload_symbol_rate: 1000.0
+
+channel:
+  awgn_snr_db: 20.0
+  taps:
+    - { delay_s: 0.0e-6, gain: 1.0 }
+  cfo_hz: 0.0
+  sco_ppm: 0.5
+  phase_noise_rad2: 0.02
+  rapp_p: 3.0
+  rapp_sat: 1.0
+  aperture_alpha: 2.0
+  aperture_mix: 0.0
+  cyclo_gate_rate_hz: 0.0
+
+truth:
+  tau_s: 100e-12
+
+movie:
+  fps: 24
+  seconds: 15
+  annotate: true
+  jitter_noise_std: 0.05
+  history_frames: 300
+  tau_ylim_ps: 60000
+  nfft: 4096
+  dpi: 140
+  title: "Typical 2025 Sync Stack — GNSS/PTP Baseline"
+  header_lines:
+    - "5-carrier comb • Δf 10 kHz • GPS/PTP disciplined oscillators"
+    - "SNR 20 dB • SCO 0.5 ppm • Phase noise 0.02 rad²"
+    - "Truth τ 100 ps • Loose CI & CRLB → tens of ns jitter"
+  info_box:
+    text: "Legacy reality:\n• Requires long settling\n• Δf rarely instrumented\n• 5–50 ns effective jitter"
+    x: 0.64
+    y: 0.88
+    fontsize: 9
+    ha: "left"
+    va: "top"
+    color: "#222222"
+    facecolor: "#fff7e6"
+    edgecolor: "#f0b429"
+    alpha: 0.92
+  status_prefix: "Frame"
+  header_spacing: 0.03
+  layout_top: 0.82
+
+output:
+  dir: driftlock_choir_sim/outputs
+  run_id: baseline_teaser

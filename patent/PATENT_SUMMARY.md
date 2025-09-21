@@ -164,7 +164,7 @@ The patent includes **40 comprehensive claims** covering:
 ## Repository Structure
 
 ```
-/Volumes/VIXinSSD/driftlock/
+/Volumes/VIXinSSD/driftlock choir/
 ├── patent/PROVISIONAL_PATENT_APPLICATION.md          # Main patent document
 ├── patent/PATENT_SUPPORTING_DOCUMENTATION.html       # Interactive technical docs
 ├── patent/PATENT_SUMMARY.md                          # This summary document

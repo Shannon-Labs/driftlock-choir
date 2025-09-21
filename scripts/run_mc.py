@@ -26,8 +26,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from phase1 import Phase1Config, Phase1Simulator
 from phase2 import Phase2Config, Phase2Simulation
+from src.metrics.stats import StatisticalValidator, StatsParams
 from mac.scheduler import MacSlots
 from utils.io import ensure_directory, save_json
+
+from ablation_sweeps import (
+    load_ablations,
+    generate_combinations,
+    run_ablation_combo,
+    aggregate_telemetries,
+    save_summary_csv,
+)
 
 
 @dataclass
@@ -36,18 +45,29 @@ class MCRunConfig:
     config_file: str
     output_dir: str = 'results'
     run_id: Optional[str] = None
+    ablation_config: Optional[str] = None
+    comparative: bool = False
 
 
 class MonteCarloRunner:
     def __init__(self, cfg: MCRunConfig):
         self.cfg = cfg
-        self.config = self._read_config(cfg.config_file)
-        root = Path(cfg.output_dir)
-        if cfg.run_id:
-            root = root / cfg.run_id
+        if cfg.ablation_config:
+            self.ablation_params, self.n_monte_carlo = load_ablations(cfg.ablation_config)
+            root = Path(cfg.output_dir) / 'ablations'
+            if cfg.run_id:
+                root = root / cfg.run_id
+            else:
+                root = root / f"ablation_{int(time.time())}"
+            self.output_root = Path(ensure_directory(root))
         else:
-            root = root / f"run_{int(time.time())}"
-        self.output_root = Path(ensure_directory(root))
+            self.config = self._read_config(cfg.config_file)
+            root = Path(cfg.output_dir)
+            if cfg.run_id:
+                root = root / cfg.run_id
+            else:
+                root = root / f"run_{int(time.time())}"
+            self.output_root = Path(ensure_directory(root))
         self._persist_run_metadata()
 
     def _read_config(self, path: str) -> Dict[str, Any]:
@@ -59,8 +79,14 @@ class MonteCarloRunner:
             'timestamp': time.time(),
             'simulation_type': self.cfg.simulation_type,
             'config_file': self.cfg.config_file,
-            'config': self.config,
+            'ablation_config': self.cfg.ablation_config,
+            'comparative': self.cfg.comparative,
         }
+        if hasattr(self, 'config'):
+            payload['config'] = self.config
+        if hasattr(self, 'ablation_params'):
+            payload['ablation_params'] = self.ablation_params
+            payload['n_monte_carlo'] = self.n_monte_carlo
         save_json(payload, self.output_root / 'run_config.json')
 
     def run(self) -> Dict[str, Any]:
@@ -70,6 +96,8 @@ class MonteCarloRunner:
             summary['phase1'] = self._run_phase1_jobs()
         if sim_type in ('phase2', 'all'):
             summary['phase2'] = self._run_phase2_jobs()
+        if self.cfg.ablation_config:
+            summary['ablation'] = self._run_ablation_jobs()
         save_json(summary, self.output_root / 'final_results.json')
         report = self._compose_report(summary)
         (self.output_root / 'simulation_report.txt').write_text(report, encoding='utf-8')
@@ -216,6 +244,166 @@ class MonteCarloRunner:
                     'output_dir': str(job_dir),
                 }
             )
+
+        # Aggregate statistical analysis across Phase 2 runs
+        driftlock choir_rmse_tau = []
+        baseline_rmse_tau = []
+        for entry in results:
+            jsonl_path = Path(entry['output_dir']) / 'phase2_runs.jsonl'
+            if jsonl_path.exists():
+                with open(jsonl_path, 'r') as f:
+                    lines = [line.strip() for line in f if line.strip()]
+                    if lines:
+                        last_telemetry = json.loads(lines[-1])
+                        stats = last_telemetry.get('statistics', {})
+                        rmse_tau_point = stats.get('rmse_tau', {}).get('point_estimate')
+                        if rmse_tau_point is not None:
+                            if last_telemetry.get('baseline_mode', False):
+                                baseline_rmse_tau.append(rmse_tau_point)
+                            else:
+                                driftlock choir_rmse_tau.append(rmse_tau_point)
+
+        aggregated_stats = {}
+        if driftlock choir_rmse_tau and baseline_rmse_tau:
+            validator = StatisticalValidator(StatsParams(confidence_level=0.95, bootstrap_samples=1000, random_state=42))
+            t_test = validator.paired_t_test(np.array(driftlock choir_rmse_tau), np.array(baseline_rmse_tau))
+            effect = validator.effect_sizes(np.array(driftlock choir_rmse_tau), np.array(baseline_rmse_tau))
+            boot_test = validator.bootstrap_hypothesis_test(np.array(driftlock choir_rmse_tau), np.array(baseline_rmse_tau))
+            aggregated_stats = {
+                't_test': t_test,
+                'effect_sizes': effect,
+                'bootstrap_test': boot_test,
+                'n_driftlock choir_runs': len(driftlock choir_rmse_tau),
+                'n_baseline_runs': len(baseline_rmse_tau),
+                'mean_driftlock choir_rmse_tau_ps': np.mean(driftlock choir_rmse_tau),
+                'mean_baseline_rmse_tau_ps': np.mean(baseline_rmse_tau),
+            }
+
+        # Add aggregated stats to the last result or as separate key
+        if results:
+            results[-1]['aggregated_statistics'] = aggregated_stats
+        else:
+            results.append({'aggregated_statistics': aggregated_stats})
+
+        return results
+
+    def _run_ablation_jobs(self) -> List[Dict[str, Any]]:
+        """Run ablation sweeps using the provided ablation config."""
+        keys = [
+            'carrier_count',
+            'delta_f_spacing_hz',
+            'snr_db',
+            'phase_noise_psd_dbc_hz',
+            'consensus_gains',
+        ]
+        combinations = generate_combinations(self.ablation_params)
+        combo_aggregates: List[Dict[str, Any]] = []
+        results: List[Dict[str, Any]] = []
+        base_seed = 2025
+        max_iterations = 1000
+
+        for combo_idx, combo in enumerate(combinations):
+            (
+                carrier_count,
+                delta_f_spacing_hz,
+                snr_db,
+                phase_noise_psd_dbc_hz,
+                consensus_gain,
+            ) = combo
+            combo_name = (
+                f"carrier{carrier_count}_spacing{int(delta_f_spacing_hz/1000)}k_"
+                f"snr{snr_db}db_psd{int(phase_noise_psd_dbc_hz)}dbc_gain{consensus_gain}"
+            )
+            combo_dir = self.output_root / combo_name
+            combo_dir.mkdir(exist_ok=True, parents=True)
+
+            if self.cfg.comparative:
+                # Driftlock mode
+                driftlock choir_dir = combo_dir / 'driftlock choir'
+                driftlock choir_dir.mkdir(exist_ok=True, parents=True)
+                telemetries_d = run_ablation_combo(
+                    combo,
+                    str(driftlock choir_dir),
+                    self.n_monte_carlo,
+                    base_seed,
+                    max_iterations,
+                    local_kf_enabled=True,
+                    weighting='inverse_variance',
+                )
+                agg_d = aggregate_telemetries(telemetries_d)
+                save_aggregated(str(driftlock choir_dir), agg_d)
+
+                # Baseline mode
+                baseline_dir = combo_dir / 'baseline'
+                baseline_dir.mkdir(exist_ok=True, parents=True)
+                telemetries_b = run_ablation_combo(
+                    combo,
+                    str(baseline_dir),
+                    self.n_monte_carlo,
+                    base_seed + 10000,  # Offset for baseline derivatives
+                    max_iterations,
+                    local_kf_enabled=False,
+                    weighting='uniform',
+                )
+                agg_b = aggregate_telemetries(telemetries_b)
+                save_aggregated(str(baseline_dir), agg_b)
+
+                # Prepare rows
+                row_d = dict(zip(keys, combo))
+                row_d.update({'mode': 'driftlock choir', **agg_d})
+                row_b = dict(zip(keys, combo))
+                row_b.update({'mode': 'baseline', **agg_b})
+                combo_aggregates.extend([row_d, row_b])
+
+                # Comparative aggregates if both have data
+                if agg_d and agg_b and 'mean_final_rmse_ps' in agg_d and 'mean_final_rmse_ps' in agg_b:
+                    rmse_d = agg_d['mean_final_rmse_ps']
+                    rmse_b = agg_b['mean_final_rmse_ps']
+                    relative_improvement = ((rmse_b - rmse_d) / rmse_b) * 100 if rmse_b != 0 else 0
+                    comparative_stats = {
+                        'relative_improvement_pct': relative_improvement,
+                        'mean_rmse_driftlock choir_ps': rmse_d,
+                        'mean_rmse_baseline_ps': rmse_b,
+                    }
+                else:
+                    comparative_stats = {}
+
+                combo_summary = {
+                    'combo_name': combo_name,
+                    'driftlock choir': agg_d,
+                    'baseline': agg_b,
+                    'comparative': comparative_stats,
+                    'output_dir': str(combo_dir),
+                }
+            else:
+                # Single mode (Driftlock)
+                telemetries = run_ablation_combo(
+                    combo,
+                    str(combo_dir),
+                    self.n_monte_carlo,
+                    base_seed,
+                    max_iterations,
+                )
+                agg = aggregate_telemetries(telemetries)
+                save_aggregated(str(combo_dir), agg)
+
+                row = dict(zip(keys, combo))
+                row.update(agg)
+                combo_aggregates.append(row)
+
+                combo_summary = {
+                    'combo_name': combo_name,
+                    'aggregates': agg,
+                    'output_dir': str(combo_dir),
+                }
+
+            results.append(combo_summary)
+            print(f"Completed ablation combination {combo_idx + 1}/{len(combinations)}: {combo_name}")
+
+        # Save consolidated summary CSV
+        summary_csv = self.output_root / 'ablation_summary.csv'
+        save_summary_csv(str(summary_csv), combo_aggregates)
+
         return results
 
     def _compose_report(self, summary: Dict[str, Any]) -> str:
@@ -237,6 +425,38 @@ class MonteCarloRunner:
                 lines.append(
                     f"- {entry['job']}: nodes={entry['n_nodes']} weighting={entry['weighting']} converged={entry['converged']} final_rmse={entry['final_timing_rmse_ps']}"
                 )
+            # Aggregated stats
+            agg_stats = None
+            for entry in phase2:
+                if 'aggregated_statistics' in entry and entry['aggregated_statistics']:
+                    agg_stats = entry['aggregated_statistics']
+                    break
+            if agg_stats:
+                lines.append('[Statistical Validation (Driftlock vs Baseline)]')
+                lines.append(f"  • Paired t-test p-value: {agg_stats['t_test']['p_value']:.4f} (significant: {agg_stats['t_test']['significant']})")
+                lines.append(f"  • Cohen's d: {agg_stats['effect_sizes']['cohens_d']:.3f} ({agg_stats['effect_sizes']['cohens_d_interpretation']})")
+                lines.append(f"  • Relative improvement: {agg_stats['effect_sizes']['relative_improvement_pct']:.1f}%")
+                lines.append(f"  • Bootstrap p-value: {agg_stats['bootstrap_test']['p_value']:.4f} (significant: {agg_stats['bootstrap_test']['significant']})")
+                lines.append(f"  • Runs: Driftlock={agg_stats['n_driftlock choir_runs']}, Baseline={agg_stats['n_baseline_runs']}")
+            lines.append('')
+        ablation = summary.get('ablation', [])
+        if ablation:
+            lines.append('[Ablation Sweeps]')
+            for entry in ablation:
+                lines.append(f"- {entry['combo_name']}:")
+                if self.cfg.comparative:
+                    agg_d = entry.get('driftlock choir', {})
+                    agg_b = entry.get('baseline', {})
+                    comp = entry.get('comparative', {})
+                    lines.append(f"  • Driftlock RMSE: {agg_d.get('mean_final_rmse_ps', 'N/A')} ps")
+                    lines.append(f"  • Baseline RMSE: {agg_b.get('mean_final_rmse_ps', 'N/A')} ps")
+                    if comp:
+                        lines.append(f"  • Improvement: {comp.get('relative_improvement_pct', 0):.1f}%")
+                else:
+                    agg = entry.get('aggregates', {})
+                    lines.append(f"  • Mean RMSE: {agg.get('mean_final_rmse_ps', 'N/A')} ps")
+                    lines.append(f"  • Convergence Rate: {agg.get('convergence_rate', 0):.2f}")
+            lines.append(f"  Consolidated CSV: {self.output_root / 'ablation_summary.csv'}")
             lines.append('')
         lines.append('=== End Summary ===')
         return "\n".join(lines)
@@ -268,7 +488,46 @@ class MonteCarloRunner:
                 md.append(
                     f"| {entry.get('job')} | {entry.get('n_nodes')} | {entry.get('weighting')} | {entry.get('converged')} | {entry.get('convergence_iteration')} | {entry.get('final_timing_rmse_ps')} | {entry.get('output_dir')} |\n"
                 )
+            # Aggregated stats
+            agg_stats = None
+            for entry in phase2:
+                if 'aggregated_statistics' in entry and entry['aggregated_statistics']:
+                    agg_stats = entry['aggregated_statistics']
+                    break
+            if agg_stats:
+                md.append("## Statistical Validation (Driftlock vs Baseline)\n")
+                md.append(f"- **Paired t-test**: p = {agg_stats['t_test']['p_value']:.4f} (significant: {agg_stats['t_test']['significant']})\n")
+                md.append(f"- **Cohen's d**: {agg_stats['effect_sizes']['cohens_d']:.3f} ({agg_stats['effect_sizes']['cohens_d_interpretation']})\n")
+                md.append(f"- **Relative improvement**: {agg_stats['effect_sizes']['relative_improvement_pct']:.1f}%\n")
+                md.append(f"- **Bootstrap test**: p = {agg_stats['bootstrap_test']['p_value']:.4f} (significant: {agg_stats['bootstrap_test']['significant']})\n")
+                md.append(f"- **Runs**: Driftlock = {agg_stats['n_driftlock choir_runs']}, Baseline = {agg_stats['n_baseline_runs']}\n")
+                md.append(f"- **Means**: Driftlock RMSE τ = {agg_stats['mean_driftlock choir_rmse_tau_ps']:.2f} ps, Baseline = {agg_stats['mean_baseline_rmse_tau_ps']:.2f} ps\n")
             md.append("\n")
+        # Ablation
+        ablation = summary.get('ablation', [])
+        if ablation:
+            md.append("## Ablation Sweeps\n")
+            if self.cfg.comparative:
+                md.append("### Comparative Runs (Driftlock vs Baseline)\n")
+                md.append("\n| Combo | Driftlock RMSE (ps) | Baseline RMSE (ps) | Improvement (%) | Output |\n|---|---:|---:|---:|---|\n")
+                for entry in ablation:
+                    agg_d = entry.get('driftlock choir', {})
+                    agg_b = entry.get('baseline', {})
+                    comp = entry.get('comparative', {})
+                    rmse_d = agg_d.get('mean_final_rmse_ps', 'N/A')
+                    rmse_b = agg_b.get('mean_final_rmse_ps', 'N/A')
+                    imp = comp.get('relative_improvement_pct', 'N/A')
+                    md.append(f"| {entry.get('combo_name')} | {rmse_d} | {rmse_b} | {imp} | {entry.get('output_dir')} |\n")
+            else:
+                md.append("### Single Mode (Driftlock)\n")
+                md.append("\n| Combo | Mean RMSE (ps) | Convergence Rate | Output |\n|---|---:|---:|---|\n")
+                for entry in ablation:
+                    agg = entry.get('aggregates', {})
+                    md.append(
+                        f"| {entry.get('combo_name')} | {agg.get('mean_final_rmse_ps', 'N/A')} | "
+                        f"{agg.get('convergence_rate', 'N/A')} | {entry.get('output_dir')} |\n"
+                    )
+            md.append(f"\nConsolidated summary: [{self.output_root / 'ablation_summary.csv'}]({self.output_root / 'ablation_summary.csv'})\n")
         md.append("---\nGenerated by `scripts/run_mc.py`.\n")
         return "".join(md)
 
@@ -297,11 +556,22 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='DriftLock Monte Carlo runner (updated CLI)')
     parser.add_argument('simulation_type', choices=['phase1', 'phase2', 'all'], help='Simulations to execute')
     parser.add_argument('-c', '--config', required=True, help='YAML configuration describing jobs')
+    parser.add_argument('-a', '--ablation-config', help='YAML configuration for ablation sweeps (e.g., sim/configs/ablations.yaml)')
+    parser.add_argument('--comparative-runs', action='store_true', help='Run comparative Driftlock vs baseline modes for ablations')
     parser.add_argument('-o', '--output', default='results/mc_runs', help='Root output directory')
     parser.add_argument('-r', '--run-id', help='Optional run identifier appended to the output path')
     args = parser.parse_args()
 
-    runner = MonteCarloRunner(MCRunConfig(args.simulation_type, args.config, args.output, args.run_id))
+    runner = MonteCarloRunner(
+        MCRunConfig(
+            args.simulation_type,
+            args.config,
+            args.output,
+            args.run_id,
+            ablation_config=args.ablation_config,
+            comparative=args.comparative_runs,
+        )
+    )
     start = time.time()
     runner.run()
     duration = time.time() - start

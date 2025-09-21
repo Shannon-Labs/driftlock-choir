@@ -108,10 +108,10 @@ Enterprise:  $100K+/mo  (unlimited)
 
 ### Simple API
 ```python
-import driftlock
+import driftlock choir
 
 # Initialize with existing radio
-dl = driftlock.Client(radio_interface='srsRAN')
+dl = driftlock choir.Client(radio_interface='srsRAN')
 
 # Get timing telemetry
 bias = dl.get_clock_bias()      # Returns: 2.3ns
@@ -165,8 +165,8 @@ offset = dl.get_time_offset()    # Returns: TimeDelta
 
 Hunter Bown
 - Email: hunter@shannonlabs.dev
-- Demo: https://driftlock.net
-- GitHub: https://github.com/shannon-labs/driftlock
+- Demo: https://driftlock choir.net
+- GitHub: https://github.com/shannon-labs/driftlock choir
 
 ---
 

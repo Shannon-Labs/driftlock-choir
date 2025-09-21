@@ -6,6 +6,7 @@ random geometric network using Chronometric Interferometry measurements.
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 from dataclasses import dataclass, asdict
@@ -34,8 +35,11 @@ from alg.consensus import (
 )
 from alg.spectral_predictor import predict_iterations_to_rmse
 from alg.weights import build_weight_matrix
+from metrics.stats import StatisticalValidator, StatsParams
 from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json
 from utils.plotting import save_figure
+
+from src.io.telemetry import TelemetryExporter
 
 
 @dataclass
@@ -85,6 +89,7 @@ class Phase2Config:
     local_kf_clock_gain: float = 0.18
     local_kf_freq_gain: float = 0.05
     local_kf_iterations: int = 1
+    baseline_mode: bool = False
 
     def handshake_config(self) -> ChronometricHandshakeConfig:
         return ChronometricHandshakeConfig(
@@ -112,8 +117,19 @@ class Phase2Simulation:
         self.config = config
         if self.config.save_results:
             ensure_directory(self.config.results_dir)
+        self.exporter = TelemetryExporter(self.config.results_dir, variant="driftlock choir" if not self.config.baseline_mode else "baseline")
         self.handshake = ChronometricHandshakeSimulator(self.config.handshake_config())
         self.rng = np.random.default_rng(self.config.rng_seed)
+
+        if self.config.baseline_mode:
+            # Emulate legacy GNSS/PTP: higher initial errors, noise floors, simpler settings
+            self.config.snr_db = 10.0  # Lower SNR
+            self.config.clock_bias_std_ps = 100.0  # Higher clock bias
+            self.config.clock_ppm_std = 10.0  # Higher PPM error
+            self.config.freq_offset_span_hz = 200e3  # Wider frequency offsets
+            self.config.weighting = 'metropolis'  # Simpler weighting
+            self.config.local_kf_enabled = False  # Disable local KF
+            self.config.epsilon_override = 0.001  # Smaller step size for vanilla-like consensus
 
     def run(self) -> Dict[str, Any]:
         positions = self._sample_positions()
@@ -146,6 +162,11 @@ class Phase2Simulation:
             predicted_iterations=predicted_iterations,
             measured_iterations=measured_iterations,
             kf_metrics=kf_metrics,
+        )
+
+        self.exporter.add_record(
+            data=telemetry,
+            metadata={"seed": self.config.rng_seed, "config": asdict(self.config)}
         )
 
         if self.config.save_results:
@@ -487,6 +508,42 @@ class Phase2Simulation:
             if data.get('coarse_error_s') is not None
         ]
 
+        # Compute additional metrics
+        rmse_tau_ps = _edge_rmse(graph, index=0, scale=1e12)
+        rmse_df_hz = _edge_rmse(graph, index=1, scale=1.0)
+        pred_tau_std_ps = _edge_predicted_std(graph, index=0, scale=1e12)
+        pred_df_std_hz = _edge_predicted_std(graph, index=1, scale=1.0)
+        crlb_ratio_tau = _safe_ratio(rmse_tau_ps, pred_tau_std_ps) if rmse_tau_ps is not None and pred_tau_std_ps is not None else None
+        crlb_ratio_df = _safe_ratio(rmse_df_hz, pred_df_std_hz) if rmse_df_hz is not None and pred_df_std_hz is not None else None
+        avg_delta_f_snr_db = self.config.snr_db  # Config-wide SNR as proxy; per-edge would require storing noise_power
+        # BER not applicable in this consensus sim without payload
+
+        # Collect data for statistical validation
+        timing_errors_ps = []
+        freq_errors_hz = []
+        predicted_tau_stds_ps = []
+        predicted_df_stds_hz = []
+        for u, v in graph.edges():
+            data = graph.edges[u, v]
+            m = data['measurement']
+            mt = data['measurement_true']
+            timing_errors_ps.append((m[0] - mt[0]) * 1e12)
+            freq_errors_hz.append(m[1] - mt[1])
+            sigma_tau_sq = data['sigma_tau_sq']
+            sigma_df_sq = data['sigma_df_sq']
+            predicted_tau_stds_ps.append(np.sqrt(sigma_tau_sq) * 1e12)
+            predicted_df_stds_hz.append(np.sqrt(sigma_df_sq))
+
+        # Compute statistical metrics
+        validator = StatisticalValidator(StatsParams(confidence_level=0.95, bootstrap_samples=500, random_state=42))
+        rmse_tau_ci = validator.confidence_intervals_for_rmse(np.array(timing_errors_ps))
+        rmse_df_ci = validator.confidence_intervals_for_rmse(np.array(freq_errors_hz))
+        crlb_tau_ci = validator.confidence_intervals_for_crlb_ratio(np.array(timing_errors_ps), np.array(predicted_tau_stds_ps))
+        crlb_df_ci = validator.confidence_intervals_for_crlb_ratio(np.array(freq_errors_hz), np.array(predicted_df_stds_hz))
+        snr_values = np.full(len(timing_errors_ps), self.config.snr_db)
+        snr_ci = validator.confidence_intervals_for_snr(snr_values)
+        ber_ci = None  # BER not computed in this simulation
+
         telemetry: Dict[str, Any] = {
             'config': asdict(self.config),
             'network': {
@@ -531,31 +588,46 @@ class Phase2Simulation:
                     else None
                 ),
                 # Estimator sanity telemetry (per-edge)
-                'measurement_rmse_tau_ps': _edge_rmse(graph, index=0, scale=1e12),
-                'measurement_rmse_df_hz': _edge_rmse(graph, index=1, scale=1.0),
+                'measurement_rmse_tau_ps': rmse_tau_ps,
+                'measurement_rmse_df_hz': rmse_df_hz,
                 'avg_ls_tau_std_ps': _edge_avg_ls_std(graph, index=0, scale=1e12),
                 'avg_ls_df_std_hz': _edge_avg_ls_std(graph, index=1, scale=1.0),
-                'predicted_tau_std_ps': _edge_predicted_std(graph, index=0, scale=1e12),
-                'predicted_df_std_hz': _edge_predicted_std(graph, index=1, scale=1.0),
+                'predicted_tau_std_ps': pred_tau_std_ps,
+                'predicted_df_std_hz': pred_df_std_hz,
+                'crlb_ratio_tau': crlb_ratio_tau,
+                'crlb_ratio_df': crlb_ratio_df,
+                'avg_delta_f_snr_db': avg_delta_f_snr_db,
                 'rmse_over_predicted_tau': _safe_ratio(
-                    _edge_rmse(graph, index=0, scale=1e12) or 0.0,
-                    _edge_predicted_std(graph, index=0, scale=1e12) or float('nan')
+                    rmse_tau_ps or 0.0,
+                    pred_tau_std_ps or float('nan')
                 ),
                 'rmse_over_predicted_df': _safe_ratio(
-                    _edge_rmse(graph, index=1, scale=1.0) or 0.0,
-                    _edge_predicted_std(graph, index=1, scale=1.0) or float('nan')
+                    rmse_df_hz or 0.0,
+                    pred_df_std_hz or float('nan')
                 ),
                 'alias_resolved_rate': _alias_resolved_rate(graph),
             },
+            'statistics': {
+                'rmse_tau': rmse_tau_ci,
+                'rmse_df': rmse_df_ci,
+                'crlb_tau': crlb_tau_ci,
+                'crlb_df': crlb_df_ci,
+                'snr': snr_ci,
+                'ber': ber_ci,
+            },
             'local_kf': kf_metrics,
+            'rng_seed': self.config.rng_seed,
+            'baseline_mode': self.config.baseline_mode,
         }
         return telemetry
 
 
     def _save_results(self, telemetry: Dict[str, Any]) -> None:
-        out_path = os.path.join(self.config.results_dir, 'phase2_results.json')
-        save_json(telemetry, out_path)
-        print(f"Results saved to {out_path}")
+        # Append to JSONL for streaming
+        jsonl_path = os.path.join(self.config.results_dir, 'phase2_runs.jsonl')
+        with open(jsonl_path, 'a') as f:
+            f.write(json.dumps(telemetry) + '\n')
+        print(f"Run appended to {jsonl_path}")
 
     def _append_run_csv(
         self,
@@ -567,6 +639,7 @@ class Phase2Simulation:
         csv_path = os.path.join(self.config.results_dir, 'phase2_runs.csv')
         network = telemetry['network']
         consensus = telemetry['consensus']
+        edge_diag = telemetry['edge_diagnostics']
         n_nodes = int(network['n_nodes'])
         n_edges = int(network['n_edges'])
         density = 0.0
@@ -574,6 +647,8 @@ class Phase2Simulation:
             density = (2.0 * n_edges) / (n_nodes * (n_nodes - 1))
         fieldnames = [
             'timestamp',
+            'baseline_mode',
+            'rng_seed',
             'n_nodes',
             'n_edges',
             'density',
@@ -587,6 +662,15 @@ class Phase2Simulation:
             'success_under_5ms',
             'target_rmse_ps',
             'target_streak',
+            'measurement_rmse_tau_ps',
+            'measurement_rmse_df_hz',
+            'crlb_ratio_tau',
+            'crlb_ratio_df',
+            'avg_delta_f_snr_db',
+            'statistics_rmse_tau_ci_lower',
+            'statistics_rmse_tau_ci_upper',
+            'statistics_crlb_tau_ci_lower',
+            'statistics_crlb_tau_ci_upper',
             'local_kf_enabled',
             'local_kf_mode',
             'kf_initial_clock_rms_ps',
@@ -603,8 +687,13 @@ class Phase2Simulation:
         lambda2_val = consensus['lambda_2']
         lambda2_val = float(lambda2_val) if lambda2_val is not None else None
         convergence_iteration = consensus['convergence_iteration']
+        statistics = telemetry.get('statistics', {})
+        rmse_tau_stats = statistics.get('rmse_tau', {})
+        crlb_tau_stats = statistics.get('crlb_tau', {})
+
         row = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
+            'rng_seed': telemetry['rng_seed'],
             'n_nodes': n_nodes,
             'n_edges': n_edges,
             'density': density,
@@ -618,6 +707,15 @@ class Phase2Simulation:
             'success_under_5ms': consensus['success_under_5ms'],
             'target_rmse_ps': self.config.target_rmse_ps,
             'target_streak': self.config.target_streak,
+            'measurement_rmse_tau_ps': edge_diag['measurement_rmse_tau_ps'],
+            'measurement_rmse_df_hz': edge_diag['measurement_rmse_df_hz'],
+            'crlb_ratio_tau': edge_diag['crlb_ratio_tau'],
+            'crlb_ratio_df': edge_diag['crlb_ratio_df'],
+            'avg_delta_f_snr_db': edge_diag['avg_delta_f_snr_db'],
+            'statistics_rmse_tau_ci_lower': rmse_tau_stats.get('ci_lower'),
+            'statistics_rmse_tau_ci_upper': rmse_tau_stats.get('ci_upper'),
+            'statistics_crlb_tau_ci_lower': crlb_tau_stats.get('ci_lower'),
+            'statistics_crlb_tau_ci_upper': crlb_tau_stats.get('ci_upper'),
             'local_kf_enabled': kf_metrics['enabled'],
             'local_kf_mode': kf_metrics.get('mode'),
             'kf_initial_clock_rms_ps': kf_metrics['initial_clock_rms_ps'],
@@ -628,6 +726,7 @@ class Phase2Simulation:
             'kf_freq_improvement_hz': kf_metrics['freq_improvement_hz'],
             'kf_clock_ratio': kf_metrics['clock_ratio'],
             'kf_freq_ratio': kf_metrics['freq_ratio'],
+            'baseline_mode': self.config.baseline_mode,
         }
         append_csv_row(csv_path, fieldnames, row)
 
@@ -926,6 +1025,7 @@ def build_phase2_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--local-kf-clock-gain', type=float, default=Phase2Config.local_kf_clock_gain, help='Shrink factor applied to variance-weighted neighbour timing residuals.')
     parser.add_argument('--local-kf-freq-gain', type=float, default=Phase2Config.local_kf_freq_gain, help='Shrink factor applied to variance-weighted neighbour frequency residuals.')
     parser.add_argument('--local-kf-iters', type=int, default=Phase2Config.local_kf_iterations, help='Number of local smoothing passes before consensus.')
+    parser.add_argument('--baseline-mode', action='store_true', help='Enable legacy GNSS/PTP emulation mode with higher variances and simpler consensus.')
     parser.add_argument('--save-results', dest='save_results', action='store_true', help='Persist JSON/CSV outputs (default on).')
     parser.add_argument('--no-save-results', dest='save_results', action='store_false', help='Skip writing JSON/CSV outputs.')
     parser.add_argument('--make-plots', dest='plot_results', action='store_true', help='Generate PNG plots of topology/convergence (default on).')
@@ -985,6 +1085,7 @@ def main() -> None:
         local_kf_clock_gain=args.local_kf_clock_gain,
         local_kf_freq_gain=args.local_kf_freq_gain,
         local_kf_iterations=args.local_kf_iters,
+        baseline_mode=args.baseline_mode,
     )
 
     if args.echo_config or args.dry_run:

@@ -12,8 +12,8 @@ Thank you for your interest in contributing to Driftlock! This document provides
 ### Development Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/driftlock.git
-cd driftlock
+git clone https://github.com/yourusername/driftlock choir.git
+cd driftlock choir
 
 # Create virtual environment
 python -m venv .venv
@@ -111,7 +111,7 @@ For performance-related contributions:
 
 If you discover a security vulnerability:
 - **DO NOT** open a public issue
-- Email security@driftlock.dev with details
+- Email security@driftlock choir.dev with details
 - Include steps to reproduce
 - Allow time for response before public disclosure
 
@@ -128,10 +128,10 @@ Contributors will be:
 
 ## 📞 Contact
 
-- **General Questions**: hello@driftlock.dev
-- **Technical Issues**: dev@driftlock.dev
-- **Research Collaboration**: research@driftlock.dev
-- **Security**: security@driftlock.dev
+- **General Questions**: hello@driftlock choir.dev
+- **Technical Issues**: dev@driftlock choir.dev
+- **Research Collaboration**: research@driftlock choir.dev
+- **Security**: security@driftlock choir.dev
 
 ## 🙏 Thank You
 

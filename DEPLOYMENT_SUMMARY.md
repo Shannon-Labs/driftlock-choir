@@ -5,14 +5,14 @@ Successfully implemented the Driftlock Choir integration with Shannon Labs' two-
 
 ## Changes Made
 
-### 1. Driftlock Website (`apps/driftlock/index.html`)
+### 1. Driftlock Website (`apps/driftlock choir/index.html`)
 - **Updated metadata**: Title changed to "Driftlock Choir — Shannon Labs Two-Pillar Security Stack"
 - **New hero narrative**: "Entruptor + Driftlock = secure, synchronized systems"
 - **Added Choir Simulation Lab section** with technical details:
   - Coherent path (phase unwrap → weighted LS → τ̂)
   - Aperture path (envelope/cepstrum Δf detection)
   - Acceptance checklist: Δf spike ≥ 15 dB, RMSE ≤ 120 ps, BER < 1e-3 at 20 dB, runtime < 60 s
-  - Links to run `driftlock_sim/sims/run_acceptance.py`
+  - Links to run `driftlock choir_choir_sim/sims/run_acceptance.py`
 - **Updated navigation** to cross-link Shannon Labs and Entruptor
 - **Refreshed CTAs** with two-pillar language
 - **Updated footer** with integration-focused links
@@ -44,8 +44,8 @@ Successfully implemented the Driftlock Choir integration with Shannon Labs' two-
 - **Zero training required** across both pillars
 
 ## Files Modified
-1. `apps/driftlock/index.html` - Complete narrative rewrite
-2. `apps/driftlock/README.md` - Two-pillar documentation
+1. `apps/driftlock choir/index.html` - Complete narrative rewrite
+2. `apps/driftlock choir/README.md` - Two-pillar documentation
 3. `apps/site/app/page.tsx` - Added two-pillar section
 4. `apps/site/app/docs/page.tsx` - Added architecture explanation
 

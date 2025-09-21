@@ -32,7 +32,7 @@ This license explicitly EXCLUDES:
 Academic users must cite Driftlock in any publications or presentations:
 
 ```bibtex
-@software{driftlock2025,
+@software{driftlock choir2025,
   title = {Driftlock: Sub-Nanosecond Wireless Synchronization via Chronometric Interferometry},
   author = {Bown, Hunter},
   year = {2025},
@@ -63,5 +63,5 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 **Shannon Labs, Inc.**
 Website: https://shannonlabs.dev
-Driftlock: https://driftlock.net
+Driftlock: https://driftlock choir.net
 Contact: hello@shannonlabs.dev

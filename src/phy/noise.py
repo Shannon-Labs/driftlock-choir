@@ -58,3 +58,39 @@ class NoiseGenerator:
     def generate_timing_jitter(self, n_samples: int) -> np.ndarray:
         """Generate timing jitter sequence."""
         return self.params.jitter_rms * np.random.randn(n_samples)
+    
+    def integrated_phase_variance(
+        self,
+        beat_bw_hz: float,
+        carrier_freq_hz: float
+    ) -> float:
+        """
+        Compute integrated phase variance over beat bandwidth.
+        
+        Includes white phase noise and timing jitter contributions.
+        
+        Args:
+            beat_bw_hz: Beat signal bandwidth (Hz)
+            carrier_freq_hz: Carrier frequency (Hz)
+            
+        Returns:
+            Total phase variance σ_φ² (rad²)
+        """
+        # Phase noise PSD to linear (assuming dBc/Hz converted to rad²/Hz)
+        # Note: dBc/Hz is for power, S_φ(f) ≈ 10^(PSD/10) for approximation
+        psd_linear = 10 ** (self.params.phase_noise_psd / 10)
+        
+        # Integrated white phase noise variance: PSD * BW (for flat spectrum approximation)
+        var_phase_noise = psd_linear * beat_bw_hz
+        
+        # Timing jitter contribution: σ_φ_jitter = 2π f_c σ_jitter
+        var_phase_jitter = (2 * np.pi * carrier_freq_hz * self.params.jitter_rms) ** 2
+        
+        # Total phase variance
+        total_var = var_phase_noise + var_phase_jitter
+        
+        return float(total_var)
+    
+    def phase_noise_std(self, beat_bw_hz: float, carrier_freq_hz: float) -> float:
+        """Convenience: standard deviation of phase noise."""
+        return np.sqrt(self.integrated_phase_variance(beat_bw_hz, carrier_freq_hz))

@@ -1,0 +1,10 @@
+# Ablation configurations for systematic parameter studies in Phase 2 consensus
+# Template based on default.yaml ranges, but with explicit lists for controlled experiments
+
+ablations:
+  carrier_count: [1, 5, 10]
+  delta_f_spacing_hz: [50_000, 100_000, 200_000]
+  snr_db: [-10, -5, 0, 5, 10, 15, 20, 25, 30]
+  phase_noise_psd_dbc_hz: [-100, -90, -80, -70, -60]
+  consensus_gains: [0.01, 0.1, 1.0]
+  n_monte_carlo: 20  # Number of Monte Carlo runs per parameter combination for statistical aggregation

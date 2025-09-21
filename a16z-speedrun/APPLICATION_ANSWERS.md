@@ -4,7 +4,7 @@
 
 **Company Name:** Shannon Labs, Inc.
 
-**Website:** https://driftlock.net
+**Website:** https://driftlock choir.net
 
 **Contact Email:** hunter@shannonlabs.dev
 

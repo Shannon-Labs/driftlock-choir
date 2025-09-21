@@ -64,7 +64,7 @@
 
 "I'm Hunter Bown. Solo founder. Shipping the timing layer for everything."
 
-**[END CARD: github.com/shannon-labs/driftlock | hunter@shannonlabs.dev]**
+**[END CARD: github.com/shannon-labs/driftlock choir | hunter@shannonlabs.dev]**
 
 ---
 

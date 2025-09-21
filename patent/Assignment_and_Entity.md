@@ -3,7 +3,7 @@
 - Assignee: Shannon Labs, Inc. (Delaware C‑Corp)
 - Product/Division: Driftlock
 - Inventor: Hunter Bown
-- Website: https://driftlock.net
+- Website: https://driftlock choir.net
 
 Notes
 

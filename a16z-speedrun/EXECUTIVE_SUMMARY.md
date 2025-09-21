@@ -253,6 +253,6 @@ While everyone else is building on top of broken timing infrastructure, we're fi
 
 ---
 
-**Contact**: hunter@shannonlabs.dev | https://driftlock.net
+**Contact**: hunter@shannonlabs.dev | https://driftlock choir.net
 
 **Next Step**: Let's discuss how Driftlock powers your entire portfolio.
