@@ -12,41 +12,55 @@
   </defs>
   <text x="20" y="30" class="title">Fig. 5 — Node/system block diagram</text>
 
-  <rect x="40" y="120" width="170" height="70" class="box"/>
-  <text x="125" y="155" class="num">(400)</text>
+  <!-- Top processing chain -->
+  <rect x="30" y="120" width="120" height="70" class="box"/>
+  <text x="90" y="155" class="num">(400)</text>
 
-  <rect x="230" y="120" width="150" height="70" class="box"/>
-  <text x="305" y="155" class="num">(410)</text>
+  <rect x="170" y="120" width="120" height="70" class="box"/>
+  <text x="230" y="155" class="num">(410)</text>
 
-  <rect x="400" y="120" width="170" height="70" class="box"/>
-  <text x="485" y="155" class="num">(420)</text>
+  <rect x="310" y="120" width="120" height="70" class="box"/>
+  <text x="370" y="155" class="num">(420)</text>
 
-  <rect x="590" y="120" width="140" height="70" class="box"/>
-  <text x="660" y="155" class="num">(430)</text>
+  <rect x="450" y="120" width="120" height="70" class="box"/>
+  <text x="510" y="155" class="num">(430)</text>
 
-  <rect x="750" y="120" width="120" height="70" class="box"/>
-  <text x="810" y="155" class="num">(440)</text>
+  <rect x="590" y="120" width="120" height="70" class="box"/>
+  <text x="650" y="155" class="num">(435)</text>
 
-  <rect x="590" y="240" width="280" height="70" class="box"/>
-  <text x="730" y="275" class="num">(450)</text>
+  <rect x="730" y="120" width="120" height="70" class="box"/>
+  <text x="790" y="155" class="num">(440)</text>
 
-  <rect x="400" y="240" width="160" height="70" class="box"/>
-  <text x="480" y="275" class="num">(460)</text>
+  <!-- Bottom layer -->
+  <rect x="320" y="240" width="220" height="70" class="box"/>
+  <text x="430" y="275" class="num">(450)</text>
 
-  <!-- Flow arrows -->
-  <line x1="210" y1="155" x2="230" y2="155" class="line"/>
-  <polygon points="230,155 220,150 220,160" class="arrow"/>
-  <line x1="380" y1="155" x2="400" y2="155" class="line"/>
-  <polygon points="400,155 390,150 390,160" class="arrow"/>
+  <rect x="560" y="240" width="220" height="70" class="box"/>
+  <text x="670" y="275" class="num">(460)</text>
+
+  <!-- Flow arrows between top blocks -->
+  <line x1="150" y1="155" x2="170" y2="155" class="line"/>
+  <polygon points="170,155 160,150 160,160" class="arrow"/>
+
+  <line x1="290" y1="155" x2="310" y2="155" class="line"/>
+  <polygon points="310,155 300,150 300,160" class="arrow"/>
+
+  <line x1="430" y1="155" x2="450" y2="155" class="line"/>
+  <polygon points="450,155 440,150 440,160" class="arrow"/>
+
   <line x1="570" y1="155" x2="590" y2="155" class="line"/>
   <polygon points="590,155 580,150 580,160" class="arrow"/>
-  <line x1="730" y1="155" x2="750" y2="155" class="line"/>
-  <polygon points="750,155 740,150 740,160" class="arrow"/>
-  <!-- Down to MAC and Consensus -->
+
+  <line x1="710" y1="155" x2="730" y2="155" class="line"/>
+  <polygon points="730,155 720,150 720,160" class="arrow"/>
+
+  <!-- Downstream arrows -->
+  <line x1="790" y1="190" x2="790" y2="240" class="line"/>
+  <polygon points="790,240 785,230 795,230" class="arrow"/>
+
   <line x1="650" y1="190" x2="650" y2="240" class="line"/>
   <polygon points="650,240 645,230 655,230" class="arrow"/>
-  <line x1="810" y1="190" x2="810" y2="240" class="line"/>
-  <polygon points="810,240 805,230 815,230" class="arrow"/>
 
+  <line x1="540" y1="275" x2="560" y2="275" class="line"/>
+  <polygon points="560,275 550,270 550,280" class="arrow"/>
 </svg>
-

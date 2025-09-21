@@ -8,7 +8,8 @@ Index
 - Fig. 2 — Phase extraction and closed-form estimation pipeline (file: figures/fig2_phase_estimator.svg)
 - Fig. 3 — Network topology and variance-weighted consensus (file: figures/fig3_network_consensus.svg)
 - Fig. 4 — Convergence vs. iteration (timing RMS) (files: figures/fig4_convergence.png, figures/fig4_convergence.svg)
-- Fig. 5 — Node/system block diagram (transceiver, sub-sampling ADC, DSP) (file: figures/fig5_system_block.svg)
+- Fig. 5 — Node/system block diagram with shrinkage-conditioned local Kalman pre-filter (file: figures/fig5_system_block.svg)
+- Fig. 6 — Local Kalman pre-filter and Metropolis-variance pipeline (file: figures/fig6_local_kf.svg)
 
 Export Guidance
 
@@ -76,10 +77,24 @@ python patent/figures/generate_fig4_convergence.py
 
 ```mermaid
 flowchart TB
-    RF[Programmable RF Transceiver]\n(f1 / f2=f1+Δf) --> MIX[Beat Detection / Mixing]
+    RF[Programmable RF Transceiver\n(f1 / f2=f1+Δf)] --> MIX[Beat Detection / Mixing]
     MIX --> ADC[Sub-sampling ADC (~2×Δf)]
-    ADC --> DSP[Digital Signal Processing]
-    DSP --> EST[Closed-form τ̂, Δf̂]
-    EST --> CONS[Consensus Engine (1/σ² weighting, spectral ε)]
+    ADC --> DSP[Digital Signal Processing / Phase Estimator]
+    DSP --> SHR[Residual Shrinkage Conditioning]
+    SHR --> KF[Local Kalman Pre-filter]
+    KF --> CONS[Consensus Engine (Metropolis-variance, spectral ε)]
     CONS --> NET[Network Interface / MAC]
+```
+
+## Fig. 6 — Local Kalman pre-filter and Metropolis-variance pipeline
+
+```mermaid
+flowchart LR
+    RES[Measurement Residuals] --> SHR[Variance Shrinkage Mixer]
+    COV[Covariance Descriptors Σ_ij] --> SHR
+    SHR --> KF[Local Two-State Kalman Update]
+    KF --> POST[Posterior Covariance]
+    POST --> W[Metropolis-variance Weighting]
+    KF --> W
+    W --> CONS[Consensus Injection]
 ```
