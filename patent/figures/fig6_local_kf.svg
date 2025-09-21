@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .box{fill:#ffffff;stroke:#000000;stroke-width:2}
+      .line{stroke:#000000;stroke-width:2;fill:none}
+      .arrow{stroke:#000000;stroke-width:2;fill:#000000}
+      .num{font-family:Arial, Helvetica, sans-serif;font-size:16px;font-weight:bold;fill:#000000}
+      .title{font-family:Arial, Helvetica, sans-serif;font-size:18px;font-weight:bold;fill:#000000}
+    ]]></style>
+  </defs>
+  <text x="20" y="30" class="title">Fig. 6 — Local Kalman pre-filter and Metropolis-variance pipeline</text>
+
+  <!-- Main pipeline -->
+  <rect x="40" y="100" width="130" height="70" class="box"/>
+  <text x="105" y="135" class="num">(500)</text>
+
+  <rect x="210" y="100" width="160" height="70" class="box"/>
+  <text x="290" y="135" class="num">(510)</text>
+
+  <rect x="410" y="100" width="160" height="70" class="box"/>
+  <text x="490" y="135" class="num">(520)</text>
+
+  <rect x="610" y="100" width="150" height="70" class="box"/>
+  <text x="685" y="135" class="num">(540)</text>
+
+  <rect x="780" y="100" width="100" height="70" class="box"/>
+  <text x="830" y="135" class="num">(550)</text>
+
+  <!-- Supporting inputs and outputs -->
+  <rect x="210" y="220" width="160" height="70" class="box"/>
+  <text x="290" y="255" class="num">(505)</text>
+
+  <rect x="410" y="220" width="160" height="70" class="box"/>
+  <text x="490" y="255" class="num">(530)</text>
+
+  <!-- Horizontal arrows along top -->
+  <line x1="170" y1="135" x2="210" y2="135" class="line"/>
+  <polygon points="210,135 200,130 200,140" class="arrow"/>
+
+  <line x1="370" y1="135" x2="410" y2="135" class="line"/>
+  <polygon points="410,135 400,130 400,140" class="arrow"/>
+
+  <line x1="570" y1="135" x2="610" y2="135" class="line"/>
+  <polygon points="610,135 600,130 600,140" class="arrow"/>
+
+  <line x1="760" y1="135" x2="780" y2="135" class="line"/>
+  <polygon points="780,135 770,130 770,140" class="arrow"/>
+
+  <!-- Vertical arrows -->
+  <line x1="290" y1="220" x2="290" y2="170" class="line"/>
+  <polygon points="290,170 285,180 295,180" class="arrow"/>
+
+  <line x1="490" y1="170" x2="490" y2="220" class="line"/>
+  <polygon points="490,220 485,210 495,210" class="arrow"/>
+
+  <!-- Arrow from covariance to weighting -->
+  <line x1="490" y1="220" x2="685" y2="170" class="line"/>
+  <polygon points="685,170 675,176 678,164" class="arrow"/>
+</svg>
