@@ -1,0 +1,39 @@
+# Smoke test configuration for DriftLock simulations
+# Minimal, fast-running jobs for CI sanity checks.
+
+phase1_alias_map:
+  - name: atomic_smoke
+    retune_offsets_hz: [1.0e6]
+    coarse_bw_hz: [20.0e6]
+    snr_db: [20.0]
+    num_trials: 5
+    rng_seed: 2025
+    calibration_modes: ['off']
+    loopback_noise_ps: 5.0
+    make_plots: false
+
+phase2_runs:
+  - name: smoke_driftlock
+    nodes: 12
+    area_size_m: 250.0
+    comm_range_m: 150.0
+    snr_db: 20.0
+    weighting: inverse_variance
+    max_iterations: 150
+    target_rmse_ps: 150.0
+    target_streak: 2
+    rng_seed: 4242
+    make_plots: false
+    local_kf: on
+  - name: smoke_baseline
+    nodes: 12
+    area_size_m: 250.0
+    comm_range_m: 150.0
+    snr_db: 20.0
+    weighting: metropolis
+    max_iterations: 150
+    target_rmse_ps: 150.0
+    target_streak: 2
+    rng_seed: 4343
+    make_plots: false
+    local_kf: baseline
