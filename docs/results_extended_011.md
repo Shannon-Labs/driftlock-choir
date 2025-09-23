@@ -56,5 +56,5 @@ For alternate seeds (5001/5003/5005) the combo continues to hold: see `results/k
 
 ---
 
-*Generated: October 2025*
+*Generated: September 2025*
 *Driftlock v0.10.1 – Dense KF combo locked to 0.32 ⧸ 0.03*
