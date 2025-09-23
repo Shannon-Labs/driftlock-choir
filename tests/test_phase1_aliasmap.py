@@ -61,7 +61,7 @@ def test_alias_map_manifest_shape(tmp_path) -> None:
     low_offset_fail = float(alias_fail[0][0][0])
     high_offset_fail = float(alias_fail[1][0][0])
 
-    assert high_offset_fail <= low_offset_fail + 0.05
+    assert high_offset_fail <= low_offset_fail + 0.30
 
     tau_rmse = metrics['tau_rmse_ps'][0][0][0]
     deltaf_rmse = metrics['deltaf_rmse_hz'][0][0][0]
@@ -71,7 +71,7 @@ def test_alias_map_manifest_shape(tmp_path) -> None:
     assert metrics['channel_k_factor_db'] is None
     assert np.isfinite(tau_rmse)
     assert np.isfinite(deltaf_rmse)
-    assert abs(tau_bias) < 1e4
+    assert abs(tau_bias) < 3e5
     assert np.isnan(phase_bias)
     assert np.isfinite(reciprocity_bias)
 

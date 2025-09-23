@@ -7,7 +7,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from matplotlib.animation import FFMpegWriter
+from matplotlib.animation import FFMpegWriter, FuncAnimation
 
 # Import simulation modules (assuming PYTHONPATH=.)
 from driftlock_choir_sim.dsp.tx_comb import generate_comb
@@ -137,13 +137,20 @@ def animate_split_screen(baseline_config: dict, demo_config: dict, num_frames: i
     print(f"Animated split-screen saved to {output_dir / 'comparison.mp4'}")
 
     # Spritesheet
-    fig, axs = plt.subplots(2, num_frames//10, figsize=(20, 8))
-    for i in range(0, num_frames, num_frames//10):
-        baseline_data = baseline_frames[i]
-        demo_data = demo_frames[i]
-        axs[0, i//(num_frames//10)].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])  # Subset for size
-        axs[1, i//(num_frames//10)].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
-    plt.savefig(output_dir / "spritesheet.png", dpi=100)
+    cols = num_frames // 10
+    if cols > 0:
+        fig, axs = plt.subplots(2, cols, figsize=(20, 8))
+        for i in range(0, num_frames, num_frames // 10):
+            baseline_data = baseline_frames[i]
+            demo_data = demo_frames[i]
+            col_idx = i // (num_frames // 10)
+            if cols > 1:
+                axs[0, col_idx].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])  # Subset for size
+                axs[1, col_idx].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
+            else:
+                axs[0].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])
+                axs[1].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
+        plt.savefig(output_dir / "spritesheet.png", dpi=100)
     print(f"Spritesheet saved to {output_dir / 'spritesheet.png'}")
 
 def main():

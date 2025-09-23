@@ -150,9 +150,9 @@ class ClosedFormEstimator:
         # Time-shift compensation
         delay_samples = int(delay * self.params.sample_rate)
         if delay_samples >= 0:
-            shifted_signal = signal[delay_samples:delay_samples + target_length]
+            shifted_signal = np.roll(signal, -delay_samples)[:target_length]
         else:
-            shifted_signal = np.pad(signal, (-delay_samples, 0), mode='constant')[:target_length]
+            shifted_signal = np.roll(signal, -delay_samples)[:target_length]
             
         # Frequency compensation
         t = np.arange(len(shifted_signal)) / self.params.sample_rate
