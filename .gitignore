@@ -58,6 +58,7 @@ cover/
 results/
 performance_results/
 driftlock_choir_sim/outputs/
+experiment/results/
 *.csv
 *.json
 *.jsonl
@@ -74,6 +75,19 @@ driftlock_choir_sim/outputs/
 !driftlock_choir_sim/outputs/movies/demo_teaser_choir_sim.mp4
 !driftlock_choir_sim/outputs/csv/acceptance_summary.json
 !driftlock_choir_sim/outputs/comparisons/side_by_side/comparison.mp4
+!/results/
+/results/*
+!/results/kf_sweeps/
+/results/kf_sweeps/*
+!/results/kf_sweeps/dense_combo_scan/
+/results/kf_sweeps/dense_combo_scan/*
+!/results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json
+!/results/mc_runs/
+/results/mc_runs/*
+!/results/mc_runs/extended_011/
+/results/mc_runs/extended_011/*
+!/results/mc_runs/extended_011/SUMMARY.md
+!/results/mc_runs/extended_011/final_results.json
 
 # Documentation build
 docs/_build/

@@ -4,7 +4,8 @@
 
 By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22.13 ps dense-network synchronization** using commercial hardware. Read the [full results analysis](docs/results_extended_011.md).
 
-**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence
+**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence  
+[View Run Summary](results/mc_runs/extended_011/SUMMARY.md) • [View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)
 
 **[View Run Summary](results/mc_runs/extended_011/SUMMARY.md)** • **[View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)**
 
