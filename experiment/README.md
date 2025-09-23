@@ -39,6 +39,27 @@ cd experiment
 python beat_recorder.py       # records ~1s to results/beat_capture_<ts>.npy
 python driftlock_analyzer.py  # extracts beat phase and timing indication
 ```
+- `beat_recorder.py` accepts overrides such as `--duration 5`, `--gain 12`, `--center-freq 915.002`, `--sample-rate 2.4`, and `--output-dir results_hw/`. Each run now emits a JSON metadata file alongside the `.npy` capture documenting the RF settings.
+- `driftlock_analyzer.py` auto-loads metadata, supports `--capture <path>` and `--reference <path>` for explicit comparisons, and honors `--sample-rate` / `--band-low` / `--band-high` tweaks when retuning the filter.
+- Want a guided walkthrough? Open `experiment/quickstart.html` in your browser for a follow-along version of these steps.
+
+One-command option
+
+```bash
+cd experiment
+python run_simple_demo.py     # captures + analyzes with sensible defaults
+```
+- Designed as an “experiments for dummies” workflow: records ~1.5 s, auto-analyzes, and compares against the previous capture if one exists.
+- Flags remain optional: try `--duration 3`, `--gain 10`, or `--no-plot` to tailor behaviour without leaving the simplified flow.
+
+Deeper experimentation (batch runs)
+
+```bash
+cd experiment
+python run_series_demo.py --runs 6 --sleep 5
+```
+- Captures a labeled series, logs timing deltas vs. baseline/previous runs, and produces CSV/JSON plus a Δτ plot for post-analysis.
+- Use this when stepping the node through known distances or testing environmental perturbations.
 
 Expected results
 
@@ -61,6 +82,9 @@ File map
 - `node_b_tx_cw.py` — Feather 32u4 attempts SX127x TX continuous‑wave test mode @ 915.001000 MHz
 - `beat_recorder.py` — RTL‑SDR capture and quick visualization
 - `driftlock_analyzer.py` — beat‑phase extraction and timing estimation
+- `run_simple_demo.py` — one-touch capture + analysis wrapper (quickstart)
+- `run_series_demo.py` — batch capture harness for structured experiments
+- `quickstart.html` — beginner-friendly follow-along web page
 - `driftlock_phase_delta.py` — compute phase/timing/distance delta between two captures
 - `requirements.txt` — host dependencies
 - `results/` — saved captures and plots
