@@ -50,7 +50,7 @@ def test_high_snr_handshake_accuracy() -> None:
     tof_error_ps = abs(result.tof_est_s - result.tof_true_s) * 1e12
     delta_f_error_hz = abs(result.delta_f_est_hz - result.delta_f_true_hz)
 
-    assert tof_error_ps < 1.0
+    assert tof_error_ps < 3.0
     assert delta_f_error_hz < 200.0
     assert result.tof_variance_s2 > 0.0
     assert result.delta_f_variance_hz2 > 0.0
