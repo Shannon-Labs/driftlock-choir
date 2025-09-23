@@ -35,6 +35,10 @@ PYTHONPATH=. python sim/phase1.py
 
 # Run network consensus (50 nodes)
 PYTHONPATH=. python sim/phase2.py
+
+# Run examples
+PYTHONPATH=. python examples/demo_two_node_timing.py
+PYTHONPATH=. python examples/simple_handshake_test.py
 ```
 
 ## Results
@@ -86,6 +90,27 @@ x_i(k+1) = x_i(k) + ε Σ_j W_ij(d_ij - (x_i - x_j))
 
 Where W_ij weights by measurement precision (inverse variance).
 
+## Project Structure
+
+```
+driftlock-choir/
+├── src/                    # Core algorithms
+│   ├── alg/               # Synchronization algorithms
+│   └── metrics/           # Performance metrics
+├── sim/                    # Simulation framework
+│   ├── phase1.py          # Pairwise validation
+│   ├── phase2.py          # Network consensus
+│   └── phase3.py          # Hardware calibration
+├── examples/               # Demo scripts
+├── tests/                  # Test suite
+├── scripts/                # Utility scripts
+├── docs/                   # Documentation
+├── patent/                 # Patent materials
+├── results/                # Performance data
+├── driftlock_choir_sim/    # Visualization tools
+└── experiment/             # Experimental results
+```
+
 ## Implementation
 
 Core algorithms in `src/`:
@@ -103,7 +128,7 @@ Simulation framework in `sim/`:
 
 ```bash
 # Run test suite (17 tests, ~80s)
-PYTHONPATH=. pytest
+PYTHONPATH=. pytest -c config/pytest.ini
 
 # Generate performance data
 PYTHONPATH=. python sim/phase1.py  # Two-node
