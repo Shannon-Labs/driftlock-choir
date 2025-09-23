@@ -858,14 +858,13 @@
         <div class="hero-content">
             <div class="hero-badge">
                 <span class="dot"></span>
-                <span>Shannon Labs Two-Pillar Stack • Patent Pending</span>
+                <span>Shannon Labs Two-Pillar Stack • Provisional Patent #63/886,461</span>
             </div>
 
             <h1>
-                <span class="gradient-text">Entruptor + Driftlock</span><br/>
-                Secure, Synchronized Systems<br/>
+                <span class="gradient-text">22.13 ps Dense-Network Synchronization</span><br/>
                 <span style="font-size: 0.7em; color: var(--text-secondary); display: block; margin-top: 0.5rem;">
-                    Information is both the signal and the security
+                    The Driftlock Method: Wireless Sync for Critical Infrastructure
                 </span>
             </h1>
 
@@ -876,41 +875,40 @@
             </div>
 
             <p class="hero-description">
-                <strong>Shannon Labs presents the two-pillar security stack:</strong><br/><br/>
-                <strong>Entruptor</strong> (CbAD software layer) — Zero-training anomaly detection using compression-based analysis<br/>
-                <strong>Driftlock</strong> (RF/time layer) — 22ps synchronization feeding pristine signals to Entruptor<br/><br/>
-                <span class="story-highlight">Information is both the signal and the security.</span>
-                Together they deliver secure, synchronized systems for critical infrastructure.
+                <strong>Driftlock achieves 22.13 ps synchronization across dense wireless networks</strong> using a novel, patent-pending technique called Chronometric Interferometry. This represents a 2,273x improvement over GPS and enables a new generation of secure, tightly-coordinated systems.
+                <br/><br/>
+                This site contains the full simulation, analysis, and all artifacts from our `extended_011` test run. Every claim is reproducible.
             </p>
 
             <div class="hero-buttons">
-                <a href="https://shannonlabs.dev" class="btn btn-primary">
-                    Shannon Labs →
+                <a href="results/mc_runs/extended_011/SUMMARY.md" class="btn btn-primary">
+                    View Full Run Summary →
                 </a>
-                <a href="https://www.entruptor.com" class="btn btn-secondary">
-                    Entruptor (CbAD) →
+                <a href="results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json" class="btn btn-secondary">
+                    Download Sweep Data →
                 </a>
-                <a href="driftlock choir_choir_sim/sims/run_acceptance.py" class="btn btn-secondary">
-                    Run Choir Simulation →
+                <a href="docs/results_extended_011.md" class="btn btn-secondary">
+                    Read Tech Brief (MD) →
                 </a>
             </div>
 
             <div class="metrics">
                 <div class="metric">
-                    <div class="metric-value">22ps</div>
-                    <div class="metric-label">Synchronization</div>
+                    <div class="metric-value">22.13 ps</div>
+                    <div class="metric-label">Dense Preset Sync</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">Zero</div>
-                    <div class="metric-label">Training Required</div>
+                    <div class="metric-value">20.93 ps</div>
+                    <div class="metric-label">Dense Sweep Min</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">2</div>
-                    <div class="metric-label">Pillars of Security</div>
+                    <div class="metric-value">20.96 ps</div>
+                    <div class="metric-label">Small Net Preset</div>
                 </div>
                 <div class="metric">
-                    <div class="metric-value">∞</div>
-                    <div class="metric-label">Applications</div>
+                    <div class="metric-value">2.65 ps</div>
+                    <div class="metric-label">Calibrated Bias</div>
+                </div>
     </div>
     </div>
 
@@ -1400,7 +1398,7 @@ python scripts/sweep_phase2_kf.py --nodes 25 --density 0.30 \
 
                 <div class="story-quote">
                     "We achieve 22 picosecond network consensus using beat patterns in radio waves.
-                    Software-only. Works with existing radios. Patent pending."
+                    Software-only. Works with existing radios. Provisional Patent #63/886,461."
                 </div>
 
                 <p>
@@ -1540,7 +1538,7 @@ python scripts/sweep_phase2_kf.py --nodes 25 --density 0.30 \
                 © 2025 Shannon Labs, Inc. Entruptor + Driftlock = secure, synchronized systems.
             </div>
             <div class="footer-patent">
-                Patent Pending: Driftlock Choir • Two-Pillar Security Stack
+                Provisional Patent #63/886,461: Driftlock Choir • Two-Pillar Security Stack
             </div>
         </div>
     </footer>

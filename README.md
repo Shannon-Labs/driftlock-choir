@@ -1,16 +1,18 @@
 # Driftlock: 22-Picosecond Wireless Synchronization
 
-![Demo](docs/images/demo.gif)
-
 ## Abstract
 
-By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22 picosecond** synchronization using commercial hardware.
+By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22.13 ps dense-network synchronization** using commercial hardware. Read the [full results analysis](docs/results_extended_011.md).
 
 **Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence
+
+**[View Run Summary](results/mc_runs/extended_011/SUMMARY.md)** • **[View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)**
 
 **Patent Pending** • Apache 2.0 License
 
 ## The Core Insight
+
+> **Tuned 0.32 / 0.03 / 1 combo**: This repository reflects the `extended_011` run, which produced the 22.13 ps result. [Verify the sweep data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json).
 
 Traditional wireless systems spend enormous effort eliminating frequency offset. We do the opposite.
 
@@ -37,15 +39,13 @@ PYTHONPATH=. python sim/phase1.py
 PYTHONPATH=. python sim/phase2.py
 ```
 
-![Network Convergence](docs/images/convergence.png)
-
 ## Results
 
-### Experimental Validation
-- **Synchronization**: 22.13 ps (Kalman-filtered consensus)
-- **Raw Measurement**: 45.0 ps (0.83× Cramér-Rao bound)
-- **Bias Reduction**: 4,500× via reciprocity calibration
-- **Convergence**: Single iteration
+### Latest Results (extended_011)
+- **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
+- **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
+- **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
+- **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
 
 ### Scaling Performance
 - **128 nodes**: 22.97 ps RMSE (51s runtime)
@@ -155,7 +155,9 @@ Hunter Bown • hunter@shannonlabs.dev
 
 ## Patent Notice
 
-The Driftlock method is patent pending. Source code is Apache 2.0 licensed. Patent licensing: hunter@shannonlabs.dev
+The Driftlock method is patent pending.
+**Provisional Patent Application No. 63/886,461, filed September 23, 2025.**
+Source code is Apache 2.0 licensed. Patent licensing: hunter@shannonlabs.dev
 
 ---
 
