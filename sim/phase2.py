@@ -61,6 +61,10 @@ class Phase2Config:
     coarse_bandwidth_hz: float = 20e6
     coarse_duration_s: float = 5e-6
     coarse_variance_floor_ps: float = 50.0
+    handshake_beat_duration_s: Optional[float] = None
+    handshake_baseband_rate_factor: Optional[float] = None
+    handshake_min_baseband_rate_hz: Optional[float] = None
+    handshake_min_adc_rate_hz: Optional[float] = None
     multipath_two_ray_alpha: Optional[float] = None
     multipath_two_ray_delay_s: Optional[float] = None
 
@@ -92,11 +96,16 @@ class Phase2Config:
     baseline_mode: bool = False
 
     def handshake_config(self) -> ChronometricHandshakeConfig:
+        beat_duration = 20e-6 if self.handshake_beat_duration_s is None else float(self.handshake_beat_duration_s)
+        baseband_rate_factor = 20.0 if self.handshake_baseband_rate_factor is None else float(self.handshake_baseband_rate_factor)
+        min_baseband_rate = 200_000.0 if self.handshake_min_baseband_rate_hz is None else float(self.handshake_min_baseband_rate_hz)
+        min_adc_rate = 20_000.0 if self.handshake_min_adc_rate_hz is None else float(self.handshake_min_adc_rate_hz)
+
         return ChronometricHandshakeConfig(
-            beat_duration_s=20e-6,
-            baseband_rate_factor=20.0,
-            min_baseband_rate_hz=200_000.0,
-            min_adc_rate_hz=20_000.0,
+            beat_duration_s=beat_duration,
+            baseband_rate_factor=baseband_rate_factor,
+            min_baseband_rate_hz=min_baseband_rate,
+            min_adc_rate_hz=min_adc_rate,
             filter_relative_bw=1.4,
             phase_noise_psd=-80.0,
             jitter_rms_s=1e-12,

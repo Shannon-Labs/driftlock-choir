@@ -2,6 +2,7 @@ import math
 import os
 import sys
 from dataclasses import replace
+from typing import Dict, Optional, Tuple
 
 import networkx as nx
 import numpy as np
@@ -48,37 +49,59 @@ def _oracle_state(nodes: dict[int, ChronometricNode]) -> np.ndarray:
     return np.column_stack((clock_offsets, freq_offsets))
 
 
-def _dense_phase2_config(local_kf: bool, rng_seed: int, results_dir: str) -> Phase2Config:
-    area_size = 350.0
-    density = 0.22
+def _phase2_config(
+    *,
+    n_nodes: int,
+    density: float,
+    local_kf: bool,
+    rng_seed: int,
+    results_dir: str,
+    area_size: float = 350.0,
+    snr_db: float = 20.0,
+    freq_offset_span_hz: float = 80e3,
+    handshake_delta_f_hz: float = 100e3,
+    retune_offsets_hz: Tuple[float, ...] = (1e6,),
+    coarse_enabled: bool = True,
+    max_iterations: int = 2000,
+    timestep_s: float = 0.5e-3,
+    convergence_threshold_ps: float = 90.0,
+    spectral_margin: float = 0.8,
+    epsilon_override: float = 0.02,
+    target_rmse_ps: float = 90.0,
+    target_streak: int = 3,
+    handshake_overrides: Optional[Dict[str, float]] = None,
+) -> Phase2Config:
     comm_range = math.sqrt(density) * area_size / math.sqrt(math.pi)
     common_kwargs = dict(
-        n_nodes=64,
+        n_nodes=n_nodes,
         area_size_m=area_size,
         comm_range_m=comm_range,
-        snr_db=20.0,
-        freq_offset_span_hz=80e3,
+        snr_db=snr_db,
+        freq_offset_span_hz=freq_offset_span_hz,
         clock_bias_std_ps=25.0,
         clock_ppm_std=2.0,
-        handshake_delta_f_hz=100e3,
-        retune_offsets_hz=(1e6,),
-        coarse_enabled=True,
+        handshake_delta_f_hz=handshake_delta_f_hz,
+        retune_offsets_hz=retune_offsets_hz,
+        coarse_enabled=coarse_enabled,
         coarse_bandwidth_hz=20e6,
         coarse_duration_s=5e-6,
         coarse_variance_floor_ps=50.0,
-        max_iterations=2000,
-        timestep_s=0.5e-3,
-        convergence_threshold_ps=90.0,
+        max_iterations=max_iterations,
+        timestep_s=timestep_s,
+        convergence_threshold_ps=convergence_threshold_ps,
         asynchronous=False,
         rng_seed=rng_seed,
         save_results=False,
         plot_results=False,
-        spectral_margin=0.8,
-        epsilon_override=0.02,
-        target_rmse_ps=90.0,
-        target_streak=3,
+        spectral_margin=spectral_margin,
+        epsilon_override=epsilon_override,
+        target_rmse_ps=target_rmse_ps,
+        target_streak=target_streak,
         results_dir=results_dir,
     )
+    if handshake_overrides:
+        common_kwargs.update(handshake_overrides)
+
     if local_kf:
         return Phase2Config(
             weighting='metropolis_var',
@@ -98,6 +121,16 @@ def _dense_phase2_config(local_kf: bool, rng_seed: int, results_dir: str) -> Pha
         weighting='metropolis',
         local_kf_enabled=False,
         **common_kwargs,
+    )
+
+
+def _dense_phase2_config(local_kf: bool, rng_seed: int, results_dir: str) -> Phase2Config:
+    return _phase2_config(
+        n_nodes=64,
+        density=0.22,
+        local_kf=local_kf,
+        rng_seed=rng_seed,
+        results_dir=results_dir,
     )
 
 
@@ -229,3 +262,59 @@ def test_dense_kf_vs_baseline(tmp_path) -> None:
     improvement_ps = rmse_off - rmse_on
     assert rmse_on < rmse_off
     assert improvement_ps >= 1.0
+
+
+def test_large_network_kf_vs_baseline(tmp_path) -> None:
+    seed = 6101
+    handshake_overrides = {
+        'handshake_beat_duration_s': 5e-6,
+        'handshake_baseband_rate_factor': 8.0,
+        'handshake_min_baseband_rate_hz': 100_000.0,
+        'handshake_min_adc_rate_hz': 100_000.0,
+    }
+
+    cfg_on = _phase2_config(
+        n_nodes=128,
+        density=0.12,
+        local_kf=True,
+        rng_seed=seed,
+        results_dir=str(tmp_path / 'large_kf_on'),
+        snr_db=25.0,
+        freq_offset_span_hz=60e3,
+        handshake_delta_f_hz=120e3,
+        retune_offsets_hz=(0.5e6,),
+        coarse_enabled=False,
+        max_iterations=600,
+        timestep_s=0.25e-3,
+        convergence_threshold_ps=80.0,
+        epsilon_override=0.015,
+        target_rmse_ps=80.0,
+        target_streak=2,
+        handshake_overrides=handshake_overrides,
+    )
+    rmse_on = Phase2Simulation(cfg_on).run()['consensus']['timing_rms_ps'][-1]
+
+    cfg_off = _phase2_config(
+        n_nodes=128,
+        density=0.12,
+        local_kf=False,
+        rng_seed=seed,
+        results_dir=str(tmp_path / 'large_kf_off'),
+        snr_db=25.0,
+        freq_offset_span_hz=60e3,
+        handshake_delta_f_hz=120e3,
+        retune_offsets_hz=(0.5e6,),
+        coarse_enabled=False,
+        max_iterations=600,
+        timestep_s=0.25e-3,
+        convergence_threshold_ps=80.0,
+        epsilon_override=0.015,
+        target_rmse_ps=80.0,
+        target_streak=2,
+        handshake_overrides=handshake_overrides,
+    )
+    rmse_off = Phase2Simulation(cfg_off).run()['consensus']['timing_rms_ps'][-1]
+
+    improvement_ps = rmse_off - rmse_on
+    assert rmse_on < rmse_off
+    assert improvement_ps >= 0.5

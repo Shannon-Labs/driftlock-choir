@@ -54,6 +54,8 @@ PYTHONPATH=. python sim/phase2.py
 
 The algorithm gets *more* precise with larger networks - a counterintuitive result enabled by variance-weighted consensus.
 
+For reproduction commands, regression guardrails, and repo hygiene notes see `docs/scaling_results.md`.
+
 ### Video Demonstrations
 - [Technical Demo (3 min)](driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4) - Full system demonstration
 - [Quick Overview (30s)](driftlock_choir_sim/outputs/movies/demo_teaser_choir_sim.mp4) - Key concepts
@@ -104,6 +106,10 @@ PYTHONPATH=. python sim/phase2.py  # Multi-node
 # Test scaling (warning: 512 nodes takes ~10 min)
 python scripts/sweep_phase2_kf.py --nodes 128 --density 0.22 \
   --gains 0.32 --freq-gains 0.03 --iters 1
+
+# Coax bench emulator (reports μ/σ, Allan-dev, reciprocity bias)
+python sim/bench_coax.py --nodes 4 --observation-ms 100 --trials 40
+# See `docs/bench_coax.md` for configuration notes and sample output.
 
 # Create visualization
 PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \

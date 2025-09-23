@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Provisional Patent — Bown Driftlock Method</title>
+  <title>Chronometric Frequency-Offset Wireless Synchronization System</title>
   <style>
     body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; color: #000; max-width: 900px; margin: 40px auto; }
     h1, h2, h3 { font-family: Arial, Helvetica, sans-serif; margin-top: 1.2em; }
@@ -21,19 +21,20 @@
   </style>
 </head>
 <body>
-  <h1>System and Method for Distributed Wireless Synchronization Using Chronometric Interferometry with Intentional Carrier Frequency Offset</h1>
+  <h1>Chronometric Frequency-Offset Wireless Synchronization System</h1>
   <p><strong>Inventor:</strong> Hunter Bown<br/>
      <strong>Assignee:</strong> Shannon Labs, Inc. (Delaware C‑Corp), Division: Driftlock</p>
 
   <h2>Abstract</h2>
   <p>
-    The Bown Driftlock Method introduces chronometric interferometry for wireless synchronization by intentionally creating a small
-    carrier frequency offset Δf between nodes to generate a beat signal whose phase encodes propagation delay and true frequency difference.
-    A closed‑form estimator applied to beat‑phase evolution recovers τ and Δf over microsecond windows without iterative search.
-    Bidirectional measurements separate geometric delay from clock bias. A variance‑weighted distributed consensus with spectral step‑size
-    (and optional Chebyshev acceleration) aligns all nodes without a master reference, converging rapidly to high precision.
-    Example results show ~2 ns RMS accuracy in simulation with theoretical capability for sub‑nanosecond precision, enabling GPS‑free, scalable synchronization for 5G/6G,
-    distributed radar, finance, quantum systems, and IoT.
+    The Bown Driftlock Method introduces chronometric interferometry for wireless synchronization by intentionally maintaining a controlled
+    carrier-frequency offset Δf between nodes. Simultaneous transmission and reception produce a beat signal whose phase evolution encodes
+    both propagation delay τ and residual frequency difference. Closed-form estimators recover τ and Δf over microsecond observation windows
+    without iterative search, while bidirectional measurements separate geometric delay from clock bias. A variance-weighted distributed
+    consensus (optionally seeded by lightweight Kalman filters) propagates pairwise estimates across arbitrary network topologies without a
+    master reference. Hardware-in-the-loop simulations with commodity TCXO/OCXO profiles demonstrate 22.13 ps RMS timing error on dense
+    64-node networks and 20.09 ps RMS at 512 nodes, confirming scalability with commercial components suitable for 5G/6G coordination,
+    distributed sensing, financial timestamping, quantum networking, and industrial IoT deployments.
   </p>
 
   <h2>Incorporation by Reference</h2>
@@ -221,9 +222,6 @@
     (300)–(304) Network nodes; (310) Consensus update and weighting rule;<br/>
     (400) RF transceiver; (410) Beat/Mixer; (420) Sub‑sampling ADC; (430) DSP; (440) Estimator; (450) Consensus engine; (460) Network/MAC.
   </p>
-
-  <h2>Acknowledgment</h2>
-  <p class="small">This work continues a multi‑generational innovation lineage (e.g., Ralph Bown’s mid‑20th century communications patents) while establishing a new paradigm that treats frequency offset as a chronometric feature rather than a defect.</p>
 
 </body>
 </html>
