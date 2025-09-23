@@ -233,36 +233,36 @@ class StatisticalValidator:
     
     def paired_t_test(
         self, 
-        driftlock choir_metrics: np.ndarray, 
+        driftlock_choir_metrics: np.ndarray,
         baseline_metrics: np.ndarray
     ) -> Dict[str, Any]:
         """
         Paired t-test comparing Driftlock vs baseline metrics.
         """
-        if len(driftlock choir_metrics) != len(baseline_metrics):
+        if len(driftlock_choir_metrics) != len(baseline_metrics):
             raise ValueError("Paired samples must have equal length")
-        t_stat, p_value = stats.ttest_rel(driftlock choir_metrics, baseline_metrics)
-        mean_diff = np.mean(driftlock choir_metrics - baseline_metrics)
+        t_stat, p_value = stats.ttest_rel(driftlock_choir_metrics, baseline_metrics)
+        mean_diff = np.mean(driftlock_choir_metrics - baseline_metrics)
         return {
             't_statistic': float(t_stat),
             'p_value': float(p_value),
             'mean_difference': float(mean_diff),
             'significant': p_value < (1 - self.params.confidence_level),
-            'df': len(driftlock choir_metrics) - 1,
+            'df': len(driftlock_choir_metrics) - 1,
             'test_type': 'paired_ttest'
         }
     
     def independent_t_test(
         self, 
-        driftlock choir_metrics: np.ndarray, 
+        driftlock_choir_metrics: np.ndarray,
         baseline_metrics: np.ndarray,
         equal_var: bool = False
     ) -> Dict[str, Any]:
         """
         Independent samples t-test (for unpaired runs).
         """
-        t_stat, p_value = stats.ttest_ind(driftlock choir_metrics, baseline_metrics, equal_var=equal_var)
-        mean_diff = np.mean(driftlock choir_metrics) - np.mean(baseline_metrics)
+        t_stat, p_value = stats.ttest_ind(driftlock_choir_metrics, baseline_metrics, equal_var=equal_var)
+        mean_diff = np.mean(driftlock_choir_metrics) - np.mean(baseline_metrics)
         return {
             't_statistic': float(t_stat),
             'p_value': float(p_value),
@@ -321,17 +321,17 @@ class StatisticalValidator:
     
     def effect_sizes(
         self, 
-        driftlock choir: np.ndarray, 
+        driftlock_choir: np.ndarray,
         baseline: np.ndarray
     ) -> Dict[str, Any]:
         """
         Compute Cohen's d and relative improvement percentage.
         """
-        mean_d = np.mean(driftlock choir)
+        mean_d = np.mean(driftlock_choir)
         mean_b = np.mean(baseline)
-        std_d = np.std(driftlock choir, ddof=1)
+        std_d = np.std(driftlock_choir, ddof=1)
         std_b = np.std(baseline, ddof=1)
-        n_d = len(driftlock choir)
+        n_d = len(driftlock_choir)
         n_b = len(baseline)
         
         if n_d + n_b < 4:
@@ -349,7 +349,7 @@ class StatisticalValidator:
             'cohens_d': float(cohens_d),
             'cohens_d_interpretation': interpretation,
             'relative_improvement_pct': float(rel_improvement),
-            'mean_driftlock choir': float(mean_d),
+            'mean_driftlock_choir': float(mean_d),
             'mean_baseline': float(mean_b),
             'pooled_std': float(pooled_std) if 'pooled_std' in locals() else np.nan
         }

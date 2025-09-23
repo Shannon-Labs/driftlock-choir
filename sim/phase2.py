@@ -39,7 +39,7 @@ from metrics.stats import StatisticalValidator, StatsParams
 from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json
 from utils.plotting import save_figure
 
-from src.io.telemetry import TelemetryExporter
+from utils.telemetry import TelemetryExporter
 
 
 @dataclass
