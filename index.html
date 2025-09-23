@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driftlock Choir — Shannon Labs Two-Pillar Security Stack</title>
-    <meta name="description" content="Entruptor + Driftlock = secure, synchronized systems. Information is both the signal and the security. 22ps synchronization feeds pristine signals to CbAD anomaly detection.">
-    <meta name="keywords" content="driftlock choir choir, entruptor, shannon labs, CbAD, anomaly detection, wireless synchronization, picosecond timing, secure systems, two-pillar security"
+    <title>Driftlock Choir — Chronometric Frequency-Offset Synchronization</title>
+    <meta name="description" content="Driftlock Choir turns intentional carrier offsets into a chronometric signal, delivering 22 ps wireless synchronization with distributed consensus.">
+    <meta name="keywords" content="driftlock choir, chronometric interferometry, wireless synchronization, picosecond timing, distributed consensus">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="Driftlock Choir — Shannon Labs Two-Pillar Security Stack">
-    <meta property="og:description" content="Entruptor (CbAD software) + Driftlock (RF/time synchronization) deliver secure, synchronized systems. Information is both the signal and the security.">
+    <meta property="og:title" content="Driftlock Choir — Chronometric Frequency-Offset Synchronization">
+    <meta property="og:description" content="Intentional Δf becomes a measurement channel, yielding 22 ps wireless synchronization with variance-weighted consensus.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="/patent/figures/choir_architecture.png">
-    <meta property="og:url" content="https://driftlock choir.net/">
+    <meta property="og:image" content="/patent/figures/fig5_system_architecture.svg">
+    <meta property="og:url" content="https://github.com/Shannon-Labs/driftlock-choir">
 
     <!-- Canonical & Icons -->
-    <link rel="canonical" href="https://driftlock choir.net/">
+    <link rel="canonical" href="https://github.com/Shannon-Labs/driftlock-choir">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Driftlock Choir — Shannon Labs Two-Pillar Security Stack">
-    <meta name="twitter:description" content="Entruptor + Driftlock = secure, synchronized systems. 22ps synchronization feeds pristine signals to CbAD anomaly detection.">
-    <meta name="twitter:image" content="/patent/figures/choir_architecture.png">
+    <meta name="twitter:title" content="Driftlock Choir — Chronometric Frequency-Offset Synchronization">
+    <meta name="twitter:description" content="Intentional Δf beats enable picosecond timing across large wireless networks.">
+    <meta name="twitter:image" content="/patent/figures/fig5_system_architecture.svg">
 
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -30,16 +30,15 @@
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "Shannon Labs — Driftlock Choir",
-      "url": "https://driftlock choir.net/",
+      "url": "https://github.com/Shannon-Labs/driftlock-choir",
       "logo": "/favicon.svg",
       "sameAs": [
-        "https://github.com/shannon-labs/driftlock choir",
-        "https://shannonlabs.dev",
-        "https://www.entruptor.com"
+        "https://github.com/Shannon-Labs/driftlock-choir",
+        "https://shannonlabs.dev"
       ],
       "contactPoint": [{
         "@type": "ContactPoint",
-        "email": "licensing@shannonlabs.com",
+        "email": "hunter@shannonlabs.dev",
         "contactType": "sales"
       }]
     }
@@ -870,7 +869,7 @@
 
             <div style="display: inline-block; padding: 0.5rem 1rem; background: rgba(255,215,0,0.15); border: 1px solid var(--accent-gold); border-radius: 20px; margin-bottom: 1.5rem;">
                 <span style="color: var(--accent-gold); font-weight: 600; font-size: 0.9rem;">
-                    ✅ Tuned 0.32 / 0.03 / 1 combo • <a href="results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json" style="color: var(--accent); text-decoration: underline;">Dense KF Sweep Summary</a>
+                    ✅ Tuned 0.32 / 0.03 / 1 combo • <a href="docs/scaling_results.md#large-network-sweep-summary" style="color: var(--accent); text-decoration: underline;">Dense KF Sweep Summary</a>
                 </span>
             </div>
 
@@ -1094,7 +1093,7 @@
                 <div class="innovation-icon">📈</div>
                 <h3 class="innovation-title">Artifacts</h3>
                 <p class="innovation-description">JSON manifest, JSONL RMSE stream, summary, and RMSE trend PNG.</p>
-                <div class="innovation-stat">results/hw_demo_XXX/</div>
+                <div class="innovation-stat">Hardware demo artifacts available on request</div>
             </div>
         </div>
         <div class="hero-buttons" style="margin-top: 2rem;">
@@ -1138,7 +1137,7 @@
                     <code style="color: var(--accent); font-size: 0.875rem;">scripts/run_mc.py all -c sim/configs/mc_extended.yaml -r extended_011</code>
                     <div style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">
                         ✅ 600 phase1 trials + 4 consensus jobs<br/>
-                        <a href="results/mc_runs/extended_011/final_results.json" style="color: var(--accent-purple); text-decoration: underline;">View results JSON →</a>
+                        <a href="docs/results_extended_011.md" style="color: var(--accent-purple); text-decoration: underline;">View results summary →</a>
                     </div>
                 </div>
                 <div style="background: var(--primary); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border);">
@@ -1152,7 +1151,7 @@
                     <code style="color: var(--accent); font-size: 0.875rem;">scripts/sweep_phase2_kf.py --nodes 64 --density 0.22</code>
                     <div style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.875rem;">
                         ✅ Clock gains 0.18-0.32, 3 seeds<br/>
-                        <a href="results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json" style="color: var(--accent-purple); text-decoration: underline;">Download sweep data →</a>
+                        <a href="docs/scaling_results.md#large-network-sweep-summary" style="color: var(--accent-purple); text-decoration: underline;">View sweep summary →</a>
                     </div>
                 </div>
             </div>
@@ -1168,7 +1167,7 @@
                 <strong>Dense 64-node mesh:</strong> 22.13 ps preset (clock 0.32, freq 0.03, 1 iter) with 0.33 ps edge over baseline; sweep still bottoms at 20.93 ps (clock 0.22, freq 0.03, 2 iters).<br/>
                 <strong>Small 25-node net:</strong> 20.96 ps preset (clock 0.25, freq 0.05) with 3.41 ps margin, 18.69 ps sweep minimum.<br/>
                 <strong>Guardrails:</strong> scripts/verify_kf_sweep.py + seeded regression ensure gains stay locked before documentation updates.<br/>
-                <a href="results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json" style="color: var(--accent);">Download full sweep data →</a>
+                <a href="docs/scaling_results.md#large-network-sweep-summary" style="color: var(--accent);">Review sweep highlights →</a>
             </p>
         </div>
 
@@ -1226,7 +1225,7 @@
             </table>
         </div>
         <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted); font-style: italic;">
-            *Monte Carlo Extended Run 011 — <a href="results/mc_runs/extended_011/SUMMARY.md" style="color: var(--accent);">View full run summary →</a>
+            *Monte Carlo Extended Run 011 — <a href="docs/results_extended_011.md" style="color: var(--accent);">View full run summary →</a>
         </p>
 
     </section>
@@ -1249,7 +1248,7 @@ python scripts/run_mc.py all -c sim/configs/mc_extended.yaml -o results/mc_runs 
                     </code>
                     <p style="margin-top: 0.75rem; font-size: 0.875rem; color: var(--text-muted);">
                         • Runs 600 phase1 trials + 4 consensus presets<br/>
-                        • Outputs: <code>results/mc_runs/extended_011/final_results.json</code>
+                        • See <code>docs/results_extended_011.md</code> for aggregated metrics
                     </p>
                 </div>
 
@@ -1490,9 +1489,8 @@ python scripts/sweep_phase2_kf.py --nodes 25 --density 0.30 \
 
             <p style="margin-top: 2rem; font-size: 0.875rem; color: var(--text-muted);">
                 View artifacts:
-                <a href="results/mc_runs/extended_011/final_results.json" style="color: var(--accent); text-decoration: underline;">final_results.json</a> •
-                <a href="results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json" style="color: var(--accent); text-decoration: underline;">kf_sweep_summary.json</a> •
-                <a href="results/mc_runs/extended_011/SUMMARY.md" style="color: var(--accent); text-decoration: underline;">Run summary</a>
+                <a href="docs/results_extended_011.md" style="color: var(--accent); text-decoration: underline;">Extended_011 summary</a> •
+                <a href="docs/scaling_results.md#large-network-sweep-summary" style="color: var(--accent); text-decoration: underline;">Scaling sweep details</a>
             </p>
         </div>
     </div>
