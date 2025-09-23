@@ -155,7 +155,7 @@ class ChronometricHandshakeConfig:
     loopback_cal_noise_ps: float = 10.0
     mac: Optional[MacSlots] = None
     channel_model: Optional[TappedDelayLine] = None
-    use_phase_slope_fit: bool = True  # Use phase slope for multi-carrier tau estimation
+    use_phase_slope_fit: bool = False  # Opt-in phase-slope fusion for multi-carrier tau estimation
     use_theoretical_variance: bool = False  # Use theoretical phase variance for covariance
 
 

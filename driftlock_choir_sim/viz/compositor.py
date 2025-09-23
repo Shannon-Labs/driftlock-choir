@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import yaml
 from matplotlib.animation import FFMpegWriter, FuncAnimation
@@ -137,22 +138,18 @@ def animate_split_screen(baseline_config: dict, demo_config: dict, num_frames: i
     print(f"Animated split-screen saved to {output_dir / 'comparison.mp4'}")
 
     # Spritesheet
-    if num_frames >= 10:
-        fig, axs = plt.subplots(2, num_frames//10, figsize=(20, 8))
-        for i in range(0, num_frames, num_frames//10):
-            baseline_data = baseline_frames[i]
-            demo_data = demo_frames[i]
-            ax_col_idx = i // (num_frames // 10)
-            # Handle case where axs is 1D array
-            if axs.ndim == 1:
-                if ax_col_idx < len(axs):
-                    axs[0].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])
-                    axs[1].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
-            elif ax_col_idx < axs.shape[1]:
-                axs[0, ax_col_idx].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])
-                axs[1, ax_col_idx].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
-        plt.savefig(output_dir / "spritesheet.png", dpi=100)
-        print(f"Spritesheet saved to {output_dir / 'spritesheet.png'}")
+    grid_cols = max(1, num_frames // 10)
+    fig, axs = plt.subplots(2, grid_cols, figsize=(20, 8))
+    if grid_cols == 1:
+        axs = np.array([[axs[0]], [axs[1]]])
+    frame_indices = np.linspace(0, num_frames - 1, grid_cols, dtype=int)
+    for col, idx in enumerate(frame_indices):
+        baseline_data = baseline_frames[int(idx)]
+        demo_data = demo_frames[int(idx)]
+        axs[0, col].plot(baseline_data["f_khz"][:100], baseline_data["rf_db"][:100])  # Subset for size
+        axs[1, col].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
+    plt.savefig(output_dir / "spritesheet.png", dpi=100)
+    print(f"Spritesheet saved to {output_dir / 'spritesheet.png'}")
 
 def main():
     parser = argparse.ArgumentParser(description="Create split-screen comparison reel.")
