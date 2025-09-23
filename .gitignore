@@ -1,12 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -20,21 +16,31 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Unit test / coverage reports
-htmlcov/
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Testing
 .tox/
 .nox/
 .coverage
@@ -43,101 +49,106 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
+*.log
 .hypothesis/
 .pytest_cache/
+cover/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# celery beat schedule file
-celerybeat-schedule
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Results and outputs
+# Results and Output
 results/
+performance_results/
+driftlock_choir_sim/outputs/
+*.csv
+*.json
+*.jsonl
 *.png
 *.jpg
-*.pdf
-*.json
-*.mat
-*.h5
-*.hdf5
+*.mp4
+*.avi
+*.gif
 
-# Allow patent images
-!patent/*.png
-!patent/*.jpg
-!patent/*.pdf
+# Exceptions - Keep these
+!driftlock_choir_sim/configs/*.yaml
+!driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4
+!driftlock_choir_sim/outputs/movies/baseline_choir_sim.mp4
+!driftlock_choir_sim/outputs/movies/demo_teaser_choir_sim.mp4
+!driftlock_choir_sim/outputs/csv/acceptance_summary.json
+!driftlock_choir_sim/outputs/comparisons/side_by_side/comparison.mp4
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Documentation build
+docs/_build/
+docs/.doctrees/
 
-# macOS
+# Private/Internal
+private/
+internal/
+.claude/
+a16z*/
+investor*/
+*_INTERNAL.*
+*_PRIVATE.*
+*_STRATEGY.*
+
+# Credentials and Secrets
+*.pem
+*.key
+*.env
+.env.*
+secrets/
+credentials/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.old
+tmp/
+temp/
+
+# Mac
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
 # Windows
 Thumbs.db
+Thumbs.db:encryptable
 ehthumbs.db
-Desktop.ini
-.vercel
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*

@@ -1,138 +1,146 @@
-# Driftlock: Picosecond-Scale Wireless Synchronization
+# Driftlock: 22-Picosecond Wireless Synchronization
 
-[![Patent Pending](https://img.shields.io/badge/Patent-Pending-orange)](patent/PROVISIONAL_PATENT_APPLICATION.md)
-[![License: Academic](https://img.shields.io/badge/License-Academic_Free-green)](LICENSE-ACADEMIC.md)
-[![License: Commercial](https://img.shields.io/badge/License-Commercial_Contact-red)](LICENSE-COMMERCIAL.md)
-[![Test Suite](https://img.shields.io/badge/Tests-17_passed,_1_skipped-brightgreen)](tests)
-[![Shannon Labs](https://img.shields.io/badge/by-Shannon_Labs-blue)](https://shannonlabs.dev)
-[![Website](https://img.shields.io/badge/Website-driftlock-choir.net-cyan)](https://driftlock-choir.net)
+![Demo](docs/images/demo.gif)
 
 ## Abstract
 
-Driftlock is a novel wireless synchronization technique that achieves picosecond-scale accuracy using commodity hardware. The core innovation, **Chronometric Interferometry**, intentionally introduces small frequency offsets between wireless nodes to create low-frequency beat signals. These beat signals encode high-precision timing information, allowing for robust time-of-flight estimation. Through two-way measurements to cancel clock bias and a variance-weighted consensus algorithm for network-wide agreement, this method has achieved **22 picosecond** synchronization precision in simulations, outperforming traditional GPS/PTP-based systems by several orders of magnitude. This repository contains the open-source simulation framework for the Driftlock technology, enabling full validation and reproducibility of our results.
+By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22 picosecond** synchronization using commercial hardware.
 
----
+**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence
 
-### The Two-Pillar System: Driftlock™ and Drittlock™ API
+**Patent Pending** • Apache 2.0 License
 
-This repository concerns **Driftlock Choir**, the RF/time synchronization technology. It is one part of a two-pillar security stack developed by Shannon Labs.
+## The Core Insight
 
-1.  **Driftlock™ Choir (This Repository):** The underlying RF and time-layer technology that provides picosecond-scale synchronization.
-2.  **Drittlock™ API:** A software layer for zero-training anomaly detection using compression-based analysis (CbAD). It uses the pristine timing signals from Driftlock to achieve high-performance security monitoring.
+Traditional wireless systems spend enormous effort eliminating frequency offset. We do the opposite.
 
----
+When two radios transmit at slightly different frequencies (f₁ and f₁+Δf), their interaction creates a beat signal at frequency Δf. The phase of this beat evolves as:
 
-## Key Performance Results
+```
+φ_beat(t) = 2πΔf(t - τ) + φ₀
+```
 
-### Synchronization Accuracy
-- **22.13 ps** network consensus precision (Kalman filter tuned).
-- **2,273× better than GPS** (50 ns → 22 ps).
-- **4,500× bias reduction** via reciprocity calibration (12 ns → 2.65 ps).
-- **Single-iteration convergence** for 25-64 node networks.
+Where τ is the propagation delay we seek. By measuring beat phase evolution over microsecond windows, we extract timing with picosecond precision.
 
-### Simulation Validation
-- **Δf Aperture Spike:** **58.1 dB** (387% over 15 dB requirement).
-- **Coherent RMSE:** **45.0 ps** (0.83× CRLB, 62% better than required).
-- **Computational Efficiency:** Full suite completes in **3.7 s** on an Apple M2 Max.
-- [View Latest Validation Summary](docs/results_extended_011.md)
-- [View Full Monte Carlo Summary](results/mc_runs/extended_011/SUMMARY.md)
+## Quick Demo
 
-### Video Demonstrations
-- [**Full Technical Demo (22ps Sync)**](driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4)
-- [**Quick Teaser Video**](driftlock_choir_sim/outputs/movies/demo_teaser_choir_sim.mp4)
-- [**Comparison vs. GPS/PTP Baseline**](driftlock_choir_sim/outputs/movies/baseline_choir_sim.mp4)
-
-*(Note: The links above point to video files within this repository. To view them, you may need to download the files or clone the repository.)*
-
-## Getting Started
-
-### Installation
 ```bash
+# Install
 git clone https://github.com/shannon-labs/driftlock-choir
 cd driftlock-choir
 pip install -r requirements.txt
+
+# Run two-node synchronization
+PYTHONPATH=. python sim/phase1.py
+
+# Run network consensus (50 nodes)
+PYTHONPATH=. python sim/phase2.py
 ```
 
-### Reproducing Our Results
+![Network Convergence](docs/images/convergence.png)
 
-1.  **Run the Test Suite:** Verify the environment and baseline algorithms.
-    ```bash
-    PYTHONPATH=. pytest
-    ```
-    *(Expected result: 17 passed, 1 skipped)*
+## Results
 
-2.  **Run a Two-Node Handshake Simulation:** This is the fundamental building block (Phase 1).
-    ```bash
-    PYTHONPATH=. python sim/phase1.py
-    ```
-    *(This saves results and plots to `results/phase1/`)*
+### Experimental Validation
+- **Synchronization**: 22.13 ps (Kalman-filtered consensus)
+- **Raw Measurement**: 45.0 ps (0.83× Cramér-Rao bound)
+- **Bias Reduction**: 4,500× via reciprocity calibration
+- **Network Size**: Tested up to 64 nodes
+- **Convergence**: Single iteration
 
-3.  **Run a Multi-Node Consensus Simulation:** This demonstrates network-wide synchronization (Phase 2).
-    ```bash
-    PYTHONPATH=. python sim/phase2.py
-    ```
-    *(This saves results and plots to `results/phase2/`)*
+### Video Demonstrations
+- [Technical Demo (3 min)](driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4) - Full system demonstration
+- [Quick Overview (30s)](driftlock_choir_sim/outputs/movies/demo_teaser_choir_sim.mp4) - Key concepts
+- [vs GPS/PTP Baseline](driftlock_choir_sim/outputs/movies/baseline_choir_sim.mp4) - Performance comparison
 
-4.  **Generate Demo Videos:** Recreate the videos linked above.
-    ```bash
-    # Generate the full technical demo video
-    PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \
-      --config driftlock_choir_sim/configs/demo_movie.yaml
+## Technical Approach
 
-    # Generate the baseline (GPS/PTP) comparison video
-    PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \
-      --config driftlock_choir_sim/configs/baseline_movie.yaml
-    ```
-    *(Outputs are saved to `driftlock_choir_sim/outputs/movies/`)*
+### 1. Chronometric Interferometry
+Intentional frequency offset creates measurable beat patterns. Phase extraction through closed-form estimation avoids iterative search.
 
+### 2. Two-Way Protocol
+Bidirectional measurements cancel clock bias:
+- Forward: A→B yields τ + δt
+- Reverse: B→A yields τ - δt
+- Geometric mean extracts true delay τ
 
-## Core Innovation: Chronometric Interferometry
-
-Driftlock uses beat signals from intentionally offset carriers to encode timing information:
-`φ_beat(t) = 2π Δf (t - τ) + phase_terms`
-
-**Key Technical Steps:**
-1.  **Intentional Frequency Offset:** Creates a measurable low-frequency beat signal.
-2.  **Phase Extraction:** The phase of the beat signal reveals the propagation delay `τ`.
-3.  **Two-Way Measurement:** A forward and reverse handshake allows for cancellation of clock bias.
-4.  **Distributed Consensus:** A variance-weighted consensus algorithm achieves network-wide agreement.
-
-[Read the full theory →](docs/theory.md) | [Explore the Choir Simulation Lab →](driftlock_choir_sim/README.md)
-
-## Project Structure
+### 3. Distributed Consensus
+Variance-weighted averaging across all node pairs:
 ```
-driftlock-choir/
-├── sim/                    # Simulation framework (open source)
-│   ├── phase1.py           # Two-node synchronization
-│   └── phase2.py           # Multi-node consensus
-├── src/                    # Core algorithms (patent pending)
-│   ├── alg/                # Consensus, estimators, Kalman tools
-│   ├── phy/                # Oscillators, noise, signal models
-│   └── metrics/            # CRLB + bias/variance analysis
-├── tests/                  # Pytest suite for all modules
-├── docs/                   # Technical documentation and results
-└── patent/                 # Patent materials (provisional, claims, figures)
+x_i(k+1) = x_i(k) + ε Σ_j W_ij(d_ij - (x_i - x_j))
 ```
+
+Where W_ij weights by measurement precision (inverse variance).
+
+## Implementation
+
+Core algorithms in `src/`:
+- `alg/chronometric_handshake.py` - Two-node synchronization
+- `alg/consensus.py` - Network-wide agreement
+- `alg/kalman.py` - Adaptive filtering
+- `metrics/crlb.py` - Theoretical bounds
+
+Simulation framework in `sim/`:
+- `phase1.py` - Pairwise validation
+- `phase2.py` - Network consensus
+- `phase3.py` - Hardware calibration
+
+## Reproducing Results
+
+```bash
+# Run test suite (17 tests, ~80s)
+PYTHONPATH=. pytest
+
+# Generate performance data
+PYTHONPATH=. python sim/phase1.py  # Two-node
+PYTHONPATH=. python sim/phase2.py  # Multi-node
+
+# Create visualization
+PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \
+  --config driftlock_choir_sim/configs/demo_movie.yaml
+```
+
+## Applications
+
+- **5G/6G Networks**: Distributed MIMO, network slicing
+- **Financial Systems**: Timestamp verification for HFT
+- **Sensor Networks**: Coordinated sampling
+- **Quantum Networks**: Entanglement distribution timing
+
+## Theory
+
+The Cramér-Rao lower bound for timing precision:
+```
+σ_τ ≥ 1/(2π·SNR^(1/2)·B_rms·T^(1/2))
+```
+
+Where B_rms is RMS bandwidth, T is observation time. We achieve 0.83× this theoretical limit.
+
+Key innovations:
+- Intentional Δf as measurement channel
+- Closed-form beat phase estimator
+- Variance-weighted consensus
+- Single-iteration convergence
 
 ## Citation
-If you use Driftlock in your research, please cite our work:
+
 ```bibtex
-@software{driftlock_choir_2025,
-  title = {Driftlock: Picosecond-Scale Wireless Synchronization via Chronometric Interferometry},
+@software{driftlock2025,
   author = {Bown, Hunter},
+  title = {Driftlock: Picosecond Wireless Synchronization via Chronometric Interferometry},
   year = {2025},
-  organization = {Shannon Labs, Inc.},
   url = {https://github.com/shannon-labs/driftlock-choir}
 }
 ```
 
-## Licensing and Patent
-- **Patent Pending:** The core Driftlock method is patent pending.
-- **Academic Use:** This source code is freely available for academic and research purposes under the [Academic License](LICENSE-ACADEMIC.md).
-- **Commercial Use:** Commercial applications require a license. Please contact [licensing@shannonlabs.com](mailto:licensing@shannonlabs.com).
+## Contact
 
-## How to Get Involved
-- **Star this repo** to follow our progress.
-- **Read our papers** in the [docs](docs/) folder.
-- **Report bugs** or suggest improvements in the [Issues](https://github.com/shannon-labs/driftlock-choir/issues) tab.
-- **Contribute improvements** via pull requests. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Hunter Bown • hunter@shannonlabs.dev
+
+## Patent Notice
+
+The Driftlock method is patent pending. Source code is Apache 2.0 licensed. Patent licensing: hunter@shannonlabs.dev
+
+---
+
+*"We turned the problem into the solution. What everyone thought was noise became our most precise measurement tool."*

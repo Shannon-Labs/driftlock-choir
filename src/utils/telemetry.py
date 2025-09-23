@@ -1,7 +1,7 @@
 from __future__ import annotations
 import csv
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 from dataclasses import dataclass, asdict, field
@@ -11,7 +11,7 @@ from typing_extensions import Self
 @dataclass
 class TelemetryMetadata:
     """Metadata for telemetry records."""
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     seed: Optional[int] = None
     config: Optional[Dict[str, Any]] = None
     run_id: Optional[str] = None
