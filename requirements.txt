@@ -8,4 +8,3 @@ imageio>=2.34
 typing_extensions>=4.0
 dataclasses>=0.6;python_version<"3.7"
 pyserial>=3.5
-ffmpeg-python
