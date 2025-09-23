@@ -7,8 +7,6 @@ By intentionally introducing frequency offset between wireless transceivers, we 
 **Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence  
 [View Run Summary](results/mc_runs/extended_011/SUMMARY.md) • [View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)
 
-**[View Run Summary](results/mc_runs/extended_011/SUMMARY.md)** • **[View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)**
-
 **Patent Pending** • Apache 2.0 License
 
 ## The Core Insight
