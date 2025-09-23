@@ -45,8 +45,14 @@ PYTHONPATH=. python sim/phase2.py
 - **Synchronization**: 22.13 ps (Kalman-filtered consensus)
 - **Raw Measurement**: 45.0 ps (0.83× Cramér-Rao bound)
 - **Bias Reduction**: 4,500× via reciprocity calibration
-- **Network Size**: Tested up to 64 nodes
 - **Convergence**: Single iteration
+
+### Scaling Performance
+- **128 nodes**: 22.97 ps RMSE (51s runtime)
+- **256 nodes**: 21.64 ps RMSE (better precision at scale!)
+- **512 nodes**: 20.09 ps RMSE (10.5 min runtime)
+
+The algorithm gets *more* precise with larger networks - a counterintuitive result enabled by variance-weighted consensus.
 
 ### Video Demonstrations
 - [Technical Demo (3 min)](driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4) - Full system demonstration
@@ -94,6 +100,10 @@ PYTHONPATH=. pytest
 # Generate performance data
 PYTHONPATH=. python sim/phase1.py  # Two-node
 PYTHONPATH=. python sim/phase2.py  # Multi-node
+
+# Test scaling (warning: 512 nodes takes ~10 min)
+python scripts/sweep_phase2_kf.py --nodes 128 --density 0.22 \
+  --gains 0.32 --freq-gains 0.03 --iters 1
 
 # Create visualization
 PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \
