@@ -4,14 +4,13 @@
 
 By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22.13 ps dense-network synchronization** using commercial hardware. Read the [full results analysis](docs/results_extended_011.md).
 
-**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence  
-[View Run Summary](results/mc_runs/extended_011/SUMMARY.md) • [View Sweep Data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json)
+**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence
 
 **Patent Pending** • Apache 2.0 License
 
 ## The Core Insight
 
-> **Tuned 0.32 / 0.03 / 1 combo**: This repository reflects the `extended_011` run, which produced the 22.13 ps result. [Verify the sweep data](results/kf_sweeps/dense_combo_scan/kf_sweep_summary.json).
+> **Tuned 0.32 / 0.03 / 1 combo**: This repository reflects the `extended_011` run, which produced the 22.13 ps result.
 
 Traditional wireless systems spend enormous effort eliminating frequency offset. We do the opposite.
 
@@ -53,7 +52,15 @@ PYTHONPATH=. python sim/phase2.py
 
 The algorithm gets *more* precise with larger networks - a counterintuitive result enabled by variance-weighted consensus.
 
-For reproduction commands, regression guardrails, and repo hygiene notes see `docs/scaling_results.md`.
+For reproduction commands, regression guardrails, and repo hygiene notes see [docs/scaling_results.md](docs/scaling_results.md).
+
+### Documentation & Analysis
+- [Full Results Analysis](docs/results_extended_011.md) - Detailed 22ps results
+- [Scaling Performance Study](docs/scaling_results.md) - 128-512 node benchmarks
+- [Simulation Results](docs/simulation_results.md) - Complete simulation data
+- [Benchmark Configuration](docs/bench_coax.md) - Hardware emulation setup
+- [Theory & Derivations](docs/theory.md) - Mathematical foundations
+- [Physics Derivations](docs/physics_derivations.md) - Physical principles
 
 ### Video Demonstrations
 - [Technical Demo (3 min)](driftlock_choir_sim/outputs/movies/demo_choir_sim.mp4) - Full system demonstration
