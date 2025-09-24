@@ -8,6 +8,11 @@ By intentionally introducing frequency offset between wireless transceivers, we 
 
 **Patent Pending** • Apache 2.0 License
 
+## Current Focus
+- Finish the TDL profile validation sweep (`INDOOR_OFFICE` → `URBAN_CANYON` and beyond) and publish τ/Δf bias for each environment.
+- Harden the simulator with power-law phase-noise spectra, temperature hooks, and deterministic seeding so results stay reproducible.
+- Spin up “Project Swing” (advanced modulation) once the hardened baseline is locked, then proceed to Harmony/Score as the data matures.
+
 ## The Core Insight
 
 > **Tuned 0.32 / 0.03 / 1 combo**: This repository reflects the `extended_011` run, which produced the 22.13 ps result.
