@@ -22,6 +22,7 @@ class CRLBParams:
     pulse_shape: str = 'rect'  # Pulse shape ('rect', 'rrc', 'gaussian')
     carrier_frequencies: Optional[List[float]] = None  # For multi-frequency CRLB
     sigma_phase_rad: float = 0.1  # Phase noise std dev (rad)
+    filter_bw_hz: Optional[float] = None  # Bandwidth of estimator's BPF
 
 
 class JointCRLBCalculator:
@@ -96,10 +97,20 @@ class JointCRLBCalculator:
         # FIM = (2/σ²) Σ (∂φ/∂θ_i)(∂φ/∂θ_j)
         # where σ² is the per-sample noise variance
 
-        # Per-sample complex noise variance (post-filtering)
-        # Consistent with phy.noise.add_awgn(): E[|w|^2] = noise_power = 1 / SNR_linear
-        # so σ² (per complex sample) = 1 / SNR_linear
-        noise_var = 1.0 / snr_linear
+        # RESEARCH-GRADE UPDATE: Calculate noise variance considering BPF
+        # The original CRLB calculation was flawed because it used the wideband
+        # SNR, while the estimator benefits from a narrow bandpass filter.
+        # This corrected calculation provides a fair, "apples-to-apples" bound.
+        wideband_noise_power = 1.0 / snr_linear
+        if self.params.filter_bw_hz is not None and self.params.sample_rate > 0:
+            # Noise Power Spectral Density (PSD) over the full sample rate
+            noise_psd = wideband_noise_power / self.params.sample_rate
+            # Noise power within the filter's bandwidth
+            filtered_noise_power = noise_psd * self.params.filter_bw_hz
+            noise_var = filtered_noise_power
+        else:
+            # Fallback to original wideband calculation if filter BW not provided
+            noise_var = wideband_noise_power
 
         # Compute sums in float64
         S1 = float(np.sum(dphi_dtau ** 2))          # constant over n

@@ -25,7 +25,8 @@ from scipy import signal
 from phy.noise import NoiseGenerator, NoiseParams
 from phy.preamble import Preamble, build_preamble, estimate_delay
 from mac.scheduler import MacSlots
-from chan.tdl import TappedDelayLine
+from chan.tdl import TappedDelayLine, tdl_from_profile
+from phy.impairments import ImpairmentConfig, apply_amplifier_nonlinearity, generate_phase_noise
 
 # Physical constant
 C = 299_792_458.0  # Speed of light (m/s)
@@ -139,22 +140,21 @@ class ChronometricHandshakeConfig:
     min_baseband_rate_hz: float = 200_000.0
     min_adc_rate_hz: float = 20_000.0
     filter_relative_bw: float = 1.4
-    phase_noise_psd: float = -80.0
+    phase_noise_psd: float = -80.0 # Legacy, kept for baseline comparison
     jitter_rms_s: float = 1e-12
     retune_offsets_hz: Tuple[float, ...] = ()
     coarse_enabled: bool = False
     coarse_bandwidth_hz: float = 20e6
     coarse_duration_s: float = 5e-6
     coarse_variance_floor_ps: float = 50.0
-    multipath_two_ray_alpha: Optional[float] = None
-    multipath_two_ray_delay_s: Optional[float] = None
+    channel_profile: Optional[str] = None  # TDL profile (e.g. "INDOOR_OFFICE")
+    impairments: Optional[ImpairmentConfig] = None # Physical hardware impairments
     delta_t_schedule_us: Tuple[float, ...] = (0.0,)
     d_tx_ns: Optional[Dict[int, float]] = None
     d_rx_ns: Optional[Dict[int, float]] = None
     calibration_mode: str = 'off'
     loopback_cal_noise_ps: float = 10.0
     mac: Optional[MacSlots] = None
-    channel_model: Optional[TappedDelayLine] = None
     use_phase_slope_fit: bool = False  # Opt-in phase-slope fusion for multi-carrier tau estimation
     use_theoretical_variance: bool = False  # Use theoretical phase variance for covariance
 
@@ -224,6 +224,8 @@ class ChronometricHandshakeSimulator:
                 self._tx_calibration[node] = 0.0
                 self._rx_calibration[node] = 0.0
         self._mac_slots = config.mac
+        self._channel_profile = config.channel_profile
+        self._impairments = config.impairments
 
     # Public API -------------------------------------------------------
 
@@ -521,20 +523,51 @@ class ChronometricHandshakeSimulator:
         n_samples = max(int(self.cfg.beat_duration_s * baseband_rate), 256)
         t = np.arange(n_samples) / baseband_rate
 
-        theta_diff = tx.phase_offset_rad - rx.phase_offset_rad
-        beat_phase = self._build_beat_phase(
-            t=t,
-            delta_f_hz=delta_f_true,
-            theta_diff=theta_diff,
-            carrier_freq_hz=tx.carrier_freq_hz,
-            tau_true=tau_true,
-        )
-        beat_clean = np.exp(1j * beat_phase)
+        # --- Physically Accurate Signal Generation ---
+        # Instead of an ideal beat phase, we now model the full TX/RX chain
+
+        # 1. Generate phase noise for each oscillator if impairments are enabled
+        tx_phase_noise = np.zeros(n_samples)
+        rx_phase_noise = np.zeros(n_samples)
+        if self._impairments and self._impairments.phase_noise_h:
+            tx_phase_noise = generate_phase_noise(
+                n_samples, baseband_rate, self._impairments.phase_noise_h, rng
+            )
+            rx_phase_noise = generate_phase_noise(
+                n_samples, baseband_rate, self._impairments.phase_noise_h, rng
+            )
+
+        # 2. Create TX and RX LO signals with their own phase noise
+        tx_lo_phase = 2 * np.pi * tx.carrier_freq_hz * t + tx.phase_offset_rad + tx_phase_noise
+        rx_lo_phase = 2 * np.pi * rx.carrier_freq_hz * t + rx.phase_offset_rad + rx_phase_noise
+
+        # 3. Create transmitted signal (assuming ideal modulation for now)
+        tx_signal = np.exp(1j * tx_lo_phase)
+
+        # 4. Apply transmitter impairments (e.g., amplifier non-linearity)
+        if self._impairments:
+            tx_signal = apply_amplifier_nonlinearity(
+                tx_signal, self._impairments.amp_c1, self._impairments.amp_c3
+            )
+
+        # 5. Propagate signal through channel (delay + multipath)
+        # We model delay by time-shifting the signal before mixing
+        delayed_tx_signal = self._fractional_delay(tx_signal, tau_true, baseband_rate)
+
+        # 6. Create the beat signal by mixing at the receiver
+        # beat = delayed_tx_signal * conj(rx_lo)
+        rx_lo_signal = np.exp(1j * rx_lo_phase)
+        beat_clean = delayed_tx_signal * np.conj(rx_lo_signal)
+
+        # Note: The 'phase_bias' from the channel model is now more complex.
+        # It's implicitly captured in the beat signal, but we can still calculate
+        # the narrowband response for analysis if needed.
         beat_clean, phase_bias = self._apply_channel_effects(
             beat_clean,
             baseband_rate,
             tau_true,
             tx.carrier_freq_hz,
+            rng,
         )
 
         noise_gen = NoiseGenerator(
@@ -615,17 +648,6 @@ class ChronometricHandshakeSimulator:
         hardware = self._hardware_delay(tx.node_id, rx.node_id)
         return geometric + clock_skew + hardware
 
-    def _build_beat_phase(
-        self,
-        t: NDArray[np.float64],
-        delta_f_hz: float,
-        theta_diff: float,
-        carrier_freq_hz: float,
-        tau_true: float,
-    ) -> NDArray[np.float64]:
-        carrier_term = -2.0 * np.pi * carrier_freq_hz * tau_true
-        beat_phase = 2.0 * np.pi * delta_f_hz * t + theta_diff + carrier_term
-        return beat_phase
 
     def _bandpass_filter(
         self,
@@ -675,16 +697,16 @@ class ChronometricHandshakeSimulator:
         sample_rate: float,
         tau_true: float,
         carrier_freq_hz: float,
+        rng: np.random.Generator,
     ) -> Tuple[NDArray[np.complex128], Optional[float]]:
         phase_bias = None
-        if self.cfg.channel_model is not None:
-            channel = self.cfg.channel_model
+        if self._channel_profile:
+            channel = tdl_from_profile(self._channel_profile, rng)
             processed = channel.apply_to_waveform(signal_in, sample_rate)
             response = channel.narrowband_response(carrier_freq_hz)
             phase_bias = float(np.angle(response)) if response != 0.0 else None
             return processed, phase_bias
-        processed = self._apply_two_ray_multipath(signal_in, sample_rate, tau_true)
-        return processed, phase_bias
+        return signal_in, phase_bias
 
     def _estimate_parameters(
         self,
@@ -811,10 +833,9 @@ class ChronometricHandshakeSimulator:
         preamble = self._get_coarse_preamble(n_samples, sample_rate)
         transmitted = preamble.samples
         received = self._fractional_delay(transmitted, tau_true, sample_rate)
-        if self.cfg.channel_model is not None:
-            received = self.cfg.channel_model.apply_to_waveform(received, sample_rate)
-        else:
-            received = self._apply_two_ray_multipath(received, sample_rate, tau_true)
+        if self._channel_profile:
+            channel = tdl_from_profile(self._channel_profile, rng)
+            received = channel.apply_to_waveform(received, sample_rate)
         signal_power = float(np.mean(np.abs(received) ** 2) + _EPS)
         snr_linear = max(10 ** (snr_db / 10.0), _EPS)
         noise_power = signal_power / snr_linear
@@ -833,28 +854,6 @@ class ChronometricHandshakeSimulator:
             tau_est = estimate_delay(noisy, preamble, sample_rate)
         return float(tau_est)
 
-    def _apply_two_ray_multipath(
-        self,
-        signal_in: NDArray[np.complex128],
-        sample_rate: float,
-        tau_true: float,
-    ) -> NDArray[np.complex128]:
-        alpha = self.cfg.multipath_two_ray_alpha
-        if alpha is None or np.isclose(alpha, 0.0):
-            return signal_in
-        delay = self.cfg.multipath_two_ray_delay_s or (tau_true * 0.5)
-        delay_samples = delay * sample_rate
-        integer = int(np.floor(delay_samples))
-        frac = delay_samples - integer
-        echoed = np.zeros_like(signal_in)
-        if integer < len(signal_in):
-            echoed[integer:] = signal_in[: len(signal_in) - integer]
-        if frac > 1e-6:
-            echoed[integer:-1] = (
-                (1.0 - frac) * echoed[integer:-1]
-                + frac * echoed[integer + 1 :]
-            )
-        return signal_in + alpha * echoed
 
     def _get_coarse_preamble(self, n_samples: int, sample_rate: float) -> Preamble:
         cache_key = (n_samples, round(float(sample_rate), 6))
