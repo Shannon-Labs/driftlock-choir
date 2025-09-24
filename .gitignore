@@ -98,6 +98,7 @@ private/
 internal/
 .claude/
 a16z*/
+paper/
 investor*/
 *_INTERNAL.*
 *_PRIVATE.*
