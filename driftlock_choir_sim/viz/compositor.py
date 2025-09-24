@@ -5,10 +5,9 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FFMpegWriter, FuncAnimation, PillowWriter, writers
 import numpy as np
 import yaml
-from matplotlib.animation import FFMpegWriter, FuncAnimation
 
 # Import simulation modules (assuming PYTHONPATH=.)
 from driftlock_choir_sim.dsp.tx_comb import generate_comb
@@ -131,11 +130,19 @@ def animate_split_screen(baseline_config: dict, demo_config: dict, num_frames: i
             ax_right.text(0.05, 0.95, f"τ̂: {data['tau_ps']:.1f} ps | SNR: {data['df_snr_db']:.1f} dB", transform=ax_right.transAxes, fontsize=10,
                           bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
 
-    ani = FuncAnimation(fig, update, frames=num_frames, interval=1000/24, blit=False)
+    ani = FuncAnimation(fig, update, frames=num_frames, interval=1000 / 24, blit=False)
     output_dir = Path("driftlock_choir_sim/outputs/comparisons/side_by_side")
     output_dir.mkdir(parents=True, exist_ok=True)
-    ani.save(output_dir / "comparison.mp4", writer=FFMpegWriter(fps=24))
-    print(f"Animated split-screen saved to {output_dir / 'comparison.mp4'}")
+
+    if writers.is_available("ffmpeg"):
+        video_path = output_dir / "comparison.mp4"
+        writer = FFMpegWriter(fps=24)
+    else:
+        video_path = output_dir / "comparison.gif"
+        writer = PillowWriter(fps=24)
+
+    ani.save(video_path, writer=writer)
+    print(f"Animated split-screen saved to {video_path}")
 
     # Spritesheet
     grid_cols = max(1, num_frames // 10)
@@ -150,6 +157,9 @@ def animate_split_screen(baseline_config: dict, demo_config: dict, num_frames: i
         axs[1, col].plot(demo_data["f_env_khz"][:100], demo_data["env_db"][:100])
     plt.savefig(output_dir / "spritesheet.png", dpi=100)
     print(f"Spritesheet saved to {output_dir / 'spritesheet.png'}")
+
+    # Provide the caller with the generated animation path so tests can assert on it.
+    return video_path
 
 def main():
     parser = argparse.ArgumentParser(description="Create split-screen comparison reel.")

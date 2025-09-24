@@ -33,14 +33,11 @@ def test_compositor_headless():
             yaml.dump(demo_cfg, f)
 
         # Run with 3 frames
-        animate_split_screen(baseline_cfg, demo_cfg, num_frames=3, seed=2025)
+        video_path = animate_split_screen(baseline_cfg, demo_cfg, num_frames=3, seed=2025)
 
-        # Check if output files exist
-        output_dir = Path("driftlock_choir_sim/outputs/comparisons/side_by_side")
-        assert (output_dir / "comparison.mp4").exists()
-
-        # Basic check: files not empty
-        assert (output_dir / "comparison.mp4").stat().st_size > 0
+        # Check if output file exists and has some content
+        assert video_path.exists()
+        assert video_path.stat().st_size > 0
 
 if __name__ == "__main__":
     test_compositor_headless()
