@@ -42,9 +42,8 @@ PYTHONPATH=. python sim/phase1.py
 # Run network consensus (50 nodes)
 PYTHONPATH=. python sim/phase2.py
 
-# Run examples
+# Run example
 PYTHONPATH=. python examples/demo_two_node_timing.py
-PYTHONPATH=. python examples/simple_handshake_test.py
 ```
 
 ## Results
@@ -53,7 +52,7 @@ PYTHONPATH=. python examples/simple_handshake_test.py
 - **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
 - **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
 - **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
-- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` shows ~0.27 ns tau bias from coarse peak quantisation (Δf bias ~±85 Hz, consensus ~25.6 ps, measurement RMSE saturates ~3×10^16 ps when the coarse tap drifts); `URBAN_CANYON` lands at ~0.62 ns because Pathfinder rides a 0.5–0.7 ns late cluster; `INDOOR_OFFICE` reports 1.68 ns in this scripted run, so the peak-path handoff still sits 1–2 ns high relative to the lab's 0.13 ns win and needs reconciliation. All timing numbers are emitted in **ns** by the manifest generator (`scripts/run_handshake_diag.py`).
+- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` two‑way τ median ≈ −0.27 ns (coarse peak quantization); `URBAN_CANYON` median ≈ +0.74 ns (late‑cluster handoff); `INDOOR_OFFICE` median ≈ +0.52 ns with heavy‑tail mean ≈ +1.68 ns pending reconciliation with the ~0.13 ns lab result. Δf median biases sit near ±85 Hz. Manifests are written under `results/phase1/tdl_profiles` by `scripts/run_handshake_diag.py`.
 
 *Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
 - **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
@@ -126,21 +125,32 @@ Where W_ij weights by measurement precision (inverse variance).
 
 ```
 driftlock-choir/
-├── src/                    # Core algorithms
-│   ├── alg/               # Synchronization algorithms
-│   └── metrics/           # Performance metrics
+├── src/                    # Core modelling and helpers
+│   ├── alg/               # Estimation, consensus, Kalman
+│   ├── phy/               # Oscillators, noise, preambles, pathfinder
+│   ├── chan/              # Tapped‑delay‑line (TDL) channel profiles
+│   ├── hw/                # RF front‑end components
+│   ├── mac/               # Slotting/scheduler utilities
+│   ├── net/               # MAC/topology helpers
+│   ├── metrics/           # CRLB, bias/variance analysis
+│   └── utils/             # IO, plotting, telemetry
 ├── sim/                    # Simulation framework
 │   ├── phase1.py          # Pairwise validation
 │   ├── phase2.py          # Network consensus
 │   └── phase3.py          # Hardware calibration
 ├── examples/               # Demo scripts
-├── tests/                  # Test suite
-├── scripts/                # Utility scripts
+├── tests/                  # Pytest suite (seeded)
+├── scripts/                # Utilities (diag, MC, sweeps, verification)
 ├── docs/                   # Documentation
 ├── patent/                 # Patent materials
-├── results/                # Performance data
-├── driftlock_choir_sim/    # Visualization tools
-└── experiment/             # Experimental results
+├── results/                # Simulation artifacts (committed snapshots)
+├── driftlock_choir_sim/    # Movie generator and DSP demos
+├── services/time_telemetry # Telemetry service
+├── web/                    # Static site/demo
+├── paper/                  # Writing/workspace
+├── config/                 # Test/config files
+├── prompts/                # Internal prompts/checklists
+└── experiment/             # Experimental runs/artifacts
 ```
 
 ## Implementation
@@ -159,12 +169,15 @@ Simulation framework in `sim/`:
 ## Reproducing Results
 
 ```bash
-# Run test suite (17 tests, ~80s)
-PYTHONPATH=. pytest -c config/pytest.ini
+# Run test suite (seeded)
+pytest -c config/pytest.ini
 
 # Generate performance data
-PYTHONPATH=. python sim/phase1.py  # Two-node
-PYTHONPATH=. python sim/phase2.py  # Multi-node
+python sim/phase1.py  # Two-node
+python sim/phase2.py  # Multi-node
+
+# TDL profile diagnostics (writes results/phase1/tdl_profiles)
+PYTHONPATH=src python scripts/run_handshake_diag.py --channel-profile IDEAL --num-trials 200 --snr-db 40
 
 # Test scaling (warning: 512 nodes takes ~10 min)
 python scripts/sweep_phase2_kf.py --nodes 128 --density 0.22 \
@@ -175,7 +188,7 @@ python sim/bench_coax.py --nodes 4 --observation-ms 100 --trials 40
 # See `docs/bench_coax.md` for configuration notes and sample output.
 
 # Create visualization
-PYTHONPATH=. python driftlock_choir_sim/sims/make_movie.py \
+python driftlock_choir_sim/sims/make_movie.py \
   --config driftlock_choir_sim/configs/demo_movie.yaml
 ```
 

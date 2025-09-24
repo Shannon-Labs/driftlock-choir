@@ -103,6 +103,8 @@ class DirectionalMeasurement:
     running_variance_tau: Optional[float]
     running_variance_delta_f: Optional[float]
     coarse_tau_est_s: Optional[float]
+    coarse_locked: Optional[bool]
+    coarse_guard_hit: Optional[bool]
     carrier_frequencies_hz: Tuple[float, ...]
     tau_unwrapped_candidates_s: Optional[Tuple[float, ...]]
     alias_resolved: Optional[bool] = None
@@ -131,6 +133,16 @@ class TwoWayHandshakeResult:
     coarse_tof_est_s: Optional[float]
     reciprocity_bias_s: float
     delta_t_schedule_us: Tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class CoarseEstimate:
+    """Bundle describing the coarse delay hint and guard status."""
+
+    tau_est_s: Optional[float]
+    pathfinder: Optional[PathfinderResult]
+    guard_hit: bool = False
+    locked: Optional[bool] = None
 
 
 @dataclass
@@ -373,7 +385,9 @@ class ChronometricHandshakeSimulator:
 
         tau_true = self._apparent_tau(tx, rx, distance_m)
         channel = self._sample_channel(rng)
-        tau_coarse, pathfinder = self._coarse_delay_estimate(tau_true, snr_db, rng, channel)
+        coarse = self._coarse_delay_estimate(tau_true, snr_db, rng, channel)
+        tau_coarse = coarse.tau_est_s
+        pathfinder = coarse.pathfinder
         tau_hint = tau_coarse if tau_coarse is not None else tau_true
         conditioned_channel = self._condition_channel(channel, tau_true, pathfinder)
         hardware_delay = self._hardware_delay(tx.node_id, rx.node_id)
@@ -519,6 +533,8 @@ class ChronometricHandshakeSimulator:
         base_measurement.tau_unwrapped_candidates_s = candidate_array
         base_measurement.carrier_frequencies_hz = tuple(carrier_frequencies)
         base_measurement.coarse_tau_est_s = tau_coarse
+        base_measurement.coarse_locked = coarse.locked
+        base_measurement.coarse_guard_hit = coarse.guard_hit
         base_measurement.alias_resolved = (
             abs(tau_est_final - tau_true_calibrated) <= abs(base_raw_tau - tau_true)
         )
@@ -687,6 +703,8 @@ class ChronometricHandshakeSimulator:
             running_variance_tau=None,
             running_variance_delta_f=None,
             coarse_tau_est_s=None if coarse_tau_est is None else float(coarse_tau_est),
+            coarse_locked=None,
+            coarse_guard_hit=None,
             carrier_frequencies_hz=(tx.carrier_freq_hz,),
             tau_unwrapped_candidates_s=None,
             phase_bias_rad=phase_bias,
@@ -878,9 +896,9 @@ class ChronometricHandshakeSimulator:
         snr_db: float,
         rng: np.random.Generator,
         channel: Optional[TappedDelayLine],
-    ) -> Tuple[Optional[float], Optional[PathfinderResult]]:
+    ) -> CoarseEstimate:
         if not self.cfg.coarse_enabled:
-            return None, None
+            return CoarseEstimate(None, None)
         sample_rate = max(self.cfg.coarse_bandwidth_hz, self.cfg.min_baseband_rate_hz)
         if self._mac_slots is not None:
             n_samples = max(self._mac_slots.preamble_len, 128)
@@ -910,6 +928,8 @@ class ChronometricHandshakeSimulator:
             corr_signal = noisy_hi
             corr_preamble = preamble_hi
             effective_rate = sample_rate * upsample
+        corr = signal.fftconvolve(corr_signal, corr_preamble.matched_filter, mode='full')
+        magnitude = np.abs(corr)
         use_pathfinder = self._pathfinder_cfg is not None and channel is not None
         if use_pathfinder:
             pf_result = find_first_arrival(corr_signal, corr_preamble, effective_rate, self._pathfinder_cfg)
@@ -919,8 +939,24 @@ class ChronometricHandshakeSimulator:
         else:
             tau_est = estimate_delay(corr_signal, corr_preamble, effective_rate)
             pf_result = None
-        tau_value = float(tau_est) if tau_est is not None else None
-        return tau_value, pf_result
+        guard_hit = False
+        tau_value: Optional[float]
+        if tau_est is None or not np.isfinite(tau_est):
+            tau_value = None
+        else:
+            tau_value, guard_hit = self._refine_coarse_tau(
+                tau_est,
+                magnitude,
+                effective_rate,
+                corr_preamble.length,
+            )
+        locked: Optional[bool]
+        if tau_value is None:
+            locked = None
+        else:
+            tolerance = self._pathfinder_cfg.guard_interval_s if self._pathfinder_cfg else (2.0 / effective_rate)
+            locked = abs(tau_value - tau_true) <= tolerance
+        return CoarseEstimate(tau_value, pf_result, guard_hit=guard_hit, locked=locked)
 
 
     def _get_coarse_preamble(self, n_samples: int, sample_rate: float) -> Preamble:
@@ -934,6 +970,33 @@ class ChronometricHandshakeSimulator:
             )
             self._coarse_waveform_cache[cache_key] = preamble
         return preamble
+
+    def _refine_coarse_tau(
+        self,
+        tau_initial: float,
+        magnitude: NDArray[np.float64],
+        sample_rate: float,
+        preamble_len: int,
+    ) -> Tuple[float, bool]:
+        if magnitude.size < 3 or sample_rate <= 0.0:
+            return float(tau_initial), False
+
+        initial_index = tau_initial * sample_rate + (preamble_len - 1)
+        guard_hit = bool(initial_index <= 1 or initial_index >= magnitude.size - 2)
+        clamped_index = int(np.clip(round(initial_index), 1, magnitude.size - 2))
+
+        y_prev = float(magnitude[clamped_index - 1])
+        y_curr = float(magnitude[clamped_index])
+        y_next = float(magnitude[clamped_index + 1])
+        denom = (y_prev - 2.0 * y_curr + y_next)
+        delta = 0.0
+        if abs(denom) > 1e-12:
+            delta = 0.5 * (y_prev - y_next) / denom
+            delta = float(np.clip(delta, -0.5, 0.5))
+
+        refined_lag = (clamped_index + delta) - (preamble_len - 1)
+        tau_refined = refined_lag / sample_rate
+        return float(tau_refined), guard_hit
 
     def _fractional_delay(
         self,
