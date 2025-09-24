@@ -598,16 +598,17 @@ class ChronometricHandshakeSimulator:
 
         # 5. Propagate signal through channel (delay + multipath)
         # We model delay by time-shifting the signal before mixing
-        delayed_tx_signal = self._fractional_delay(tx_signal, tau_true, baseband_rate)
+        delayed_tx_signal = self._fractional_delay(
+            tx_signal,
+            tau_true,
+            baseband_rate,
+            carrier_freq_hz=tx.carrier_freq_hz,
+        )
 
         # 6. Create the beat signal by mixing at the receiver
-        # beat = delayed_tx_signal * conj(rx_lo)
         rx_lo_signal = np.exp(1j * rx_lo_phase)
         beat_clean = delayed_tx_signal * np.conj(rx_lo_signal)
 
-        # Note: The 'phase_bias' from the channel model is now more complex.
-        # It's implicitly captured in the beat signal, but we can still calculate
-        # the narrowband response for analysis if needed.
         beat_clean, phase_bias = self._apply_channel_effects(
             beat_clean,
             baseband_rate,
@@ -652,6 +653,13 @@ class ChronometricHandshakeSimulator:
             tau_hint=tau_hint,
             theoretical_phase_var=theoretical_phase_var,
         )
+
+        # The phase slope from mixing yields f_tx - f_rx; flip sign so the
+        # reported estimate tracks Δf = f_rx - f_tx used elsewhere.
+        delta_f_est = -delta_f_est
+        covariance = covariance.copy()
+        covariance[0, 1] *= -1.0
+        covariance[1, 0] *= -1.0
 
         trace: Optional[HandshakeTrace] = None
         if capture_trace:
@@ -902,13 +910,17 @@ class ChronometricHandshakeSimulator:
             corr_signal = noisy_hi
             corr_preamble = preamble_hi
             effective_rate = sample_rate * upsample
-        if self._pathfinder_cfg is not None:
+        use_pathfinder = self._pathfinder_cfg is not None and channel is not None
+        if use_pathfinder:
             pf_result = find_first_arrival(corr_signal, corr_preamble, effective_rate, self._pathfinder_cfg)
-            tau_est = pf_result.first_path_s
+            # Use the strongest peak for the coarse hint; first-path is still
+            # captured in ``pf_result`` for channel-conditioning decisions.
+            tau_est = pf_result.peak_path_s if pf_result is not None else None
         else:
             tau_est = estimate_delay(corr_signal, corr_preamble, effective_rate)
             pf_result = None
-        return float(tau_est), pf_result
+        tau_value = float(tau_est) if tau_est is not None else None
+        return tau_value, pf_result
 
 
     def _get_coarse_preamble(self, n_samples: int, sample_rate: float) -> Preamble:
@@ -928,14 +940,60 @@ class ChronometricHandshakeSimulator:
         signal_in: NDArray[np.complex128],
         delay_s: float,
         sample_rate: float,
+        carrier_freq_hz: Optional[float] = None,
     ) -> NDArray[np.complex128]:
-        if np.isclose(delay_s, 0.0):
-            return signal_in
-        t_in = np.arange(len(signal_in)) / sample_rate
-        t_out = t_in
-        real = np.interp(t_out - delay_s, t_in, signal_in.real, left=0.0, right=0.0)
-        imag = np.interp(t_out - delay_s, t_in, signal_in.imag, left=0.0, right=0.0)
-        return real + 1j * imag
+        """High-fidelity fractional delay that preserves carrier phase."""
+        if signal_in.size == 0 or np.isclose(delay_s, 0.0):
+            return signal_in.copy()
+
+        samples = np.asarray(signal_in, dtype=np.complex128)
+        delay_samples = float(delay_s * sample_rate)
+
+        # Separate integer and fractional portions of the desired delay.
+        frac_delay, integer_delay = np.modf(delay_samples)
+        integer_delay = int(integer_delay)
+        if frac_delay < 0.0:
+            frac_delay += 1.0
+            integer_delay -= 1
+
+        # Optionally mix to baseband to avoid aliasing error when delaying a high-frequency tone.
+        if carrier_freq_hz is not None:
+            time_axis = np.arange(samples.size, dtype=float) / sample_rate
+            baseband_phasor = np.exp(-1j * 2.0 * np.pi * carrier_freq_hz * time_axis)
+            baseband_signal = samples * baseband_phasor
+        else:
+            baseband_signal = samples
+
+        # Windowed-sinc kernel centred on the fractional remainder.
+        num_taps = 129  # 64 samples on each side keeps sub-ps error at MHz rates.
+        half_len = num_taps // 2
+        tap_index = np.arange(num_taps, dtype=float)
+        kernel = np.sinc(tap_index - half_len - frac_delay)
+        kernel *= signal.windows.kaiser(num_taps, beta=8.6)
+        kernel /= np.sum(kernel)
+
+        filtered = signal.fftconvolve(baseband_signal, kernel, mode='full')
+        filtered = filtered[half_len : half_len + samples.size]
+
+        if integer_delay > 0:
+            output = np.zeros_like(samples, dtype=np.complex128)
+            if integer_delay < samples.size:
+                output[integer_delay:] = filtered[: samples.size - integer_delay]
+        elif integer_delay < 0:
+            output = np.zeros_like(samples, dtype=np.complex128)
+            shift = min(samples.size, -integer_delay)
+            if shift < samples.size:
+                output[: samples.size - shift] = filtered[shift:]
+        else:
+            output = filtered.copy()
+
+        if carrier_freq_hz is not None:
+            # Re-apply the carrier, accounting for the absolute propagation delay.
+            time_axis = np.arange(samples.size, dtype=float) / sample_rate
+            remod_phasor = np.exp(1j * 2.0 * np.pi * carrier_freq_hz * (time_axis - delay_s))
+            output *= remod_phasor
+
+        return output
 
     def _hardware_delay(self, tx_id: int, rx_id: int) -> float:
         return self._tx_delay_s.get(tx_id, 0.0) + self._rx_delay_s.get(rx_id, 0.0)

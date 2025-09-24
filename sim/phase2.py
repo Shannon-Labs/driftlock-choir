@@ -37,7 +37,7 @@ from alg.spectral_predictor import predict_iterations_to_rmse
 from alg.weights import build_weight_matrix
 from metrics.stats import StatisticalValidator, StatsParams
 from src.phy.impairments import ImpairmentConfig
-from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json
+from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json, _json_default
 from utils.plotting import save_figure
 
 from utils.telemetry import TelemetryExporter
@@ -728,7 +728,7 @@ class Phase2Simulation:
         # Append to JSONL for streaming
         jsonl_path = os.path.join(self.config.results_dir, 'phase2_runs.jsonl')
         with open(jsonl_path, 'a') as f:
-            f.write(json.dumps(telemetry) + '\n')
+            f.write(json.dumps(telemetry, default=_json_default) + '\n')
         print(f"Run appended to {jsonl_path}")
 
     def _append_run_csv(

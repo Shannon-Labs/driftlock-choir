@@ -8,6 +8,8 @@ from dataclasses import dataclass, asdict, field
 import numpy as np
 from typing_extensions import Self
 
+from .io import _json_default
+
 @dataclass
 class TelemetryMetadata:
     """Metadata for telemetry records."""
@@ -78,7 +80,7 @@ class TelemetryExporter:
         if self.jsonl_path is None:
             self.jsonl_path = self.output_dir / f"telemetry_{self.variant}.jsonl"
         with open(self.jsonl_path, "a") as f:
-            f.write(json.dumps(record_dict) + "\n")
+            f.write(json.dumps(record_dict, default=_json_default) + "\n")
 
         flat_row = self._flatten_record(record_dict)
 
@@ -105,7 +107,7 @@ class TelemetryExporter:
             if isinstance(value, dict):
                 flat.update(self._flatten_record(value, name))
             elif isinstance(value, list):
-                flat[name] = json.dumps(value)
+                flat[name] = json.dumps(value, default=_json_default)
             else:
                 flat[name] = value
         return flat
@@ -169,7 +171,7 @@ class TelemetryExporter:
         # JSONL
         with open(jsonl_path, "w") as f:
             for record in self.records:
-                f.write(json.dumps(record.to_dict()) + "\n")
+                f.write(json.dumps(record.to_dict(), default=_json_default) + "\n")
 
         # CSV
         fieldnames: List[str] = []
