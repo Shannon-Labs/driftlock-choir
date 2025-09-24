@@ -6,3 +6,4 @@
 03_project_score.md              # Hardware reference architecture (“Score”)
 04_project_ensemble.md           # Network-level experiments (“Ensemble”)
 05_project_ostinato.md           # Long-horizon roadmap / stretch goals (“Ostinato”)
+09_paper_bibliography_cleanup.md # Verify refs.bib entries, gather metadata, flag gaps/missing sources
