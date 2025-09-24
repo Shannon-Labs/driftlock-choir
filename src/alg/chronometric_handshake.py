@@ -35,7 +35,7 @@ C = 299_792_458.0  # Speed of light (m/s)
 _EPS = np.finfo(float).eps
 
 
-@dataclass(frozen=True)
+@dataclass
 class ChronometricNodeConfig:
     """Configuration/state snapshot for a node participating in the handshake."""
 

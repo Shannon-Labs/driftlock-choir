@@ -10,6 +10,9 @@ import argparse
 import os
 import sys
 from datetime import datetime
+import multiprocessing
+import cProfile
+import pstats
 
 import numpy as np
 import pandas as pd
@@ -17,43 +20,81 @@ import pandas as pd
 # Add src/ and sim/ to import path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from sim.phase2 import Phase2Config, Phase2Simulation, build_phase2_cli, _radius_from_density, _resolve_local_kf_flag, _parse_float_sequence
+from src.phy.impairments import ImpairmentConfig
 from utils.io import echo_config
+
+
+def run_single_seed(args_tuple):
+    """Worker function to run a single simulation seed."""
+    args, seed, results_dir = args_tuple
+    print(f"--- Running Seed (RNG Seed: {seed}) ---")
+
+    cfg = _build_config_from_args(args, seed, results_dir)
+
+    try:
+        if args.profile:
+            profiler = cProfile.Profile()
+            profiler.enable()
+
+        simulation = Phase2Simulation(cfg)
+        telemetry = simulation.run()
+
+        if args.profile:
+            profiler.disable()
+            stats = pstats.Stats(profiler).sort_stats('cumtime')
+            profile_path = os.path.join(results_dir, f"profile_{seed}.txt")
+            stats.dump_stats(os.path.join(results_dir, f"profile_{seed}.pstat"))
+            with open(profile_path, 'w') as f:
+                stats.stream = f
+                stats.print_stats()
+            print(f"Profiling data for seed {seed} saved to {profile_path}")
+
+        print(f"Seed {seed} complete. Final RMSE: {telemetry['consensus']['timing_rms_ps'][-1]:.2f} ps")
+        return telemetry
+    except Exception as e:
+        print(f"!!! ERROR running seed {seed}: {e}")
+        return None
 
 
 def run_monte_carlo(args: argparse.Namespace) -> None:
     """
     Orchestrates the Monte Carlo simulation runs.
     """
+    if args.smoke_test:
+        print("--- Running SMOKE TEST ---")
+        args.num_seeds = 2
+        args.nodes = 16
+
     base_seed = args.rng_seed
     num_runs = args.num_seeds
     results_dir = os.path.join(args.results_dir, f"mc_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    os.makedirs(results_dir, exist_ok=True)
 
     print(f"Starting Monte Carlo simulation with {num_runs} seeds.")
     print(f"Base seed: {base_seed}")
     print(f"Results will be saved in: {results_dir}")
 
-    all_telemetry = []
+    # Print config for the first run
+    first_cfg = _build_config_from_args(args, base_seed, results_dir)
+    print("\nUsing the following configuration for all runs:")
+    print(echo_config(first_cfg, label='Phase2Config'))
 
-    for i in range(num_runs):
-        current_seed = base_seed + i
-        print(f"\n--- Running Seed {i+1}/{num_runs} (RNG Seed: {current_seed}) ---")
+    tasks = [(args, base_seed + i, results_dir) for i in range(num_runs)]
 
-        # Configure and run a single Phase2 simulation
-        cfg = _build_config_from_args(args, current_seed, results_dir)
+    if args.num_workers > 1:
+        print(f"\nRunning in parallel with {args.num_workers} workers.")
+        with multiprocessing.Pool(processes=args.num_workers) as pool:
+            all_telemetry = pool.map(run_single_seed, tasks)
+    else:
+        print("\nRunning sequentially.")
+        all_telemetry = [run_single_seed(task) for task in tasks]
 
-        if i == 0:
-            print("\nUsing the following configuration for all runs:")
-            print(echo_config(cfg, label='Phase2Config'))
+    # Filter out failed runs
+    all_telemetry = [t for t in all_telemetry if t is not None]
 
-        try:
-            simulation = Phase2Simulation(cfg)
-            telemetry = simulation.run()
-            all_telemetry.append(telemetry)
-            print(f"Seed {current_seed} complete. Final RMSE: {telemetry['consensus']['timing_rms_ps'][-1]:.2f} ps")
-        except Exception as e:
-            print(f"!!! ERROR running seed {current_seed}: {e}")
-            print("Skipping this seed and continuing...")
-            continue
+    if not all_telemetry:
+        print("\n--- All simulation runs failed! ---")
+        return
 
     print("\n--- Monte Carlo Simulation Complete ---")
     summarize_results(results_dir)
@@ -98,6 +139,10 @@ def _build_config_from_args(args: argparse.Namespace, seed: int, results_dir: st
         coarse_bandwidth_hz=args.coarse_bw_hz,
         coarse_duration_s=args.coarse_duration_us * 1e-6,
         channel_profile=args.channel_profile,
+        impairments=ImpairmentConfig(
+            amp_c3=complex(0.05, -0.02),  # Light AM/PM distortion
+            phase_noise_h={-2: 1e-21, -1: 1e-20, 0: 1e-19} # Commodity TCXO profile
+        ),
         num_timesteps=args.num_timesteps,
         consensus_mode=args.consensus_mode,
         consensus_iterations=args.consensus_iterations,
@@ -108,8 +153,8 @@ def _build_config_from_args(args: argparse.Namespace, seed: int, results_dir: st
         local_kf_init_var_f_hz=args.local_kf_init_var_f_hz,
         local_kf_max_abs_ps=args.local_kf_max_abs_ps,
         local_kf_max_abs_freq_hz=args.local_kf_max_abs_f_hz,
-        local_kf_clock_gain=args.local_kf_clock_gain,
-        local_kf_freq_gain=args.local_kf_freq_gain,
+        local_kf_clock_gain=0.00018,  # Dampened by 1000x from 0.18
+        local_kf_freq_gain=0.00005,   # Dampened by 1000x from 0.05
         local_kf_iterations=args.local_kf_iters,
         baseline_mode=args.baseline_mode,
     )
@@ -164,6 +209,9 @@ def main():
 
     # --- Arguments for the Monte Carlo runner itself ---
     parser.add_argument('--num-seeds', type=int, default=100, help='Number of random seeds to run.')
+    parser.add_argument('--num-workers', type=int, default=multiprocessing.cpu_count(), help='Number of parallel processes to use.')
+    parser.add_argument('--smoke-test', action='store_true', help='Run a small-scale test to verify the setup.')
+    parser.add_argument('--profile', action='store_true', help='Run with cProfile enabled for a single seed to find bottlenecks.')
 
     # --- Arguments to configure the underlying Phase2Simulation ---
     # We reuse the CLI builder from phase2.py to avoid duplicating arguments

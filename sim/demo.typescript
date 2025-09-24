@@ -1,0 +1,25 @@
+^D[3J[H[2J$ python phase2.py
+
+Initializing DriftLock wireless synchronization...
+Loading configuration for 50-node network...
+
+Network Statistics:
+  - Nodes: 50
+  - Edges: 388
+  - Average degree: 15.52
+  - Carrier frequency: 2.4 GHz
+  - SNR: 20 dB
+
+Starting consensus protocol...
+
+Iteration 1: RMSE = 17.866 ps ✓
+Convergence achieved in 1 iteration!
+
+=========================================
+   FINAL RESULT: 17.9 ps synchronization
+=========================================
+
+✓ Results saved to results/phase2/
+✓ Convergence plot saved
+✓ Topology plot saved
+

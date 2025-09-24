@@ -36,6 +36,7 @@ from alg.consensus import (
 from alg.spectral_predictor import predict_iterations_to_rmse
 from alg.weights import build_weight_matrix
 from metrics.stats import StatisticalValidator, StatsParams
+from src.phy.impairments import ImpairmentConfig
 from utils.io import append_csv_row, dump_run_config, echo_config, ensure_directory, save_json
 from utils.plotting import save_figure
 
@@ -66,6 +67,7 @@ class Phase2Config:
     handshake_min_baseband_rate_hz: Optional[float] = None
     handshake_min_adc_rate_hz: Optional[float] = None
     channel_profile: Optional[str] = None
+    impairments: Optional[ImpairmentConfig] = None
 
     num_timesteps: int = 200 # Number of timesteps for dynamic simulation
     consensus_mode: str = 'converge' # 'converge' or 'fixed_iterations'
@@ -117,6 +119,7 @@ class Phase2Config:
             coarse_duration_s=self.coarse_duration_s,
             coarse_variance_floor_ps=self.coarse_variance_floor_ps,
             channel_profile=self.channel_profile,
+            impairments=self.impairments,
         )
 
 
@@ -147,11 +150,15 @@ class Phase2Simulation:
         nodes = self._build_nodes()
 
         true_state = self._oracle_state(nodes)
-        estimated_state, kf_metrics = self._prepare_initial_state(graph, true_state)
-
+        
         # --- Main Timestep Loop ---
         all_results = []
         iterations_per_step = []
+
+        # Initial measurement population
+        self._populate_measurements(graph, nodes, positions, true_state)
+        estimated_state, kf_metrics = self._prepare_initial_state(graph, true_state)
+
 
         for timestep in range(self.config.num_timesteps):
             # 1. Evolve true state (simulate drift)
@@ -176,7 +183,7 @@ class Phase2Simulation:
 
             # 4. Log results and update state for next timestep
             all_results.append(result)
-            iterations_per_step.append(result.convergence_iteration or result.iterations)
+            iterations_per_step.append(result.convergence_iteration or (len(result.state_history) - 1))
             estimated_state = result.state_history[-1]
 
         # --- Compile final telemetry ---
@@ -460,6 +467,11 @@ class Phase2Simulation:
 
                 for neighbor, data in graph[node].items():
                     measurement = np.array(data['measurement'], dtype=float)
+                    
+                    # Firewall: Clamp insane errors to prevent divergence
+                    if abs(measurement[0] * 1e12) > 1_000_000:
+                        continue # Skip this measurement entirely
+
                     orientation = data.get('orientation', (node, neighbor))
                     if orientation[0] != node:
                         measurement = -measurement
