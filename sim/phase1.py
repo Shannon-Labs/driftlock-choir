@@ -38,7 +38,7 @@ from alg.chronometric_handshake import (
     TwoWayHandshakeResult,
 )
 from mac.scheduler import MacSlots
-from chan.tdl import TappedDelayLine, tdl_exponential
+from chan.tdl import TappedDelayLine, tdl_exponential, TDL_PROFILES, tdl_from_profile
 from utils.io import dump_run_config, echo_config, ensure_directory, save_json, write_csv
 from utils.plotting import heatmap as plot_heatmap, save_figure
 
@@ -187,6 +187,10 @@ class Phase1Simulator:
             ):
                 if attr in phase1_overrides and phase1_overrides[attr] is not None:
                     setattr(self.config, attr, _coerce_numeric(phase1_overrides[attr]))
+        
+        # Update handshake config post-override
+        self.handshake = ChronometricHandshakeSimulator(self.config.handshake_config())
+        self._base_handshake_cfg = self.config.handshake_config()
 
     # ------------------------------------------------------------------
     # Legacy sweep utilities
@@ -864,6 +868,14 @@ def _parse_time_token(token: str) -> float:
 
 
 def _parse_tdl_profile(profile: str) -> TappedDelayLine:
+    # First, check against the predefined profiles for convenience.
+    if profile.upper() in TDL_PROFILES:
+        # NOTE: This creates a single random realization of the channel. For a true
+        # Monte Carlo simulation over channel fades, this function should be
+        # called inside the trial loop with the simulation's RNG.
+        rng = np.random.default_rng()
+        return tdl_from_profile(profile, rng)
+
     tokens = [part.strip() for part in profile.split(':') if part.strip()]
     if not tokens:
         raise ValueError('TDL profile string is empty')

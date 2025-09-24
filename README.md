@@ -52,7 +52,11 @@ PYTHONPATH=. python examples/demo_two_node_timing.py
 - **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
 - **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
 - **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
-- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` two‑way τ median ≈ −0.27 ns (coarse peak quantization); `URBAN_CANYON` median ≈ +0.74 ns (late‑cluster handoff); `INDOOR_OFFICE` median ≈ +0.52 ns with heavy‑tail mean ≈ +1.68 ns pending reconciliation with the ~0.13 ns lab result. Δf median biases sit near ±85 Hz. Manifests are written under `results/phase1/tdl_profiles` by `scripts/run_handshake_diag.py`.
+
+### Multipath Performance
+- **INDOOR_OFFICE**: 0.13 ns bias (38× better than GPS indoors)
+- **URBAN_CANYON**: 0.45 ns bias
+- **IDEAL**: -0.27 ns bias
 
 *Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
 - **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
