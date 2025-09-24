@@ -52,7 +52,7 @@ PYTHONPATH=. python examples/simple_handshake_test.py
 - **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
 - **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
 - **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
-- **Multipath Stress (INDOOR_OFFICE TDL)**: 0.13 ns bias after Pathfinder + peak-path handoff (down from >10 ms failure). Bringing residual toward single-digit ps and extending to `URBAN_CANYON` / outdoor profiles is next in queue.
+- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` shows ~0.27 ns tau bias from coarse peak quantisation (delta-f bias ~+/-85 Hz, consensus ~25.6 ps, measurement RMSE saturates ~3x10^16 ps when the coarse tap drifts); `URBAN_CANYON` lands at ~0.62 ns because Pathfinder rides a 0.5-0.7 ns late cluster; `INDOOR_OFFICE` reports 1.68 ns in this scripted run, so the peak-path handoff still sits 1-2 ns high relative to the lab's 0.13 ns win and needs reconciliation.
 
 *Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
 - **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
@@ -76,7 +76,7 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 
 -   **Performance Optimization:** Ongoing profiling and optimization work is focused on ensuring the simulation framework remains fast and efficient, enabling large-scale Monte Carlo runs to produce statistically significant results.
 
--   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** First-pass integration now drives the `INDOOR_OFFICE` TDL profile down to ~130 ps bias (vs. multi-megaps drift previously), proving the fractional-delay + peak-path pipeline survives rich reflections. Next: expand validation to the remaining profiles (`URBAN_CANYON`, outdoor macro) and quantify how close we can stay to the original clean-room goal while layering realistic impairments.
+-   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** The scripted sweep now pegs `IDEAL` at ~0.27 ns, `URBAN_CANYON` at ~0.62 ns, and `INDOOR_OFFICE` at ~1.68 ns of tau bias, all traceable to coarse peak placement (Pathfinder windowing plus quantised coarse taps). Next up: retune the window/guard so the direct path survives, add fractional coarse alignment, and reconcile this scripted `INDOOR_OFFICE` result with the 0.13 ns lab run before pushing to outdoor macros.
 
 -   **Advanced Modulation with "Project Swing":** We are evolving our core modulation from a simple "vibrato" (a pure sine wave) to a more complex, organic "swing" using non-periodic and chaotic waveforms. This initiative aims to create a unique, nearly impossible-to-replicate signal signature, drastically improving robustness in severe multipath environments and enhancing security against spoofing attacks.
 
