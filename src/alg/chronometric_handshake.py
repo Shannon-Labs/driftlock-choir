@@ -16,7 +16,7 @@ coarse delay hints, and per-carrier diagnostics for Monte Carlo sweeps.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -469,7 +469,7 @@ class ChronometricHandshakeSimulator:
             f_arr = np.array(carrier_frequencies, dtype=float)
             intercept_arr = np.array(intercepts, dtype=float)
             A_slope = np.vstack([f_arr, np.ones_like(f_arr)]).T
-            slope, theta_est = np.linalg.lstsq(A_slope, intercept_arr, rcond=None)[0]
+            slope, _ = np.linalg.lstsq(A_slope, intercept_arr, rcond=None)[0]
             tau_est_from_slope = -slope / (2.0 * np.pi)
 
             # Variance of slope: assume independent intercepts, var_intercept_k ≈ sigma_phase_k^2 / N_k

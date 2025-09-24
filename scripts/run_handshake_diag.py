@@ -167,7 +167,7 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
     two_way_deltaf_bias_hz: List[float] = []
     two_way_tau_var_s2: List[float] = []
 
-    for trial in range(args.num_trials):
+    for _ in range(args.num_trials):
         result, _ = simulator.run_two_way(
             node_a=node_a,
             node_b=node_b,

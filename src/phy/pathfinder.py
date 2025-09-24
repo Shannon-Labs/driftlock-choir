@@ -22,6 +22,7 @@ class PathfinderConfig:
     noise_guard_multiplier: float = 6.0
     smoothing_kernel: int = 5
     guard_interval_s: float = 30e-9
+    aperture_duration_ns: float = 100.0  # Duration of the search window in nanoseconds
 
 
 @dataclass(frozen=True)

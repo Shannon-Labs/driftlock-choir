@@ -19,7 +19,7 @@ Traditional wireless systems spend enormous effort eliminating frequency offset.
 
 When two radios transmit at slightly different frequencies (f₁ and f₁+Δf), their interaction creates a beat signal at frequency Δf. The phase of this beat evolves as:
 
-```
+```math
 φ_beat(t) = 2πΔf(t - τ) + φ₀
 ```
 
@@ -74,7 +74,7 @@ Multipath still dominates the non-ideal profiles. `URBAN_CANYON` toggles between
 
 ### Scaling Performance
 - **128 nodes**: 22.97 ps RMSE (51s runtime)
-- **256 nodes**: 21.64 ps RMSE 
+- **256 nodes**: 21.64 ps RMSE
 - **512 nodes**: 20.09 ps RMSE (10.5 min runtime)
 
 These results demonstrate the algorithm's behavior under ideal simulation conditions, with performance improving at larger network scales due to variance-weighted consensus.
@@ -127,7 +127,7 @@ Bidirectional measurements cancel clock bias:
 
 ### 3. Distributed Consensus
 Variance-weighted averaging across all node pairs:
-```
+```math
 x_i(k+1) = x_i(k) + ε Σ_j W_ij(d_ij - (x_i - x_j))
 ```
 
@@ -135,7 +135,7 @@ Where W_ij weights by measurement precision (inverse variance).
 
 ## Project Structure
 
-```
+```text
 driftlock-choir/
 ├── src/                    # Core modelling and helpers
 │   ├── alg/               # Estimation, consensus, Kalman
@@ -214,7 +214,7 @@ python driftlock_choir_sim/sims/make_movie.py \
 ## Theory
 
 The Cramér-Rao lower bound for timing precision:
-```
+```math
 σ_τ ≥ 1/(2π·SNR^(1/2)·B_rms·T^(1/2))
 ```
 
