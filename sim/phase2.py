@@ -68,6 +68,11 @@ class Phase2Config:
     handshake_min_adc_rate_hz: Optional[float] = None
     channel_profile: Optional[str] = None
     impairments: Optional[ImpairmentConfig] = None
+    pathfinder_enabled: bool = True
+    pathfinder_relative_threshold_db: float = -12.0
+    pathfinder_noise_guard_multiplier: float = 6.0
+    pathfinder_smoothing_kernel: int = 5
+    pathfinder_guard_interval_ns: float = 50.0
 
     num_timesteps: int = 200 # Number of timesteps for dynamic simulation
     consensus_mode: str = 'converge' # 'converge' or 'fixed_iterations'
@@ -120,6 +125,11 @@ class Phase2Config:
             coarse_variance_floor_ps=self.coarse_variance_floor_ps,
             channel_profile=self.channel_profile,
             impairments=self.impairments,
+            pathfinder_enabled=self.pathfinder_enabled,
+            pathfinder_relative_threshold_db=self.pathfinder_relative_threshold_db,
+            pathfinder_noise_guard_multiplier=self.pathfinder_noise_guard_multiplier,
+            pathfinder_smoothing_kernel=self.pathfinder_smoothing_kernel,
+            pathfinder_guard_interval_s=self.pathfinder_guard_interval_ns * 1e-9,
         )
 
 
@@ -366,6 +376,24 @@ class Phase2Simulation:
             # Alias-resolution diagnostics (if available)
             graph.edges[u, v]['alias_resolved_forward'] = bool(result.forward.alias_resolved) if result.forward.alias_resolved is not None else None
             graph.edges[u, v]['alias_resolved_reverse'] = bool(result.reverse.alias_resolved) if result.reverse.alias_resolved is not None else None
+            forward_pf = result.forward.pathfinder
+            reverse_pf = result.reverse.pathfinder
+            graph.edges[u, v]['pathfinder_peak_ratio_forward'] = (
+                float(forward_pf.peak_to_first_ratio) if forward_pf is not None else None
+            )
+            graph.edges[u, v]['pathfinder_peak_ratio_reverse'] = (
+                float(reverse_pf.peak_to_first_ratio) if reverse_pf is not None else None
+            )
+            graph.edges[u, v]['pathfinder_first_delay_error_ps_forward'] = (
+                float((forward_pf.first_path_s - result.forward.tau_true_s) * 1e12)
+                if forward_pf is not None
+                else None
+            )
+            graph.edges[u, v]['pathfinder_first_delay_error_ps_reverse'] = (
+                float((reverse_pf.first_path_s - result.reverse.tau_true_s) * 1e12)
+                if reverse_pf is not None
+                else None
+            )
 
     def _oracle_state(self, nodes: Dict[int, ChronometricNode]) -> np.ndarray:
         clock_offsets = np.array([node.clock_bias_s for node in nodes.values()], dtype=float)

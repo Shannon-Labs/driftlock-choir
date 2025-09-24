@@ -64,6 +64,30 @@ class TappedDelayLine:
         )
         return complex(response)
 
+    def window(self, max_delay_s: float) -> TappedDelayLine:
+        """Return a new TDL containing taps up to ``max_delay_s`` beyond the earliest path."""
+        if max_delay_s < 0.0:
+            max_delay_s = 0.0
+        relative = self.delays_s - float(np.min(self.delays_s))
+        mask = relative <= max_delay_s + 1e-15
+        if not np.any(mask):
+            idx = int(np.argmin(relative))
+            mask[idx] = True
+        delays = self.delays_s[mask]
+        gains = self.gains_c[mask]
+        doppler_vals = self._doppler_array()[mask]
+        doppler_param: float | NDArray[np.float64]
+        if np.isscalar(self.doppler_hz):
+            doppler_param = float(self.doppler_hz)
+        else:
+            doppler_param = doppler_vals
+        return TappedDelayLine(
+            delays_s=delays,
+            gains_c=gains,
+            k_factor_db=self.k_factor_db,
+            doppler_hz=doppler_param,
+        )
+
     def _doppler_array(self) -> NDArray[np.float64]:
         return np.asarray(self.doppler_hz, dtype=float) if np.ndim(self.doppler_hz) else np.full_like(
             self.delays_s, float(self.doppler_hz), dtype=float

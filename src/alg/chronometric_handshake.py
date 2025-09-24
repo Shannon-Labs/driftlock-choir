@@ -24,6 +24,7 @@ from scipy import signal
 
 from phy.noise import NoiseGenerator, NoiseParams
 from phy.preamble import Preamble, build_preamble, estimate_delay
+from phy.pathfinder import PathfinderConfig, PathfinderResult, find_first_arrival
 from mac.scheduler import MacSlots
 from chan.tdl import TappedDelayLine, tdl_from_profile
 from phy.impairments import ImpairmentConfig, apply_amplifier_nonlinearity, generate_phase_noise
@@ -109,6 +110,7 @@ class DirectionalMeasurement:
     hardware_delay_s: float = 0.0
     calibration_offset_s: float = 0.0
     trace: Optional[HandshakeTrace] = None
+    pathfinder: Optional[PathfinderResult] = None
 
 
 @dataclass
@@ -157,6 +159,11 @@ class ChronometricHandshakeConfig:
     mac: Optional[MacSlots] = None
     use_phase_slope_fit: bool = False  # Opt-in phase-slope fusion for multi-carrier tau estimation
     use_theoretical_variance: bool = False  # Use theoretical phase variance for covariance
+    pathfinder_enabled: bool = True
+    pathfinder_relative_threshold_db: float = -12.0
+    pathfinder_noise_guard_multiplier: float = 6.0
+    pathfinder_smoothing_kernel: int = 5
+    pathfinder_guard_interval_s: float = 30e-9
 
 
 @dataclass
@@ -226,6 +233,18 @@ class ChronometricHandshakeSimulator:
         self._mac_slots = config.mac
         self._channel_profile = config.channel_profile
         self._impairments = config.impairments
+        if config.pathfinder_enabled:
+            kernel = int(max(1, config.pathfinder_smoothing_kernel))
+            if kernel % 2 == 0:
+                kernel += 1
+            self._pathfinder_cfg: Optional[PathfinderConfig] = PathfinderConfig(
+                relative_threshold_db=float(config.pathfinder_relative_threshold_db),
+                noise_guard_multiplier=float(config.pathfinder_noise_guard_multiplier),
+                smoothing_kernel=kernel,
+                guard_interval_s=float(config.pathfinder_guard_interval_s),
+            )
+        else:
+            self._pathfinder_cfg = None
 
     # Public API -------------------------------------------------------
 
@@ -324,6 +343,22 @@ class ChronometricHandshakeSimulator:
 
     # Internal helpers -------------------------------------------------
 
+    def _sample_channel(self, rng: np.random.Generator) -> Optional[TappedDelayLine]:
+        if not self._channel_profile:
+            return None
+        return tdl_from_profile(self._channel_profile, rng)
+
+    def _condition_channel(
+        self,
+        channel: Optional[TappedDelayLine],
+        tau_true: float,
+        pathfinder: Optional[PathfinderResult],
+    ) -> Optional[TappedDelayLine]:
+        if channel is None or pathfinder is None or self._pathfinder_cfg is None:
+            return channel
+        relative_cut = max(pathfinder.first_path_s - tau_true, 0.0) + self._pathfinder_cfg.guard_interval_s
+        return channel.window(relative_cut)
+
     def _simulate_direction(
         self,
         tx: ChronometricNode,
@@ -337,8 +372,10 @@ class ChronometricHandshakeSimulator:
         """Simulate a single directed handshake measurement."""
 
         tau_true = self._apparent_tau(tx, rx, distance_m)
-        tau_coarse = self._coarse_delay_estimate(tau_true, snr_db, rng)
+        channel = self._sample_channel(rng)
+        tau_coarse, pathfinder = self._coarse_delay_estimate(tau_true, snr_db, rng, channel)
         tau_hint = tau_coarse if tau_coarse is not None else tau_true
+        conditioned_channel = self._condition_channel(channel, tau_true, pathfinder)
         hardware_delay = self._hardware_delay(tx.node_id, rx.node_id)
 
         # Base (primary) carrier
@@ -360,6 +397,9 @@ class ChronometricHandshakeSimulator:
             snr_db=snr_db,
             rng=rng,
             capture_trace=capture_trace,
+            channel=conditioned_channel,
+            pathfinder=pathfinder,
+            coarse_tau_est=tau_coarse,
         )
 
         carrier_frequencies = [tx.carrier_freq_hz]
@@ -397,6 +437,9 @@ class ChronometricHandshakeSimulator:
                 snr_db=snr_db,
                 rng=rng,
                 capture_trace=False,
+                channel=conditioned_channel,
+                pathfinder=pathfinder,
+                coarse_tau_est=tau_coarse,
             )
             carrier_frequencies.append(retuned_tx.carrier_freq_hz)
             intercepts.append(intercept)
@@ -514,6 +557,9 @@ class ChronometricHandshakeSimulator:
         snr_db: float,
         rng: np.random.Generator,
         capture_trace: bool,
+        channel: Optional[TappedDelayLine],
+        pathfinder: Optional[PathfinderResult],
+        coarse_tau_est: Optional[float],
     ) -> Tuple[DirectionalMeasurement, Optional[HandshakeTrace], float, int, int, Optional[float], float, Optional[float]]:
         delta_f_true = rx.carrier_freq_hz - tx.carrier_freq_hz
         baseband_rate = max(
@@ -565,9 +611,9 @@ class ChronometricHandshakeSimulator:
         beat_clean, phase_bias = self._apply_channel_effects(
             beat_clean,
             baseband_rate,
-            tau_true,
             tx.carrier_freq_hz,
             rng,
+            channel=channel,
         )
 
         noise_gen = NoiseGenerator(
@@ -632,10 +678,11 @@ class ChronometricHandshakeSimulator:
             effective_tau_variance_s2=float(covariance[0, 0]),
             running_variance_tau=None,
             running_variance_delta_f=None,
-            coarse_tau_est_s=None,
+            coarse_tau_est_s=None if coarse_tau_est is None else float(coarse_tau_est),
             carrier_frequencies_hz=(tx.carrier_freq_hz,),
             tau_unwrapped_candidates_s=None,
             phase_bias_rad=phase_bias,
+            pathfinder=pathfinder,
             trace=trace,
         )
 
@@ -695,18 +742,18 @@ class ChronometricHandshakeSimulator:
         self,
         signal_in: NDArray[np.complex128],
         sample_rate: float,
-        tau_true: float,
         carrier_freq_hz: float,
         rng: np.random.Generator,
+        channel: Optional[TappedDelayLine],
     ) -> Tuple[NDArray[np.complex128], Optional[float]]:
-        phase_bias = None
-        if self._channel_profile:
+        if channel is None:
+            if not self._channel_profile:
+                return signal_in, None
             channel = tdl_from_profile(self._channel_profile, rng)
-            processed = channel.apply_to_waveform(signal_in, sample_rate)
-            response = channel.narrowband_response(carrier_freq_hz)
-            phase_bias = float(np.angle(response)) if response != 0.0 else None
-            return processed, phase_bias
-        return signal_in, phase_bias
+        processed = channel.apply_to_waveform(signal_in, sample_rate)
+        response = channel.narrowband_response(carrier_freq_hz)
+        phase_bias = float(np.angle(response)) if response != 0.0 else None
+        return processed, phase_bias
 
     def _estimate_parameters(
         self,
@@ -822,9 +869,10 @@ class ChronometricHandshakeSimulator:
         tau_true: float,
         snr_db: float,
         rng: np.random.Generator,
-    ) -> Optional[float]:
+        channel: Optional[TappedDelayLine],
+    ) -> Tuple[Optional[float], Optional[PathfinderResult]]:
         if not self.cfg.coarse_enabled:
-            return None
+            return None, None
         sample_rate = max(self.cfg.coarse_bandwidth_hz, self.cfg.min_baseband_rate_hz)
         if self._mac_slots is not None:
             n_samples = max(self._mac_slots.preamble_len, 128)
@@ -833,8 +881,7 @@ class ChronometricHandshakeSimulator:
         preamble = self._get_coarse_preamble(n_samples, sample_rate)
         transmitted = preamble.samples
         received = self._fractional_delay(transmitted, tau_true, sample_rate)
-        if self._channel_profile:
-            channel = tdl_from_profile(self._channel_profile, rng)
+        if channel is not None:
             received = channel.apply_to_waveform(received, sample_rate)
         signal_power = float(np.mean(np.abs(received) ** 2) + _EPS)
         snr_linear = max(10 ** (snr_db / 10.0), _EPS)
@@ -843,16 +890,25 @@ class ChronometricHandshakeSimulator:
         noise = rng.normal(0.0, noise_std, size=received.shape) + 1j * rng.normal(0.0, noise_std, size=received.shape)
         noisy = received + noise
         upsample = 128
+        effective_rate = sample_rate
+        corr_signal = noisy
+        corr_preamble = preamble
         if upsample > 1:
             hi_length = n_samples * upsample
             transmitted_hi = signal.resample(transmitted, hi_length)
             noisy_hi = signal.resample(noisy, hi_length)
             matched_hi = np.conj(transmitted_hi[::-1])
             preamble_hi = Preamble(samples=transmitted_hi.astype(np.complex128), matched_filter=matched_hi.astype(np.complex128))
-            tau_est = estimate_delay(noisy_hi, preamble_hi, sample_rate * upsample)
+            corr_signal = noisy_hi
+            corr_preamble = preamble_hi
+            effective_rate = sample_rate * upsample
+        if self._pathfinder_cfg is not None:
+            pf_result = find_first_arrival(corr_signal, corr_preamble, effective_rate, self._pathfinder_cfg)
+            tau_est = pf_result.first_path_s
         else:
-            tau_est = estimate_delay(noisy, preamble, sample_rate)
-        return float(tau_est)
+            tau_est = estimate_delay(corr_signal, corr_preamble, effective_rate)
+            pf_result = None
+        return float(tau_est), pf_result
 
 
     def _get_coarse_preamble(self, n_samples: int, sample_rate: float) -> Preamble:
