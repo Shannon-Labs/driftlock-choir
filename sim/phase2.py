@@ -65,8 +65,11 @@ class Phase2Config:
     handshake_baseband_rate_factor: Optional[float] = None
     handshake_min_baseband_rate_hz: Optional[float] = None
     handshake_min_adc_rate_hz: Optional[float] = None
-    multipath_two_ray_alpha: Optional[float] = None
-    multipath_two_ray_delay_s: Optional[float] = None
+    channel_profile: Optional[str] = None
+
+    num_timesteps: int = 200 # Number of timesteps for dynamic simulation
+    consensus_mode: str = 'converge' # 'converge' or 'fixed_iterations'
+    consensus_iterations: int = 1 # Used only in 'fixed_iterations' mode
 
     max_iterations: int = 1000
     timestep_s: float = 1e-3
@@ -107,15 +110,13 @@ class Phase2Config:
             min_baseband_rate_hz=min_baseband_rate,
             min_adc_rate_hz=min_adc_rate,
             filter_relative_bw=1.4,
-            phase_noise_psd=-80.0,
             jitter_rms_s=1e-12,
             retune_offsets_hz=self.retune_offsets_hz,
             coarse_enabled=self.coarse_enabled,
             coarse_bandwidth_hz=self.coarse_bandwidth_hz,
             coarse_duration_s=self.coarse_duration_s,
             coarse_variance_floor_ps=self.coarse_variance_floor_ps,
-            multipath_two_ray_alpha=self.multipath_two_ray_alpha,
-            multipath_two_ray_delay_s=self.multipath_two_ray_delay_s,
+            channel_profile=self.channel_profile,
         )
 
 
@@ -144,30 +145,51 @@ class Phase2Simulation:
         positions = self._sample_positions()
         graph = self._build_graph(positions)
         nodes = self._build_nodes()
-        self._populate_measurements(graph, nodes, positions)
 
         true_state = self._oracle_state(nodes)
+        estimated_state, kf_metrics = self._prepare_initial_state(graph, true_state)
 
-        initial_state, kf_metrics = self._prepare_initial_state(graph, true_state)
+        # --- Main Timestep Loop ---
+        all_results = []
+        iterations_per_step = []
 
-        options = ConsensusOptions(
-            max_iterations=self.config.max_iterations,
-            epsilon=self.config.epsilon_override,
-            tolerance_ps=self.config.convergence_threshold_ps,
-            asynchronous=self.config.asynchronous,
-            rng_seed=None if self.config.rng_seed is None else self.config.rng_seed + 1,
-            enforce_zero_mean=True,
-            spectral_margin=self.config.spectral_margin,
-        )
-        solver = DecentralizedChronometricConsensus(graph, options)
-        result = solver.run(initial_state, true_state)
-        predicted_iterations, measured_iterations = self._predict_iterations(result)
+        for timestep in range(self.config.num_timesteps):
+            # 1. Evolve true state (simulate drift)
+            true_state = self._evolve_true_state(true_state)
+
+            # 2. Get new measurements for all edges
+            self._populate_measurements(graph, nodes, positions, true_state)
+
+            # 3. Run consensus until convergence
+            max_iters = self.config.consensus_iterations if self.config.consensus_mode == 'fixed_iterations' else self.config.max_iterations
+            options = ConsensusOptions(
+                max_iterations=max_iters,
+                epsilon=self.config.epsilon_override,
+                tolerance_ps=self.config.convergence_threshold_ps,
+                asynchronous=self.config.asynchronous,
+                rng_seed=None if self.config.rng_seed is None else self.config.rng_seed + timestep,
+                enforce_zero_mean=True,
+                spectral_margin=self.config.spectral_margin,
+            )
+            solver = DecentralizedChronometricConsensus(graph, options)
+            result = solver.run(estimated_state, true_state)
+
+            # 4. Log results and update state for next timestep
+            all_results.append(result)
+            iterations_per_step.append(result.convergence_iteration or result.iterations)
+            estimated_state = result.state_history[-1]
+
+        # --- Compile final telemetry ---
+        final_result = all_results[-1]
+        final_result.iterations_per_step = iterations_per_step # Augment result object
+
+        predicted_iterations, measured_iterations = self._predict_iterations(final_result)
 
         telemetry = self._compile_results(
             graph=graph,
             positions=positions,
             nodes=nodes,
-            result=result,
+            result=final_result,
             predicted_iterations=predicted_iterations,
             measured_iterations=measured_iterations,
             kf_metrics=kf_metrics,
@@ -187,7 +209,7 @@ class Phase2Simulation:
             )
             self._save_results(telemetry)
         if self.config.plot_results:
-            self._generate_plots(graph, positions, result)
+            self._generate_plots(graph, positions, final_result)
 
         return telemetry
 
@@ -258,7 +280,13 @@ class Phase2Simulation:
         graph: nx.Graph,
         nodes: Dict[int, ChronometricNode],
         positions: Dict[int, np.ndarray],
+        true_state: np.ndarray,
     ) -> None:
+        # Update node objects with the new true state before getting measurements
+        for i, node in nodes.items():
+            node.config.clock_bias_s = true_state[i, 0]
+            # Freq offset is more complex, we'll assume it's part of the carrier for now
+
         for u, v in graph.edges():
             distance = float(np.linalg.norm(positions[u] - positions[v]))
             result, _ = simulate_handshake_pair(
@@ -343,6 +371,28 @@ class Phase2Simulation:
         freq_offsets -= np.mean(freq_offsets)
 
         return np.column_stack((clock_offsets, freq_offsets))
+
+    def _evolve_true_state(self, state: np.ndarray) -> np.ndarray:
+        """Simulates oscillator drift over one timestep."""
+        dt = self.config.timestep_s
+        n_nodes = state.shape[0]
+
+        # Clock drift is integral of frequency error plus random walk
+        time_drift = state[:, 1] * dt
+        time_walk = self.rng.normal(0.0, self.config.local_kf_sigma_T_ps * 1e-12, n_nodes)
+
+        # Frequency drift is a random walk
+        freq_walk = self.rng.normal(0.0, self.config.local_kf_sigma_f_hz, n_nodes)
+
+        new_state = state.copy()
+        new_state[:, 0] += time_drift + time_walk
+        new_state[:, 1] += freq_walk
+
+        # Re-center the state to have zero mean
+        new_state[:, 0] -= np.mean(new_state[:, 0])
+        new_state[:, 1] -= np.mean(new_state[:, 1])
+
+        return new_state
 
     # Results ----------------------------------------------------------
 
@@ -507,6 +557,8 @@ class Phase2Simulation:
             float(residual[1]) for residual in result.edge_residuals.values()
         ]
 
+        iterations_per_step = getattr(result, 'iterations_per_step', [])
+
         degrees = np.array([deg for _, deg in graph.degree()], dtype=float)
         distances = [graph.edges[u, v]['distance_m'] for u, v in graph.edges()]
 
@@ -580,6 +632,7 @@ class Phase2Simulation:
                 'target_rmse_ps': self.config.target_rmse_ps,
                 'target_streak': self.config.target_streak,
                 'weighting_strategy': self.config.weighting,
+                'iterations_per_step': iterations_per_step,
             },
             'residuals': {
                 'timing_ps': timing_residuals_ps,
@@ -1010,6 +1063,10 @@ def build_phase2_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--area-m', type=float, default=Phase2Config.area_size_m, help='Side length (meters) of the square deployment region.')
     parser.add_argument('--density', type=float, default=None, help='Target edge density (0-1] used to derive the communication range.')
     parser.add_argument('--comm-range-m', type=float, default=None, help='Communication radius in meters; overrides --density when provided.')
+    parser.add_argument('--channel-profile', type=str, default=None, help='TDL channel profile name (e.g. INDOOR_OFFICE).')
+    parser.add_argument('--num-timesteps', type=int, default=Phase2Config.num_timesteps, help='Number of timesteps for dynamic simulation.')
+    parser.add_argument('--consensus-mode', type=str, choices=['converge', 'fixed_iterations'], default=Phase2Config.consensus_mode, help='Consensus termination mode.')
+    parser.add_argument('--consensus-iterations', type=int, default=Phase2Config.consensus_iterations, help='Number of iterations if mode is fixed_iterations.')
     parser.add_argument('--snr-db', type=float, default=Phase2Config.snr_db, help='Link SNR in dB for handshake measurements.')
     parser.add_argument('--weighting', type=str, choices=['inverse_variance', 'metropolis', 'metropolis_var', 'bx_surrogate'], default=Phase2Config.weighting, help='Consensus weighting strategy.')
     parser.add_argument('--target-rmse-ps', type=float, default=Phase2Config.target_rmse_ps, help='RMSE target (ps) for auto-stopping heuristics.')
@@ -1084,6 +1141,10 @@ def main() -> None:
         coarse_enabled=args.coarse_enabled,
         coarse_bandwidth_hz=args.coarse_bw_hz,
         coarse_duration_s=args.coarse_duration_us * 1e-6,
+        channel_profile=args.channel_profile,
+        num_timesteps=args.num_timesteps,
+        consensus_mode=args.consensus_mode,
+        consensus_iterations=args.consensus_iterations,
         local_kf_enabled=local_kf_enabled,
         local_kf_sigma_T_ps=args.local_kf_sigma_T_ps,
         local_kf_sigma_f_hz=args.local_kf_sigma_f_hz,

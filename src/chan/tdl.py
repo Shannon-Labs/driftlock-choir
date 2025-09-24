@@ -83,3 +83,55 @@ def tdl_exponential(L: int, rms_delay_spread_s: float, k_factor_db: Optional[flo
 def tdl_custom(delays_s: Iterable[float], gains_c: Iterable[complex], k_factor_db: Optional[float] = None) -> TappedDelayLine:
     return TappedDelayLine(delays_s=np.array(list(delays_s), dtype=float), gains_c=np.array(list(gains_c), dtype=complex), k_factor_db=k_factor_db)
 
+
+# Standard channel profiles for realistic simulation
+# Delays and powers are inspired by common academic/industry models.
+TDL_PROFILES = {
+    "IDEAL": {
+        "delays_ns": [0.0],
+        "powers_db": [0.0],
+    },
+    "INDOOR_OFFICE": {
+        "delays_ns": [0.0, 20.0, 50.0, 80.0],
+        "powers_db": [0.0, -3.0, -9.0, -15.0],
+    },
+    "URBAN_CANYON": {
+        "delays_ns": [0.0, 50.0, 120.0, 200.0, 310.0, 450.0],
+        "powers_db": [0.0, -2.5, -8.0, -13.2, -18.0, -24.0],
+    },
+}
+
+
+def tdl_from_profile(profile_name: str, rng: np.random.Generator) -> TappedDelayLine:
+    """
+    Factory function to create a TappedDelayLine model from a standard profile.
+
+    Args:
+        profile_name: The name of the profile (e.g., "INDOOR_OFFICE").
+        rng: A random number generator for creating random phase shifts.
+
+    Returns:
+        A TappedDelayLine object with a random phase realization.
+    """
+    profile = TDL_PROFILES.get(profile_name.upper())
+    if profile is None:
+        raise ValueError(f"Unknown TDL profile: {profile_name}")
+
+    delays_s = np.array(profile["delays_ns"], dtype=float) * 1e-9
+    powers_db = np.array(profile["powers_db"], dtype=float)
+
+    # Convert powers from dB to linear scale
+    linear_powers = 10 ** (powers_db / 10.0)
+
+    # Generate random phases for each tap
+    random_phases = rng.uniform(0, 2 * np.pi, size=len(delays_s))
+
+    # Gains are complex: sqrt(power) * exp(j*phase)
+    gains_c = np.sqrt(linear_powers) * np.exp(1j * random_phases)
+
+    # Normalize total power to 1
+    total_power = np.sum(np.abs(gains_c) ** 2)
+    if total_power > 0:
+        gains_c /= np.sqrt(total_power)
+
+    return TappedDelayLine(delays_s=delays_s, gains_c=gains_c)
