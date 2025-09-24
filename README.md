@@ -70,6 +70,8 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 
 -   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** To ensure picosecond-level accuracy in complex real-world environments, we are integrating a novel "Pathfinder" algorithm. This module intelligently isolates the true, first-arriving signal from subsequent reflections (multipath), hardening our system against the challenging conditions found in indoor, office, and urban settings. This is a critical step in bridging the gap between simulation and hardware-in-the-loop validation.
 
+-   **Advanced Modulation with "Project Swing":** We are evolving our core modulation from a simple "vibrato" (a pure sine wave) to a more complex, organic "swing" using non-periodic and chaotic waveforms. This initiative aims to create a unique, nearly impossible-to-replicate signal signature, drastically improving robustness in severe multipath environments and enhancing security against spoofing attacks.
+
 -   **Hardware-in-the-Loop Validation:** The next major phase will involve bridging our simulations with real-world hardware to confirm picosecond-level precision with off-the-shelf components.
 
 ### Documentation & Analysis
