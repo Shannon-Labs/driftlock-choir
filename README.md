@@ -48,6 +48,8 @@ PYTHONPATH=. python examples/simple_handshake_test.py
 - **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
 - **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
 - **Multipath Stress (INDOOR_OFFICE TDL)**: 0.13 ns bias after Pathfinder + peak-path handoff (down from >10 ms failure). Bringing residual toward single-digit ps and extending to `URBAN_CANYON` / outdoor profiles is next in queue.
+
+*Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
 - **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
 
 ### Scaling Performance
@@ -69,7 +71,7 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 
 -   **Performance Optimization:** Ongoing profiling and optimization work is focused on ensuring the simulation framework remains fast and efficient, enabling large-scale Monte Carlo runs to produce statistically significant results.
 
--   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** First-pass integration now drives the `INDOOR_OFFICE` TDL profile down to ~130 ps bias (vs. multi-megaps drift previously), proving the fractional-delay + peak-path pipeline survives rich reflections. Next: squeeze that residual toward the <3 ps spec and rotate the same tooling onto additional channel profiles (e.g., `URBAN_CANYON`, outdoor macro) before declaring multipath parity with the single-path baselines.
+-   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** First-pass integration now drives the `INDOOR_OFFICE` TDL profile down to ~130 ps bias (vs. multi-megaps drift previously), proving the fractional-delay + peak-path pipeline survives rich reflections. Next: expand validation to the remaining profiles (`URBAN_CANYON`, outdoor macro) and quantify how close we can stay to the original clean-room goal while layering realistic impairments.
 
 -   **Advanced Modulation with "Project Swing":** We are evolving our core modulation from a simple "vibrato" (a pure sine wave) to a more complex, organic "swing" using non-periodic and chaotic waveforms. This initiative aims to create a unique, nearly impossible-to-replicate signal signature, drastically improving robustness in severe multipath environments and enhancing security against spoofing attacks.
 
@@ -178,7 +180,7 @@ The Cramér-Rao lower bound for timing precision:
 σ_τ ≥ 1/(2π·SNR^(1/2)·B_rms·T^(1/2))
 ```
 
-Where B_rms is RMS bandwidth, T is observation time. We achieve 0.83× this theoretical limit.
+Where B_rms is RMS bandwidth, T is observation time. Earlier single-path studies brushed against this limit; ongoing multipath and hardware validation tracks how much margin remains under realistic conditions.
 
 Key innovations:
 - Intentional Δf as measurement channel
