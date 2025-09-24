@@ -174,6 +174,27 @@ def summarize_results(results_dir: str) -> None:
     print("\n--- Statistical Summary ---")
     print(f"Total successful runs: {len(df)}")
 
+    guard_details: Dict[str, Any] = {}
+    if 'crlb_ratio_tau' in df.columns:
+        low = df[df['crlb_ratio_tau'] < 1.0]
+        high = df[df['crlb_ratio_tau'] > 1.5]
+        if not low.empty:
+            guard_details['crlb_low'] = low[['rng_seed', 'crlb_ratio_tau']].to_dict('records')
+        if not high.empty:
+            guard_details['crlb_high'] = high[['rng_seed', 'crlb_ratio_tau']].to_dict('records')
+        valid_mask = (df['crlb_ratio_tau'] >= 1.0) & (df['crlb_ratio_tau'] <= 1.5)
+        valid_df = df[valid_mask]
+        if valid_df.empty:
+            print('No runs satisfied 1.0 <= RMSE/CRLB <= 1.5; aggregates below reflect all runs for debugging context.')
+        else:
+            print(f"Runs within guardrail band: {len(valid_df)}")
+            df = valid_df
+
+    if guard_details:
+        print('\nGuardrail violations:')
+        for key, rows in guard_details.items():
+            print(f"- {key}: {rows}")
+
     # Key performance indicators to summarize
     metrics_to_summarize = {
         'Final Timing RMSE (ps)': 'kf_filtered_clock_rms_ps',

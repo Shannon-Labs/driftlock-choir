@@ -135,16 +135,6 @@ class TwoWayHandshakeResult:
     delta_t_schedule_us: Tuple[float, ...]
 
 
-@dataclass(frozen=True)
-class CoarseEstimate:
-    """Bundle describing the coarse delay hint and guard status."""
-
-    tau_est_s: Optional[float]
-    pathfinder: Optional[PathfinderResult]
-    guard_hit: bool = False
-    locked: Optional[bool] = None
-
-
 @dataclass
 class ChronometricHandshakeConfig:
     """Handshake configuration shared across simulations."""
@@ -385,11 +375,9 @@ class ChronometricHandshakeSimulator:
 
         tau_true = self._apparent_tau(tx, rx, distance_m)
         channel = self._sample_channel(rng)
-        coarse = self._coarse_delay_estimate(tau_true, snr_db, rng, channel)
-        tau_coarse = coarse.tau_est_s
-        pathfinder = coarse.pathfinder
-        tau_hint = tau_coarse if tau_coarse is not None else tau_true
-        conditioned_channel = self._condition_channel(channel, tau_true, pathfinder)
+        coarse_estimate = self._coarse_delay_estimate(tau_true, snr_db, rng, channel)
+        tau_hint = coarse_estimate.tau_est_s if coarse_estimate.tau_est_s is not None else tau_true
+        conditioned_channel = self._condition_channel(channel, tau_true, coarse_estimate.pathfinder)
         hardware_delay = self._hardware_delay(tx.node_id, rx.node_id)
 
         # Base (primary) carrier
@@ -412,8 +400,8 @@ class ChronometricHandshakeSimulator:
             rng=rng,
             capture_trace=capture_trace,
             channel=conditioned_channel,
-            pathfinder=pathfinder,
-            coarse_tau_est=tau_coarse,
+            pathfinder=coarse_estimate.pathfinder,
+            coarse_tau_est=coarse_estimate.tau_est_s,
         )
 
         carrier_frequencies = [tx.carrier_freq_hz]
@@ -452,8 +440,8 @@ class ChronometricHandshakeSimulator:
                 rng=rng,
                 capture_trace=False,
                 channel=conditioned_channel,
-                pathfinder=pathfinder,
-                coarse_tau_est=tau_coarse,
+                pathfinder=coarse_estimate.pathfinder,
+                coarse_tau_est=coarse_estimate.tau_est_s,
             )
             carrier_frequencies.append(retuned_tx.carrier_freq_hz)
             intercepts.append(intercept)
@@ -465,7 +453,7 @@ class ChronometricHandshakeSimulator:
                 all_theoretical_vars.append(theoretical_var)
 
         # Coarse correction for primary if available
-        if tau_coarse is not None and raw_candidates:
+        if coarse_estimate.tau_est_s is not None and raw_candidates:
             primary_freq, primary_raw = raw_candidates[0]
             correction_cycles = np.round((tau_hint - primary_raw) * primary_freq)
             tau_hint = primary_raw + correction_cycles / max(primary_freq, 1.0)
@@ -532,9 +520,9 @@ class ChronometricHandshakeSimulator:
         base_measurement.tau_est_s = tau_est_final
         base_measurement.tau_unwrapped_candidates_s = candidate_array
         base_measurement.carrier_frequencies_hz = tuple(carrier_frequencies)
-        base_measurement.coarse_tau_est_s = tau_coarse
-        base_measurement.coarse_locked = coarse.locked
-        base_measurement.coarse_guard_hit = coarse.guard_hit
+        base_measurement.coarse_tau_est_s = coarse_estimate.tau_est_s
+        base_measurement.coarse_locked = coarse_estimate.locked
+        base_measurement.coarse_guard_hit = coarse_estimate.guard_hit
         base_measurement.alias_resolved = (
             abs(tau_est_final - tau_true_calibrated) <= abs(base_raw_tau - tau_true)
         )
@@ -928,8 +916,10 @@ class ChronometricHandshakeSimulator:
             corr_signal = noisy_hi
             corr_preamble = preamble_hi
             effective_rate = sample_rate * upsample
-        corr = signal.fftconvolve(corr_signal, corr_preamble.matched_filter, mode='full')
+        
+        corr = signal.convolve(corr_signal, corr_preamble.matched_filter, mode='full')
         magnitude = np.abs(corr)
+        
         use_pathfinder = self._pathfinder_cfg is not None and channel is not None
         if use_pathfinder:
             pf_result = find_first_arrival(corr_signal, corr_preamble, effective_rate, self._pathfinder_cfg)
@@ -944,6 +934,7 @@ class ChronometricHandshakeSimulator:
         if tau_est is None or not np.isfinite(tau_est):
             tau_value = None
         else:
+            # Refine around the selected tau estimate (first-path or peak)
             tau_value, guard_hit = self._refine_coarse_tau(
                 tau_est,
                 magnitude,
@@ -1108,6 +1099,16 @@ def _select_variance(measurement: DirectionalMeasurement, tau: bool = True) -> f
     else:
         variance = float(measurement.covariance[1, 1])
     return max(variance, _EPS)
+
+
+@dataclass(frozen=True)
+class CoarseEstimate:
+    """Bundle describing the coarse delay hint and guard status."""
+
+    tau_est_s: Optional[float]
+    pathfinder: Optional[PathfinderResult]
+    guard_hit: bool = False
+    locked: Optional[bool] = None
 
 
 def simulate_handshake_pair(

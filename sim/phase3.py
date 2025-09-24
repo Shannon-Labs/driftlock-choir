@@ -56,8 +56,13 @@ class MobilityModel:
     """Node mobility models."""
     
     @staticmethod
-    def random_walk(initial_positions: np.ndarray, speed: float, 
-                   duration: float, dt: float = 0.1) -> List[np.ndarray]:
+    def random_walk(
+        initial_positions: np.ndarray,
+        speed: float,
+        duration: float,
+        dt: float = 0.1,
+        rng: Optional[np.random.Generator] = None,
+    ) -> List[np.ndarray]:
         """Random walk mobility model."""
         n_nodes = initial_positions.shape[0]
         n_steps = int(duration / dt)
@@ -65,9 +70,10 @@ class MobilityModel:
         positions_history = [initial_positions.copy()]
         current_positions = initial_positions.copy()
         
+        rng = rng or np.random.default_rng()
+
         for step in range(n_steps):
-            # Random direction for each node
-            directions = np.random.uniform(0, 2*np.pi, n_nodes)
+            directions = rng.uniform(0, 2 * np.pi, n_nodes)
             
             # Update positions
             dx = speed * dt * np.cos(directions)
@@ -85,14 +91,20 @@ class MobilityModel:
         return positions_history
         
     @staticmethod
-    def linear_mobility(initial_positions: np.ndarray, speed: float,
-                       duration: float, dt: float = 0.1) -> List[np.ndarray]:
+    def linear_mobility(
+        initial_positions: np.ndarray,
+        speed: float,
+        duration: float,
+        dt: float = 0.1,
+        rng: Optional[np.random.Generator] = None,
+    ) -> List[np.ndarray]:
         """Linear mobility model."""
         n_nodes = initial_positions.shape[0]
         n_steps = int(duration / dt)
         
         # Random initial directions for each node
-        directions = np.random.uniform(0, 2*np.pi, n_nodes)
+        rng = rng or np.random.default_rng()
+        directions = rng.uniform(0, 2 * np.pi, n_nodes)
         
         positions_history = [initial_positions.copy()]
         

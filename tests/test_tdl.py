@@ -1,4 +1,5 @@
 import numpy as np
+import types
 
 from alg.chronometric_handshake import (
     ChronometricHandshakeConfig,
@@ -51,9 +52,9 @@ def test_coarse_delay_estimate_under_tdl_high_snr() -> None:
         coarse_enabled=True,
         coarse_bandwidth_hz=20e6,
         coarse_duration_s=5e-6,
-        channel_model=channel,
     )
     simulator = ChronometricHandshakeSimulator(cfg)
+    simulator._sample_channel = types.MethodType(lambda self, rng: channel, simulator)
     node_a, node_b = _make_nodes()
 
     result, _ = simulator.run_two_way(

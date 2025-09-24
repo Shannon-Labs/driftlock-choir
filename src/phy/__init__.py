@@ -2,10 +2,10 @@
 
 from .osc import OscillatorParams, AllanDeviationGenerator
 from .chan import ChannelParams, WirelessChannel
-from .noise import NoiseParams, NoiseGenerator
+from .noise import NoiseParams, NoiseGenerator, PowerLawPhaseNoiseGenerator
 
 __all__ = [
     'OscillatorParams', 'AllanDeviationGenerator',
     'ChannelParams', 'WirelessChannel', 
-    'NoiseParams', 'NoiseGenerator'
+    'NoiseParams', 'NoiseGenerator', 'PowerLawPhaseNoiseGenerator'
 ]

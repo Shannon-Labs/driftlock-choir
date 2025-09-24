@@ -39,6 +39,7 @@ noise:
 
 # Channel Parameters
 channel:
+  profile: "IDEAL"  # Default to IDEAL
   k_factor: 10.0          # Rician K-factor (dB)
   doppler_freq: 100.0     # Maximum Doppler frequency (Hz)
   delay_spread: 1.0e-6    # RMS delay spread (s)

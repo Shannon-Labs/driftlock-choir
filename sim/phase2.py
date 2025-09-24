@@ -73,6 +73,8 @@ class Phase2Config:
     pathfinder_noise_guard_multiplier: float = 6.0
     pathfinder_smoothing_kernel: int = 5
     pathfinder_guard_interval_ns: float = 50.0
+    pathfinder_alpha: float = 0.3
+    pathfinder_beta: float = 0.5
 
     num_timesteps: int = 200 # Number of timesteps for dynamic simulation
     consensus_mode: str = 'converge' # 'converge' or 'fixed_iterations'
@@ -87,6 +89,7 @@ class Phase2Config:
     save_results: bool = True
     plot_results: bool = True
     results_dir: str = "results/phase2"
+    edge_measurement_export: Optional[str] = None
 
     spectral_margin: float = 0.8
     epsilon_override: Optional[float] = None
@@ -130,6 +133,8 @@ class Phase2Config:
             pathfinder_noise_guard_multiplier=self.pathfinder_noise_guard_multiplier,
             pathfinder_smoothing_kernel=self.pathfinder_smoothing_kernel,
             pathfinder_guard_interval_s=self.pathfinder_guard_interval_ns * 1e-9,
+            pathfinder_alpha=self.pathfinder_alpha,
+            pathfinder_beta=self.pathfinder_beta,
         )
 
 
@@ -143,6 +148,12 @@ class Phase2Simulation:
         self.exporter = TelemetryExporter(self.config.results_dir, variant="driftlock choir" if not self.config.baseline_mode else "baseline")
         self.handshake = ChronometricHandshakeSimulator(self.config.handshake_config())
         self.rng = np.random.default_rng(self.config.rng_seed)
+        self._edge_export_path: Optional[str] = None
+        if self.config.edge_measurement_export:
+            raw_path = self.config.edge_measurement_export
+            export_path = raw_path if os.path.isabs(raw_path) else os.path.join(self.config.results_dir, raw_path)
+            ensure_directory(os.path.dirname(export_path))
+            self._edge_export_path = export_path
 
         if self.config.baseline_mode:
             # Emulate legacy GNSS/PTP: higher initial errors, noise floors, simpler settings
@@ -166,7 +177,7 @@ class Phase2Simulation:
         iterations_per_step = []
 
         # Initial measurement population
-        self._populate_measurements(graph, nodes, positions, true_state)
+        self._populate_measurements(graph, nodes, positions, true_state, timestep=-1)
         estimated_state, kf_metrics = self._prepare_initial_state(graph, true_state)
 
 
@@ -175,7 +186,7 @@ class Phase2Simulation:
             true_state = self._evolve_true_state(true_state)
 
             # 2. Get new measurements for all edges
-            self._populate_measurements(graph, nodes, positions, true_state)
+            self._populate_measurements(graph, nodes, positions, true_state, timestep=timestep)
 
             # 3. Run consensus until convergence
             max_iters = self.config.consensus_iterations if self.config.consensus_mode == 'fixed_iterations' else self.config.max_iterations
@@ -292,12 +303,52 @@ class Phase2Simulation:
             )
         return nodes
 
+    def _export_edge_measurement(
+        self,
+        timestep: int,
+        u: int,
+        v: int,
+        distance_m: float,
+        result: Any,
+    ) -> None:
+        if not self._edge_export_path:
+            return
+
+        record = {
+            'timestep': timestep,
+            'edge': [int(u), int(v)],
+            'distance_m': distance_m,
+            'tau_forward_ps': (result.forward.tau_est_s - result.forward.tau_true_s) * 1e12,
+            'tau_reverse_ps': (result.reverse.tau_est_s - result.reverse.tau_true_s) * 1e12,
+            'tau_true_ps': result.forward.tau_true_s * 1e12,
+            'deltaf_forward_hz': result.forward.delta_f_est_hz - result.forward.delta_f_true_hz,
+            'deltaf_reverse_hz': result.reverse.delta_f_est_hz - result.reverse.delta_f_true_hz,
+            'coarse_forward_ps': None,
+            'coarse_reverse_ps': None,
+            'coarse_locked_forward': result.forward.coarse_locked,
+            'coarse_locked_reverse': result.reverse.coarse_locked,
+            'coarse_guard_forward': result.forward.coarse_guard_hit,
+            'coarse_guard_reverse': result.reverse.coarse_guard_hit,
+        }
+        if result.forward.coarse_tau_est_s is not None:
+            record['coarse_forward_ps'] = (
+                result.forward.coarse_tau_est_s - result.forward.tau_true_s
+            ) * 1e12
+        if result.reverse.coarse_tau_est_s is not None:
+            record['coarse_reverse_ps'] = (
+                result.reverse.coarse_tau_est_s - result.reverse.tau_true_s
+            ) * 1e12
+
+        with open(self._edge_export_path, 'a', encoding='utf-8') as handle:
+            handle.write(json.dumps(record) + '\n')
+
     def _populate_measurements(
         self,
         graph: nx.Graph,
         nodes: Dict[int, ChronometricNode],
         positions: Dict[int, np.ndarray],
         true_state: np.ndarray,
+        timestep: int,
     ) -> None:
         # Update node objects with the new true state before getting measurements
         for i, node in nodes.items():
@@ -315,6 +366,8 @@ class Phase2Simulation:
                 simulator=self.handshake,
                 retune_offsets_hz=self.config.retune_offsets_hz,
             )
+
+            self._export_edge_measurement(timestep, u, v, distance, result)
 
             var_tau_u = result.forward.running_variance_tau or float(result.forward.effective_tau_variance_s2)
             var_tau_v = result.reverse.running_variance_tau or float(result.reverse.effective_tau_variance_s2)
@@ -376,6 +429,10 @@ class Phase2Simulation:
             # Alias-resolution diagnostics (if available)
             graph.edges[u, v]['alias_resolved_forward'] = bool(result.forward.alias_resolved) if result.forward.alias_resolved is not None else None
             graph.edges[u, v]['alias_resolved_reverse'] = bool(result.reverse.alias_resolved) if result.reverse.alias_resolved is not None else None
+            graph.edges[u, v]['coarse_locked_forward'] = result.forward.coarse_locked
+            graph.edges[u, v]['coarse_locked_reverse'] = result.reverse.coarse_locked
+            graph.edges[u, v]['coarse_guard_forward'] = result.forward.coarse_guard_hit
+            graph.edges[u, v]['coarse_guard_reverse'] = result.reverse.coarse_guard_hit
             forward_pf = result.forward.pathfinder
             reverse_pf = result.reverse.pathfinder
             graph.edges[u, v]['pathfinder_peak_ratio_forward'] = (
@@ -708,6 +765,8 @@ class Phase2Simulation:
                     pred_df_std_hz or float('nan')
                 ),
                 'alias_resolved_rate': _alias_resolved_rate(graph),
+                'coarse_lock_rate': _coarse_lock_rate(graph),
+                'coarse_guard_rate': _coarse_guard_rate(graph),
             },
             'statistics': {
                 'rmse_tau': rmse_tau_ci,
@@ -766,6 +825,9 @@ class Phase2Simulation:
             'target_streak',
             'measurement_rmse_tau_ps',
             'measurement_rmse_df_hz',
+            'coarse_lock_rate',
+            'coarse_guard_rate',
+            'status',
             'crlb_ratio_tau',
             'crlb_ratio_df',
             'avg_delta_f_snr_db',
@@ -793,6 +855,34 @@ class Phase2Simulation:
         rmse_tau_stats = statistics.get('rmse_tau', {})
         crlb_tau_stats = statistics.get('crlb_tau', {})
 
+        coarse_lock_rate = edge_diag.get('coarse_lock_rate')
+        coarse_guard_rate = edge_diag.get('coarse_guard_rate')
+        meas_rmse_tau = edge_diag.get('measurement_rmse_tau_ps')
+        status_flags: List[str] = []
+        if meas_rmse_tau is not None and meas_rmse_tau > 1e12:
+            status_flags.append('FAIL_COARSE_ALIGN')
+        elif coarse_lock_rate is not None and coarse_lock_rate < 0.5:
+            status_flags.append('WARN_COARSE_UNLOCK')
+
+        crlb_ratio = edge_diag.get('crlb_ratio_tau')
+        if crlb_ratio is not None:
+            if crlb_ratio < 1.0:
+                status_flags.append('WARN_CRLB_LOW')
+            elif crlb_ratio > 1.5:
+                status_flags.append('FAIL_CRLB_HIGH')
+
+        profile = (self.config.channel_profile or '').upper()
+        bias_caps_ns = {
+            'IDEAL': 0.2,
+            'URBAN': 0.8,
+            'URBAN_CANYON': 0.8,
+            'INDOOR': 1.2,
+            'INDOOR_OFFICE': 1.2,
+        }
+        if meas_rmse_tau is not None and profile in bias_caps_ns:
+            if (meas_rmse_tau / 1000.0) > bias_caps_ns[profile]:
+                status_flags.append('FAIL_BIAS_CAP')
+
         row = {
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'rng_seed': telemetry['rng_seed'],
@@ -809,8 +899,11 @@ class Phase2Simulation:
             'success_under_5ms': consensus['success_under_5ms'],
             'target_rmse_ps': self.config.target_rmse_ps,
             'target_streak': self.config.target_streak,
-            'measurement_rmse_tau_ps': edge_diag['measurement_rmse_tau_ps'],
+            'measurement_rmse_tau_ps': meas_rmse_tau,
             'measurement_rmse_df_hz': edge_diag['measurement_rmse_df_hz'],
+            'coarse_lock_rate': coarse_lock_rate,
+            'coarse_guard_rate': coarse_guard_rate,
+            'status': ';'.join(status_flags) if status_flags else 'OK',
             'crlb_ratio_tau': edge_diag['crlb_ratio_tau'],
             'crlb_ratio_df': edge_diag['crlb_ratio_df'],
             'avg_delta_f_snr_db': edge_diag['avg_delta_f_snr_db'],
@@ -1031,6 +1124,32 @@ def _alias_resolved_rate(graph: nx.Graph) -> Optional[float]:
     return float(np.mean(flags))
 
 
+def _coarse_lock_rate(graph: nx.Graph) -> Optional[float]:
+    flags: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        fr = data.get('coarse_locked_forward')
+        rr = data.get('coarse_locked_reverse')
+        if fr is None or rr is None:
+            continue
+        flags.append(1.0 if (bool(fr) and bool(rr)) else 0.0)
+    if not flags:
+        return None
+    return float(np.mean(flags))
+
+
+def _coarse_guard_rate(graph: nx.Graph) -> Optional[float]:
+    flags: List[float] = []
+    for _, _, data in graph.edges(data=True):
+        fr = data.get('coarse_guard_forward')
+        rr = data.get('coarse_guard_reverse')
+        if fr is None and rr is None:
+            continue
+        flags.append(1.0 if (bool(fr) or bool(rr)) else 0.0)
+    if not flags:
+        return None
+    return float(np.mean(flags))
+
+
 def _edge_predicted_std(graph: nx.Graph, index: int, scale: float) -> Optional[float]:
     """Predicted standard deviation for edge measurement (difference of forward and reverse).
 
@@ -1121,6 +1240,8 @@ def build_phase2_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--coarse-duration-us', type=float, default=Phase2Config.coarse_duration_s * 1e6, help='Coarse preamble duration (microseconds).')
     parser.add_argument('--coarse-off', dest='coarse_enabled', action='store_false', help='Disable coarse delay estimation.')
     parser.set_defaults(coarse_enabled=Phase2Config.coarse_enabled)
+    parser.add_argument('--pathfinder-alpha', type=float, default=Phase2Config.pathfinder_alpha, help='Baseline α multiplier for earliest-path detection (lower favours aggressive detection).')
+    parser.add_argument('--pathfinder-beta', type=float, default=Phase2Config.pathfinder_beta, help='Baseline β slope multiplier used in earliest-path detection.')
     parser.add_argument('--local-kf', type=str, choices=['auto', 'on', 'off', 'baseline'], default='auto', help='Enable/disable the local Kalman pre-filter (auto uses config default, baseline matches legacy off).')
     parser.add_argument('--local-kf-sigma-T-ps', type=float, default=Phase2Config.local_kf_sigma_T_ps, help='Process noise σ_T for the local KF (ps).')
     parser.add_argument('--local-kf-sigma-f-hz', type=float, default=Phase2Config.local_kf_sigma_f_hz, help='Process noise σ_f for the local KF (Hz).')
@@ -1138,6 +1259,7 @@ def build_phase2_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('--no-plots', dest='plot_results', action='store_false', help='Disable plot generation.')
     parser.set_defaults(save_results=True, plot_results=True)
     parser.add_argument('--results-dir', type=str, default='results/phase2', help='Directory for JSON/CSV/plot artifacts.')
+    parser.add_argument('--export-edge-measurements', type=str, default=None, help='Optional JSONL path for per-edge τ/Δf diagnostics (relative paths resolve inside results dir).')
     parser.add_argument('--dry-run', action='store_true', help='Echo resolved configuration and exit without executing.')
     parser.add_argument('--echo-config', action='store_true', help='Print the resolved Phase 2 configuration JSON before running.')
 
@@ -1182,6 +1304,8 @@ def main() -> None:
         coarse_bandwidth_hz=args.coarse_bw_hz,
         coarse_duration_s=args.coarse_duration_us * 1e-6,
         channel_profile=args.channel_profile,
+        pathfinder_alpha=args.pathfinder_alpha,
+        pathfinder_beta=args.pathfinder_beta,
         num_timesteps=args.num_timesteps,
         consensus_mode=args.consensus_mode,
         consensus_iterations=args.consensus_iterations,
@@ -1196,6 +1320,7 @@ def main() -> None:
         local_kf_freq_gain=args.local_kf_freq_gain,
         local_kf_iterations=args.local_kf_iters,
         baseline_mode=args.baseline_mode,
+        edge_measurement_export=args.export_edge_measurements,
     )
 
     if args.echo_config or args.dry_run:

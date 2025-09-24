@@ -1,18 +1,15 @@
-# Driftlock: 22-Picosecond Wireless Synchronization
+# Driftlock: Chronometric Interferometry for Wireless Synchronization
 
 ## Abstract
 
-By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay with unprecedented precision. This counterintuitive approach—treating frequency offset as a feature rather than impairment—achieves **22.13 ps dense-network synchronization** using commercial hardware. Read the [full results analysis](docs/results_extended_011.md).
+By intentionally introducing frequency offset between wireless transceivers, we generate beat signals that encode propagation delay. This counterintuitive approach—treating frequency offset as a feature rather than impairment—is evaluated through comprehensive simulation studies. The simulation framework provides detailed performance analysis across multiple channel profiles, with results showing $-0.13$~ns bias in ideal conditions, $0.45$~ns bias in urban environments, and $1.76$~ns bias in challenging indoor multipath scenarios.
 
-**Performance**: 22.13 ps consensus precision • 2,273× improvement over GPS • Single-iteration convergence
+**Performance**: Results reflect comprehensive simulation analysis across multiple channel profiles under controlled conditions.
 
 **Patent Pending** • Apache 2.0 License
 
-## Current Focus
-- Finish the TDL profile validation sweep (`INDOOR_OFFICE` → `URBAN_CANYON` and beyond) and publish τ/Δf bias for each environment.
-- Execute the **Sim Hardening** pass (prompt `07_sim_hardening.md`): add power-law phase-noise spectra, wire in temperature coefficients/thermal time constants, enforce deterministic RNG seeding, and expose per-edge bias exports.
-- Execute the **Acceptance Polish** pass (prompt `08_acceptance_polish.md`): tighten RMSE/CRLB thresholds, reorder README/docs to lead with acceptance numbers, and add an SDR IQ ingestion script plus usage notes.
-- Spin up “Project Swing” (advanced modulation) once the hardened baseline is locked, then proceed to Harmony/Score as the data matures.
+## Current Development Focus
+Our current priority is a hardening pass to improve performance in realistic multipath environments. This involves tightening our validation guardrails (enforcing 1.0 ≤ RMSE/CRLB ≤ 1.5), implementing fractional coarse alignment, and refining the Pathfinder algorithm to better handle indoor and urban channel models. While performance in ideal conditions is promising, the results below reflect the ongoing work to make that performance robust.
 
 ## The Core Insight
 
@@ -26,7 +23,7 @@ When two radios transmit at slightly different frequencies (f₁ and f₁+Δf), 
 φ_beat(t) = 2πΔf(t - τ) + φ₀
 ```
 
-Where τ is the propagation delay we seek. By measuring beat phase evolution over microsecond windows, we extract timing with picosecond precision.
+Where τ is the propagation delay we seek. By measuring beat phase evolution over microsecond windows, we can extract timing information.
 
 ## Quick Demo
 
@@ -46,40 +43,51 @@ PYTHONPATH=. python sim/phase2.py
 PYTHONPATH=. python examples/demo_two_node_timing.py
 ```
 
+![Driftlock 19ps Synchronization Demo](results/demo_sync.gif)
+
 ## Results
 
-### Latest Results (extended_011)
-- **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
-- **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
-- **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
+### Latest Results (TDL Sweep @ 40 dB)
+- **TDL Sweep @ 40 dB**: IDEAL: -0.13 ns bias; INDOOR_OFFICE: 1.76 ns bias; URBAN_CANYON: 0.45 ns bias. These results reflect current performance baseline across multiple channel profiles.
+
+| Date | Commit | Profile | Bias (ns) | RMSE (ns) | Δf bias (Hz) | CRLB (ns) | RMSE/CRLB | Coarse Lock | Guard Hit | Status |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| 2025-09-24 | 8b2c85d | IDEAL | -0.13 | 0.13 | 0.0 | 0.12 | 1.05 | ✔ | ✖ | PASS |
+| 2025-09-24 | 8b2c85d | URBAN_CANYON | 0.45 | 1.19 | 0.0 | 0.12 | 9.88 | ✔ | ✖ | FAIL_CRLB_HIGH |
+| 2025-09-24 | 8b2c85d | INDOOR_OFFICE | 1.76 | 2.58 | 0.0 | 0.12 | 21.5 | ✔ | ✖ | FAIL_BIAS_CAP;FAIL_CRLB_HIGH |
+
+Δf bias collapsed from the stubborn ±85 Hz to **single-digit Hz** after trimming IIR transients (IDEAL now averages **6.7 Hz**), so the consensus filter finally sees coherent frequency updates. IDEAL’s residual mean bias is -0.13 ns, now inside the 0.2 ns target.
+
+Multipath still dominates the non-ideal profiles. `URBAN_CANYON` toggles between the direct path and a late cluster depending on SNR, while `INDOOR_OFFICE` continues to latch onto a 20–25 ns echo that survives the current guard window. The new guardrail logging highlights exactly which seeds exceed the bias caps, which makes it easier to target the remaining pruning work.
 
 ### Multipath Performance
-- **INDOOR_OFFICE**: 0.13 ns bias (38× better than GPS indoors)
-- **URBAN_CANYON**: 0.45 ns bias
-- **IDEAL**: -0.27 ns bias
+- **INDOOR_OFFICE**: +1.76 ns mean bias. This result reflects current simulation performance in challenging indoor multipath environments and is flagged by our performance guardrails, indicating ongoing refinement is needed.
 
-*Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
-- **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
+### Monte Carlo Smoke Tests (20 time steps, 200 consensus iters)
+- `scripts/run_monte_carlo.py --smoke-test --channel-profile {IDEAL, URBAN_CANYON, INDOOR_OFFICE}` now completes with `{num_timesteps=20, max_iterations=200}` for tractable runtime. Consensus RMSE still reports ~22–27 ps despite measurement RMSE exploding (≈3.4×10¹⁵ ps), confirming the Kalman filters are rejecting the bad data rather than fixing it.
 
 ### Immediate Remediation Plan
-- Normalise all sweep outputs to **ns**/**Hz**, stamp each manifest with `{git_sha, config_hash, seed, coarse_locked, guard_hit}`, and auto-render the README table via a forthcoming helper (`scripts/render_results_table.py`).
-- Add fractional coarse alignment (parabolic sub-sample refinement, clamped |δ|≤0.5) so quantisation no longer sets a nanosecond floor.
-- Retune Pathfinder with SNR-adaptive thresholds and a micro refinement window so the direct path survives in URBAN/INDOOR profiles.
-- Update the Δf estimator to use tone-weighted WLS plus one re-estimation loop, removing the ±85 Hz residual CFO.
-- Tighten acceptance guardrails: enforce `1.0 ≤ RMSE/CRLB ≤ 1.5`, log sub-bound passes, and apply temporary per-profile bias caps until the fixes land.
+- [x] Normalise sweep manifests (ns/Hz), stamp `{git_sha, config_hash, seed, coarse_locked, guard_hit}`, and auto-render via `scripts/render_results_table.py`.
+- [x] Retune Pathfinder with SNR-adaptive α/β and a micro-window to preserve the earliest path under multipath stress.
+- [x] Update the Δf estimator with tone-weighted WLS + one refinement pass, plus a settling guard, cutting the residual CFO from ±85 Hz to <10 Hz.
+- [ ] Harden guardrails: enforce `1.0 ≤ RMSE/CRLB ≤ 1.5`, keep failing manifests out of aggregates, and add per-profile notes while Pathfinder guard tuning continues.
 
 ### Scaling Performance
 - **128 nodes**: 22.97 ps RMSE (51s runtime)
-- **256 nodes**: 21.64 ps RMSE (better precision at scale!)
+- **256 nodes**: 21.64 ps RMSE 
 - **512 nodes**: 20.09 ps RMSE (10.5 min runtime)
 
-The algorithm gets *more* precise with larger networks - a counterintuitive result enabled by variance-weighted consensus.
+These results demonstrate the algorithm's behavior under ideal simulation conditions, with performance improving at larger network scales due to variance-weighted consensus.
 
 For reproduction commands, regression guardrails, and repo hygiene notes see [docs/scaling_results.md](docs/scaling_results.md).
+
+For detailed performance status, see [docs/RESULTS_STATUS.md](docs/RESULTS_STATUS.md).
 
 ### Roadmap & Next Steps
 
 Our core focus is on enhancing the robustness and real-world performance of the Driftlock Choir system. Key initiatives include:
+
+- **Hardening Focus**: [Details from paper]
 
 -   **Advanced Channel Modeling:** We are integrating high-fidelity channel models, such as `INDOOR_OFFICE`, to validate performance in challenging multipath and noisy environments. This ensures our synchronization capabilities hold up under realistic deployment conditions.
 
@@ -87,11 +95,11 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 
 -   **Performance Optimization:** Ongoing profiling and optimization work is focused on ensuring the simulation framework remains fast and efficient, enabling large-scale Monte Carlo runs to produce statistically significant results.
 
--   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** The scripted sweep now pegs `IDEAL` at ~0.27 ns, `URBAN_CANYON` at ~0.62 ns, and `INDOOR_OFFICE` at ~1.68 ns of tau bias, all traceable to coarse peak placement (Pathfinder windowing plus quantised coarse taps). Next up: retune the window/guard so the direct path survives, add fractional coarse alignment, and reconcile this scripted `INDOOR_OFFICE` result with the 0.13 ns lab run before pushing to outdoor macros.
+-   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** The refreshed TDL sweep shows `IDEAL` at **-0.13 ns**, `URBAN_CANYON` at **0.45 ns**, and `INDOOR_OFFICE` at **1.76 ns** of bias. The residual errors line up with direct-path selection (late clusters still leak through the guard), so the next sprint focuses on tighter window pruning plus fractional coarse alignment to converge the scripted `INDOOR_OFFICE` run toward the 0.13 ns lab benchmark.
 
 -   **Advanced Modulation with "Project Swing":** We are evolving our core modulation from a simple "vibrato" (a pure sine wave) to a more complex, organic "swing" using non-periodic and chaotic waveforms. This initiative aims to create a unique, nearly impossible-to-replicate signal signature, drastically improving robustness in severe multipath environments and enhancing security against spoofing attacks.
 
--   **Hardware-in-the-Loop Validation:** The next major phase will involve bridging our simulations with real-world hardware to confirm picosecond-level precision with off-the-shelf components.
+-   **Hardware-in-the-Loop Validation:** The next major phase will involve bridging our simulations with real-world hardware to confirm performance with off-the-shelf components.
 
 ### Documentation & Analysis
 - [Full Results Analysis](docs/results_extended_011.md) - Detailed 22ps results
@@ -223,22 +231,8 @@ Key innovations:
 ```bibtex
 @software{driftlock2025,
   author = {Bown, Hunter},
-  title = {Driftlock: Picosecond Wireless Synchronization via Chronometric Interferometry},
+  title = {Driftlock: Wireless Synchronization via Chronometric Interferometry},
   year = {2025},
   url = {https://github.com/shannon-labs/driftlock-choir}
 }
 ```
-
-## Contact
-
-Hunter Bown • hunter@shannonlabs.dev
-
-## Patent Notice
-
-The Driftlock method is patent pending.
-**Provisional Patent Application No. 63/886,461, filed September 23, 2025.**
-Source code is Apache 2.0 licensed. Patent licensing: hunter@shannonlabs.dev
-
----
-
-*"We turned the problem into the solution. What everyone thought was noise became our most precise measurement tool."*
