@@ -10,8 +10,8 @@ By intentionally introducing frequency offset between wireless transceivers, we 
 
 ## Current Focus
 - Finish the TDL profile validation sweep (`INDOOR_OFFICE` → `URBAN_CANYON` and beyond) and publish τ/Δf bias for each environment.
-- Execute the **Sim Hardening** pass (prompt `07_sim_hardening.md`): power-law phase-noise spectra, temperature hooks, deterministic seeding, and richer diagnostics.
-- Execute the **Acceptance Polish** pass (prompt `08_acceptance_polish.md`): tighten RMSE/CRLB gatekeeping, align messaging, and add SDR IQ ingestion to the acceptance harness.
+- Execute the **Sim Hardening** pass (prompt `07_sim_hardening.md`): add power-law phase-noise spectra, wire in temperature coefficients/thermal time constants, enforce deterministic RNG seeding, and expose per-edge bias exports.
+- Execute the **Acceptance Polish** pass (prompt `08_acceptance_polish.md`): tighten RMSE/CRLB thresholds, reorder README/docs to lead with acceptance numbers, and add an SDR IQ ingestion script plus usage notes.
 - Spin up “Project Swing” (advanced modulation) once the hardened baseline is locked, then proceed to Harmony/Score as the data matures.
 
 ## The Core Insight
