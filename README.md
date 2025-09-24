@@ -53,10 +53,17 @@ PYTHONPATH=. python examples/simple_handshake_test.py
 - **Dense Preset (64 nodes)**: 22.13 ps (0.33 ps better than baseline with clock 0.32 / freq 0.03 / 1 iter)
 - **Dense Sweep Minimum**: 20.93 ps (clock 0.22 / freq 0.03 / 2 iters)
 - **Small Network Preset (25 nodes)**: 20.96 ps (3.41 ps improvement; 18.69 ps sweep min)
-- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` shows ~0.27 ns tau bias from coarse peak quantisation (delta-f bias ~+/-85 Hz, consensus ~25.6 ps, measurement RMSE saturates ~3x10^16 ps when the coarse tap drifts); `URBAN_CANYON` lands at ~0.62 ns because Pathfinder rides a 0.5-0.7 ns late cluster; `INDOOR_OFFICE` reports 1.68 ns in this scripted run, so the peak-path handoff still sits 1-2 ns high relative to the lab's 0.13 ns win and needs reconciliation.
+- **TDL Stress Sweep (handshake diag + MC smoke @ 40 dB)**: `IDEAL` shows ~0.27 ns tau bias from coarse peak quantisation (Δf bias ~±85 Hz, consensus ~25.6 ps, measurement RMSE saturates ~3×10^16 ps when the coarse tap drifts); `URBAN_CANYON` lands at ~0.62 ns because Pathfinder rides a 0.5–0.7 ns late cluster; `INDOOR_OFFICE` reports 1.68 ns in this scripted run, so the peak-path handoff still sits 1–2 ns high relative to the lab's 0.13 ns win and needs reconciliation. All timing numbers are emitted in **ns** by the manifest generator (`scripts/run_handshake_diag.py`).
 
 *Context:* The 20–22 ps figures above were collected under tightly controlled, single-path conditions to establish a best-case benchmark. Current work focuses on layering realistic channel impairments and hardware tolerances on top of that baseline. Every new multipath profile we validate and every piece of lab data we ingest will be folded back into this table so the numbers stay grounded in demonstrated performance.
 - **Guardrails**: `scripts/verify_kf_sweep.py` + seeded regression keep gains locked
+
+### Immediate Remediation Plan
+- Normalise all sweep outputs to **ns**/**Hz**, stamp each manifest with `{git_sha, config_hash, seed, coarse_locked, guard_hit}`, and auto-render the README table via a forthcoming helper (`scripts/render_results_table.py`).
+- Add fractional coarse alignment (parabolic sub-sample refinement, clamped |δ|≤0.5) so quantisation no longer sets a nanosecond floor.
+- Retune Pathfinder with SNR-adaptive thresholds and a micro refinement window so the direct path survives in URBAN/INDOOR profiles.
+- Update the Δf estimator to use tone-weighted WLS plus one re-estimation loop, removing the ±85 Hz residual CFO.
+- Tighten acceptance guardrails: enforce `1.0 ≤ RMSE/CRLB ≤ 1.5`, log sub-bound passes, and apply temporary per-profile bias caps until the fixes land.
 
 ### Scaling Performance
 - **128 nodes**: 22.97 ps RMSE (51s runtime)
