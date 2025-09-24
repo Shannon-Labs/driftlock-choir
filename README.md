@@ -68,6 +68,8 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 
 -   **Performance Optimization:** Ongoing profiling and optimization work is focused on ensuring the simulation framework remains fast and efficient, enabling large-scale Monte Carlo runs to produce statistically significant results.
 
+-   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** To ensure picosecond-level accuracy in complex real-world environments, we are integrating a novel "Pathfinder" algorithm. This module intelligently isolates the true, first-arriving signal from subsequent reflections (multipath), hardening our system against the challenging conditions found in indoor, office, and urban settings. This is a critical step in bridging the gap between simulation and hardware-in-the-loop validation.
+
 -   **Hardware-in-the-Loop Validation:** The next major phase will involve bridging our simulations with real-world hardware to confirm picosecond-level precision with off-the-shelf components.
 
 ### Documentation & Analysis
