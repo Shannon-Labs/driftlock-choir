@@ -26,3 +26,15 @@
 - Adopt Conventional Commits (`feat:`, `fix:`, `refactor:`) with imperative subjects under 72 characters.
 - PRs should explain scope, list validation commands, link tracking issues, and attach key artifacts from `results/` when behaviour changes.
 - Ensure configuration changes are versioned under `sim/configs/` with expected output paths noted in the PR.
+
+## Current Multipath Validation Status
+- `INDOOR_OFFICE` profile now holds ~0.13 ns bias after the Pathfinder peak-path fix; README reflects this.
+- Consensus Monte Carlo smoke tests run clean but still report high timing RMSE because edge τ bias remains ~0.13 ns.
+- No other channel profiles have been re-validated since the fix; commit `8b2c85d` is the known-good baseline.
+
+## Next Agent Checklist
+- **Profile sweep:** For each TDL profile in `src/chan/tdl.py` (e.g., `URBAN_CANYON`, `IDEAL`, others), run single-handshake diagnostics and `scripts/run_monte_carlo.py --smoke-test --channel-profile <PROFILE>`. Capture τ/Δf bias and consensus RMSE.
+- **Bias forensics:** Whenever τ bias exceeds ~0.2 ns, note whether coarse hints, phase unwrapping, or pathfinder behaviour is responsible. Do not chase the legacy `<3 ps` target—focus on realistic multipath behaviour.
+- **Minimal edits:** If Phase1/Phase2 helpers need tweaks to expose metrics, make the smallest change possible and keep the existing CLI flags working. Always re-run `pytest tests/test_chronometric_handshake.py`.
+- **Document results:** Update README “Latest Results” and roadmap only after you have verified metrics for a profile. Summaries should read like `URBAN_CANYON: 0.45 ns bias (dominated by …)`.
+- **Repo hygiene:** Leave the tree clean (`git status` empty), remove scratch files, and note new artifacts under `results/` when relevant.
