@@ -11,11 +11,16 @@ By intentionally introducing frequency offset between wireless transceivers, we 
 ## Current Development Focus
 Our current priority is a hardening pass to improve performance in realistic multipath environments. This involves tightening our validation guardrails (enforcing 1.0 ≤ RMSE/CRLB ≤ 1.5), implementing fractional coarse alignment, and refining the Pathfinder algorithm to better handle indoor and urban channel models. While performance in ideal conditions is promising, the results below reflect the ongoing work to make that performance robust.
 
-### Pathfinder Missing-Fundamental Prototype
-- Added a vowel-inspired coarse preamble mode (`--coarse-preamble-mode formant`) that sculpts the spectrum around canonical A/E/I/O/U formants.
-- The aperture window now performs a "missing fundamental" analysis, inferring the transmitted vowel token from the dominant harmonic even when the fundamental is absent.
-- Toggle analysis with `--disable-formant-missing-fundamental` and adjust synthesis via the `--coarse-formant-*` knobs (fundamental, harmonic count, scale, phase jitter).
-- Example: `python scripts/run_handshake_diag.py --channel-profile IDEAL --coarse-preamble-mode formant --coarse-formant-profile A --pathfinder-pre-guard-ns 400 --num-trials 8` yields sub-0.2 ns τ bias while reporting the decoded vowel label and reconstructed fundamental in the summary JSON.
+### Project Aperture (Pre-Guard Bias Hunt)
+- Hardened the pathfinder so the pre-guard offset applies to both the simple scan and aperture fallback—no more searching before the requested lead-in.
+- Added first-path/peak diagnostics to highlight how the aperture window responds when the guard interval expands beyond the immediate peak.
+- Use `--pathfinder-pre-guard-ns <value>` alongside `--pathfinder-guard-interval-ns` to sweep headroom; bias snapshots live under `/tmp/diag_pre*` by default.
+
+### Project Formant Tuning (Missing-Fundamental Pathfinder)
+- Introduced a vowel-inspired coarse preamble mode (`--coarse-preamble-mode formant`) that sculpts the spectrum around canonical A/E/I/O/U formants.
+- The aperture window performs a "missing fundamental" analysis, decoding the vowel token and reconstructing the implied fundamental even when it is absent from the waveform.
+- Run exploratory sweeps with commands like `python scripts/run_handshake_diag.py --channel-profile IDEAL --coarse-preamble-mode formant --coarse-formant-profile A --pathfinder-pre-guard-ns 400 --num-trials 16` to log both τ bias and the recovered vowel label.
+- Recommended follow-up (Project Swing prompt): pivot from chasing 20 ps to evaluating whether vowel-coded signaling buys alias resilience or richer tagging in multipath. Capture results under `results/project_swing/<profile>/<vowel>` when running broader sweeps.
 
 ## The Core Insight
 
