@@ -11,6 +11,12 @@ By intentionally introducing frequency offset between wireless transceivers, we 
 ## Current Development Focus
 Our current priority is a hardening pass to improve performance in realistic multipath environments. This involves tightening our validation guardrails (enforcing 1.0 ≤ RMSE/CRLB ≤ 1.5), implementing fractional coarse alignment, and refining the Pathfinder algorithm to better handle indoor and urban channel models. While performance in ideal conditions is promising, the results below reflect the ongoing work to make that performance robust.
 
+### Pathfinder Missing-Fundamental Prototype
+- Added a vowel-inspired coarse preamble mode (`--coarse-preamble-mode formant`) that sculpts the spectrum around canonical A/E/I/O/U formants.
+- The aperture window now performs a "missing fundamental" analysis, inferring the transmitted vowel token from the dominant harmonic even when the fundamental is absent.
+- Toggle analysis with `--disable-formant-missing-fundamental` and adjust synthesis via the `--coarse-formant-*` knobs (fundamental, harmonic count, scale, phase jitter).
+- Example: `python scripts/run_handshake_diag.py --channel-profile IDEAL --coarse-preamble-mode formant --coarse-formant-profile A --pathfinder-pre-guard-ns 400 --num-trials 8` yields sub-0.2 ns τ bias while reporting the decoded vowel label and reconstructed fundamental in the summary JSON.
+
 ## The Core Insight
 
 > **Tuned 0.32 / 0.03 / 1 combo**: This repository reflects the `extended_011` run, which produced the 22.13 ps result.

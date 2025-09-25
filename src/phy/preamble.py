@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy import signal
+
+from .formants import FormantSynthesisConfig, synthesize_formant_preamble
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,7 @@ class Preamble:
 
     samples: NDArray[np.complex128]
     matched_filter: NDArray[np.complex128]
+    metadata: Optional[Dict[str, object]] = None
 
     @property
     def length(self) -> int:
@@ -35,7 +38,11 @@ def generate_zadoff_chu(length: int, root: int = 1) -> Preamble:
     if norm > 0:
         seq = seq / norm
         matched = matched / norm
-    return Preamble(samples=seq.astype(np.complex128), matched_filter=matched.astype(np.complex128))
+    return Preamble(
+        samples=seq.astype(np.complex128),
+        matched_filter=matched.astype(np.complex128),
+        metadata=None,
+    )
 
 
 def estimate_delay(
@@ -67,14 +74,41 @@ def build_preamble(
     sample_rate: float,
     bandwidth_hz: float,
     root: int = 1,
+    *,
+    mode: str = 'zadoff',
+    formant_config: Optional[FormantSynthesisConfig] = None,
 ) -> Tuple[Preamble, NDArray[np.float64]]:
     """Generate a preamble and corresponding time axis (seconds)."""
-    preamble = generate_zadoff_chu(length, root=root)
+
+    mode_key = mode.lower()
     time_axis = np.arange(length, dtype=float) / sample_rate
+
+    if mode_key == 'formant':
+        if formant_config is None:
+            raise ValueError('formant_config must be provided when mode="formant"')
+        waveform, library = synthesize_formant_preamble(length, sample_rate, formant_config)
+        matched = np.conj(waveform[::-1])
+        metadata: Dict[str, object] = {
+            'formant_profile': formant_config.profile.upper(),
+            'formant_library': library,
+            'formant_descriptor': library[formant_config.profile.upper()],
+            'formant_config': formant_config,
+            'formant_analyze': True,
+        }
+        return Preamble(samples=waveform, matched_filter=matched, metadata=metadata), time_axis
+
+    if mode_key != 'zadoff':
+        raise ValueError(f'Unsupported preamble mode: {mode}')
+
+    preamble = generate_zadoff_chu(length, root=root)
     window = signal.windows.kaiser(length, beta=6.0)
     shaped = preamble.samples * window
     norm = np.linalg.norm(shaped)
     if norm > 0:
         shaped = shaped / norm
-    shaped_preamble = Preamble(samples=shaped.astype(np.complex128), matched_filter=np.conj(shaped[::-1]))
+    shaped_preamble = Preamble(
+        samples=shaped.astype(np.complex128),
+        matched_filter=np.conj(shaped[::-1]),
+        metadata=None,
+    )
     return shaped_preamble, time_axis

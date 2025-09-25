@@ -84,6 +84,16 @@ def _fraction(values: Iterable[bool]) -> float:
     return float(np.mean(seq))
 
 
+def _categorical_distribution(values: Iterable[Optional[str]]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for val in values:
+        if val is None:
+            continue
+        key = str(val)
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
 def _stats_to_ns(stats: Dict[str, float]) -> Dict[str, float]:
     return {key: val / 1000.0 for key, val in stats.items()}
 
@@ -126,12 +136,21 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         coarse_bandwidth_hz=args.coarse_bw_hz,
         coarse_duration_s=args.coarse_duration_us * 1e-6,
         coarse_variance_floor_ps=args.coarse_variance_floor_ps,
+        coarse_preamble_mode=args.coarse_preamble_mode,
+        coarse_formant_profile=args.coarse_formant_profile,
+        coarse_formant_fundamental_hz=args.coarse_formant_fundamental_hz,
+        coarse_formant_harmonic_count=args.coarse_formant_harmonic_count,
+        coarse_formant_include_fundamental=args.coarse_formant_include_fundamental,
+        coarse_formant_scale=args.coarse_formant_scale,
+        coarse_formant_phase_jitter=args.coarse_formant_phase_jitter,
+        coarse_formant_missing_fundamental=not args.disable_formant_missing_fundamental,
         channel_profile=args.channel_profile,
         delta_t_schedule_us=tuple(args.delta_t_us),
         mac=mac,
         pathfinder_relative_threshold_db=args.pathfinder_relative_threshold_db,
         pathfinder_noise_guard_multiplier=args.pathfinder_noise_guard_multiplier,
         pathfinder_guard_interval_s=args.pathfinder_guard_interval_ns * 1e-9,
+        pathfinder_pre_guard_ns=args.pathfinder_pre_guard_ns,
         pathfinder_aperture_duration_ns=args.pathfinder_aperture_duration_ns,
         pathfinder_first_path_blend=args.pathfinder_first_path_blend,
         pathfinder_use_simple_search=not args.pathfinder_disable_simple_search,
@@ -154,6 +173,10 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'tau_var_s2': [],
             'pathfinder_used_aperture': [],
             'pathfinder_first_to_peak_ns': [],
+            'pathfinder_missing_fundamental_hz': [],
+            'pathfinder_dominant_hz': [],
+            'pathfinder_formant_label': [],
+            'pathfinder_formant_score': [],
         },
         'reverse': {
             'tau_bias_ps': [],
@@ -167,6 +190,10 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'tau_var_s2': [],
             'pathfinder_used_aperture': [],
             'pathfinder_first_to_peak_ns': [],
+            'pathfinder_missing_fundamental_hz': [],
+            'pathfinder_dominant_hz': [],
+            'pathfinder_formant_label': [],
+            'pathfinder_formant_score': [],
         },
     }
 
@@ -202,11 +229,19 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
                 record['peak_path_error_ps'].append((pathfinder.peak_path_s - measurement.tau_true_s) * 1e12)
                 record['pathfinder_used_aperture'].append(bool(pathfinder.used_aperture_fallback))
                 record['pathfinder_first_to_peak_ns'].append((pathfinder.peak_path_s - pathfinder.first_path_s) * 1e9)
+                record['pathfinder_missing_fundamental_hz'].append(pathfinder.missing_fundamental_hz)
+                record['pathfinder_dominant_hz'].append(pathfinder.dominant_harmonic_hz)
+                record['pathfinder_formant_label'].append(pathfinder.formant_label)
+                record['pathfinder_formant_score'].append(pathfinder.formant_score)
             else:
                 record['first_path_error_ps'].append(None)
                 record['peak_path_error_ps'].append(None)
                 record['pathfinder_used_aperture'].append(None)
                 record['pathfinder_first_to_peak_ns'].append(None)
+                record['pathfinder_missing_fundamental_hz'].append(None)
+                record['pathfinder_dominant_hz'].append(None)
+                record['pathfinder_formant_label'].append(None)
+                record['pathfinder_formant_score'].append(None)
             record['alias_resolved'].append(bool(measurement.alias_resolved))
             record['coarse_locked'].append(
                 None if measurement.coarse_locked is None else bool(measurement.coarse_locked)
@@ -225,11 +260,20 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'coarse_enabled': not args.disable_coarse,
         'coarse_bw_hz': args.coarse_bw_hz,
         'coarse_duration_us': args.coarse_duration_us,
+        'coarse_preamble_mode': args.coarse_preamble_mode,
+        'coarse_formant_profile': args.coarse_formant_profile,
+        'coarse_formant_fundamental_hz': args.coarse_formant_fundamental_hz,
+        'coarse_formant_harmonic_count': args.coarse_formant_harmonic_count,
+        'coarse_formant_include_fundamental': args.coarse_formant_include_fundamental,
+        'coarse_formant_scale': args.coarse_formant_scale,
+        'coarse_formant_phase_jitter': args.coarse_formant_phase_jitter,
+        'coarse_formant_missing_fundamental': not args.disable_formant_missing_fundamental,
         'pathfinder_alpha': args.pathfinder_alpha,
         'pathfinder_beta': args.pathfinder_beta,
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
+        'pathfinder_pre_guard_ns': args.pathfinder_pre_guard_ns,
         'pathfinder_aperture_duration_ns': args.pathfinder_aperture_duration_ns,
         'pathfinder_first_path_blend': args.pathfinder_first_path_blend,
         'pathfinder_use_simple_search': not args.pathfinder_disable_simple_search,
@@ -256,6 +300,14 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'coarse_enabled': not args.disable_coarse,
         'coarse_bw_hz': args.coarse_bw_hz,
         'coarse_duration_us': args.coarse_duration_us,
+        'coarse_preamble_mode': args.coarse_preamble_mode,
+        'coarse_formant_profile': args.coarse_formant_profile,
+        'coarse_formant_fundamental_hz': args.coarse_formant_fundamental_hz,
+        'coarse_formant_harmonic_count': args.coarse_formant_harmonic_count,
+        'coarse_formant_include_fundamental': args.coarse_formant_include_fundamental,
+        'coarse_formant_scale': args.coarse_formant_scale,
+        'coarse_formant_phase_jitter': args.coarse_formant_phase_jitter,
+        'coarse_formant_missing_fundamental': not args.disable_formant_missing_fundamental,
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
@@ -306,6 +358,10 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'rmse_over_crlb': (tau_rmse / 1000.0) / crlb_ns if (tau_rmse is not None and crlb_ns and crlb_ns > 0) else None,
             'pathfinder_aperture_rate': _fraction(fallback_values) if fallback_values else None,
             'pathfinder_first_to_peak_ns': _summary_stats(record['pathfinder_first_to_peak_ns']),
+            'pathfinder_missing_fundamental_hz': _summary_stats(record['pathfinder_missing_fundamental_hz']),
+            'pathfinder_dominant_hz': _summary_stats(record['pathfinder_dominant_hz']),
+            'pathfinder_formant_score': _summary_stats(record['pathfinder_formant_score']),
+            'pathfinder_formant_labels': _categorical_distribution(record['pathfinder_formant_label']) or None,
         }
 
     all_locked = [bool(val) for values in directional_records.values() for val in values['coarse_locked'] if val is not None]
@@ -383,6 +439,14 @@ def main() -> None:
     parser.add_argument('--coarse-bw-hz', type=float, default=40e6)
     parser.add_argument('--coarse-duration-us', type=float, default=5.0)
     parser.add_argument('--coarse-variance-floor-ps', type=float, default=50.0)
+    parser.add_argument('--coarse-preamble-mode', choices=['zadoff', 'formant'], default='zadoff')
+    parser.add_argument('--coarse-formant-profile', type=str, default='A', help='Vowel profile (A/E/I/O/U) used when --coarse-preamble-mode=formant.')
+    parser.add_argument('--coarse-formant-fundamental-hz', type=float, default=25_000.0)
+    parser.add_argument('--coarse-formant-harmonic-count', type=int, default=12)
+    parser.add_argument('--coarse-formant-include-fundamental', action='store_true')
+    parser.add_argument('--coarse-formant-scale', type=float, default=1_000.0, help='Scaling applied to canonical vowel formants (Hz->Hz).')
+    parser.add_argument('--coarse-formant-phase-jitter', type=float, default=0.0, help='Uniform phase jitter (radians) applied per harmonic.')
+    parser.add_argument('--disable-formant-missing-fundamental', action='store_true', help='Disable missing-fundamental decoding even when using formant preambles.')
     parser.add_argument('--beat-duration-us', type=float, default=20.0)
     parser.add_argument('--baseband-rate-factor', type=float, default=20.0)
     parser.add_argument('--min-baseband-rate-hz', type=float, default=200_000.0)
@@ -396,6 +460,7 @@ def main() -> None:
     parser.add_argument('--pathfinder-relative-threshold-db', type=float, default=-12.0)
     parser.add_argument('--pathfinder-noise-guard-multiplier', type=float, default=6.0)
     parser.add_argument('--pathfinder-guard-interval-ns', type=float, default=30.0)
+    parser.add_argument('--pathfinder-pre-guard-ns', type=float, default=0.0)
     parser.add_argument('--pathfinder-aperture-duration-ns', type=float, default=100.0)
     parser.add_argument('--pathfinder-first-path-blend', type=float, default=0.05, help='Blend factor between the pathfinder peak (0.0) and first-path (1.0) timestamps when seeding the coarse hint. Actual blend is scaled by profile heuristics.')
     parser.add_argument('--pathfinder-disable-simple-search', action='store_true', help='Skip the forward threshold scan so the aperture window is always used.')

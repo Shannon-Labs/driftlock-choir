@@ -28,6 +28,14 @@ def _build_args(namespace: argparse.Namespace, profile: str, output_json: Path) 
         coarse_bw_hz=namespace.coarse_bw_hz,
         coarse_duration_us=namespace.coarse_duration_us,
         coarse_variance_floor_ps=namespace.coarse_variance_floor_ps,
+        coarse_preamble_mode=namespace.coarse_preamble_mode,
+        coarse_formant_profile=namespace.coarse_formant_profile,
+        coarse_formant_fundamental_hz=namespace.coarse_formant_fundamental_hz,
+        coarse_formant_harmonic_count=namespace.coarse_formant_harmonic_count,
+        coarse_formant_include_fundamental=namespace.coarse_formant_include_fundamental,
+        coarse_formant_scale=namespace.coarse_formant_scale,
+        coarse_formant_phase_jitter=namespace.coarse_formant_phase_jitter,
+        disable_formant_missing_fundamental=namespace.disable_formant_missing_fundamental,
         beat_duration_us=namespace.beat_duration_us,
         baseband_rate_factor=namespace.baseband_rate_factor,
         min_baseband_rate_hz=namespace.min_baseband_rate_hz,
@@ -41,11 +49,14 @@ def _build_args(namespace: argparse.Namespace, profile: str, output_json: Path) 
         pathfinder_relative_threshold_db=namespace.pathfinder_relative_threshold_db,
         pathfinder_noise_guard_multiplier=namespace.pathfinder_noise_guard_multiplier,
         pathfinder_guard_interval_ns=namespace.pathfinder_guard_interval_ns,
+        pathfinder_pre_guard_ns=namespace.pathfinder_pre_guard_ns,
         pathfinder_aperture_duration_ns=namespace.pathfinder_aperture_duration_ns,
         pathfinder_first_path_blend=namespace.pathfinder_first_path_blend,
         pathfinder_alpha=namespace.pathfinder_alpha,
         pathfinder_beta=namespace.pathfinder_beta,
+        pathfinder_disable_simple_search=namespace.pathfinder_disable_simple_search,
         use_phase_slope_fit=namespace.use_phase_slope_fit,
+        debug=namespace.debug,
         output_dir=namespace.output_dir,
         output_json=output_json,
     )
@@ -88,6 +99,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--coarse-bw-hz', type=float, default=40e6)
     parser.add_argument('--coarse-duration-us', type=float, default=5.0)
     parser.add_argument('--coarse-variance-floor-ps', type=float, default=50.0)
+    parser.add_argument('--coarse-preamble-mode', choices=['zadoff', 'formant'], default='zadoff')
+    parser.add_argument('--coarse-formant-profile', type=str, default='A')
+    parser.add_argument('--coarse-formant-fundamental-hz', type=float, default=25_000.0)
+    parser.add_argument('--coarse-formant-harmonic-count', type=int, default=12)
+    parser.add_argument('--coarse-formant-include-fundamental', action='store_true')
+    parser.add_argument('--coarse-formant-scale', type=float, default=1_000.0)
+    parser.add_argument('--coarse-formant-phase-jitter', type=float, default=0.0)
+    parser.add_argument('--disable-formant-missing-fundamental', action='store_true')
     parser.add_argument('--beat-duration-us', type=float, default=20.0)
     parser.add_argument('--baseband-rate-factor', type=float, default=20.0)
     parser.add_argument('--min-baseband-rate-hz', type=float, default=200_000.0)
@@ -101,11 +120,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--pathfinder-relative-threshold-db', type=float, default=-12.0)
     parser.add_argument('--pathfinder-noise-guard-multiplier', type=float, default=6.0)
     parser.add_argument('--pathfinder-guard-interval-ns', type=float, default=30.0)
+    parser.add_argument('--pathfinder-pre-guard-ns', type=float, default=0.0)
     parser.add_argument('--pathfinder-aperture-duration-ns', type=float, default=100.0)
     parser.add_argument('--pathfinder-first-path-blend', type=float, default=0.05)
     parser.add_argument('--pathfinder-alpha', type=float, default=0.3)
     parser.add_argument('--pathfinder-beta', type=float, default=0.5)
+    parser.add_argument('--pathfinder-disable-simple-search', action='store_true', help='Skip the forward threshold scan so the aperture window is always used.')
     parser.add_argument('--use-phase-slope-fit', action='store_true')
+    parser.add_argument('--debug', action='store_true', help='Enable debug plotting.')
     parser.add_argument('--output-dir', type=Path, default=Path('results/profile_sweep'))
     parser.add_argument('--tag', type=str, default=None, help='Optional tag appended to manifest filenames.')
     return parser.parse_args()

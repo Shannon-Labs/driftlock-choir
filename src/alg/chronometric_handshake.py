@@ -23,6 +23,7 @@ from numpy.typing import NDArray
 from scipy import signal
 
 from phy.noise import NoiseGenerator, NoiseParams
+from phy.formants import FormantSynthesisConfig
 from phy.preamble import Preamble, build_preamble, estimate_delay
 from phy.pathfinder import PathfinderConfig, PathfinderResult, find_first_arrival
 from mac.scheduler import MacSlots
@@ -151,6 +152,14 @@ class ChronometricHandshakeConfig:
     coarse_bandwidth_hz: float = 20e6
     coarse_duration_s: float = 5e-6
     coarse_variance_floor_ps: float = 50.0
+    coarse_preamble_mode: str = 'zadoff'
+    coarse_formant_profile: Optional[str] = None
+    coarse_formant_fundamental_hz: float = 25_000.0
+    coarse_formant_harmonic_count: int = 12
+    coarse_formant_include_fundamental: bool = False
+    coarse_formant_scale: float = 1_000.0
+    coarse_formant_phase_jitter: float = 0.0
+    coarse_formant_missing_fundamental: bool = True
     channel_profile: Optional[str] = None  # TDL profile (e.g. "INDOOR_OFFICE")
     impairments: Optional[ImpairmentConfig] = None # Physical hardware impairments
     delta_t_schedule_us: Tuple[float, ...] = (0.0,)
@@ -166,6 +175,7 @@ class ChronometricHandshakeConfig:
     pathfinder_noise_guard_multiplier: float = 6.0
     pathfinder_smoothing_kernel: int = 5
     pathfinder_guard_interval_s: float = 30e-9
+    pathfinder_pre_guard_ns: float = 0.0
     pathfinder_aperture_duration_ns: float = 100.0
     pathfinder_use_simple_search: bool = True
     pathfinder_first_path_blend: float = 0.05
@@ -247,6 +257,7 @@ class ChronometricHandshakeSimulator:
                 noise_guard_multiplier=float(config.pathfinder_noise_guard_multiplier),
                 smoothing_kernel=kernel,
                 guard_interval_s=float(config.pathfinder_guard_interval_s),
+                pre_guard_interval_s=float(config.pathfinder_pre_guard_ns) * 1e-9,
                 aperture_duration_ns=float(config.pathfinder_aperture_duration_ns),
                 use_simple_search=bool(config.pathfinder_use_simple_search),
             )
@@ -917,7 +928,11 @@ class ChronometricHandshakeSimulator:
             transmitted_hi = signal.resample(transmitted, hi_length)
             noisy_hi = signal.resample(noisy, hi_length)
             matched_hi = np.conj(transmitted_hi[::-1])
-            preamble_hi = Preamble(samples=transmitted_hi.astype(np.complex128), matched_filter=matched_hi.astype(np.complex128))
+            preamble_hi = Preamble(
+                samples=transmitted_hi.astype(np.complex128),
+                matched_filter=matched_hi.astype(np.complex128),
+                metadata=preamble.metadata,
+            )
             corr_signal = noisy_hi
             corr_preamble = preamble_hi
             effective_rate = sample_rate * upsample
@@ -963,14 +978,55 @@ class ChronometricHandshakeSimulator:
 
 
     def _get_coarse_preamble(self, n_samples: int, sample_rate: float) -> Preamble:
-        cache_key = (n_samples, round(float(sample_rate), 6))
+        mode = (self.cfg.coarse_preamble_mode or 'zadoff').lower()
+        if mode == 'formant':
+            descriptor_key = (
+                'formant',
+                (self.cfg.coarse_formant_profile or 'A').upper(),
+                round(float(self.cfg.coarse_formant_fundamental_hz), 3),
+                int(max(self.cfg.coarse_formant_harmonic_count, 1)),
+                bool(self.cfg.coarse_formant_include_fundamental),
+                round(float(self.cfg.coarse_formant_scale), 3),
+                round(float(self.cfg.coarse_formant_phase_jitter), 3),
+                bool(self.cfg.coarse_formant_missing_fundamental),
+            )
+        else:
+            descriptor_key = ('zadoff', 1)
+
+        cache_key = (n_samples, round(float(sample_rate), 6), descriptor_key)
         preamble = self._coarse_waveform_cache.get(cache_key)
         if preamble is None:
-            preamble, _ = build_preamble(
-                length=n_samples,
-                sample_rate=sample_rate,
-                bandwidth_hz=self.cfg.coarse_bandwidth_hz,
-            )
+            if mode == 'formant':
+                profile = (self.cfg.coarse_formant_profile or 'A').upper()
+                formant_cfg = FormantSynthesisConfig(
+                    profile=profile,
+                    fundamental_hz=float(self.cfg.coarse_formant_fundamental_hz),
+                    harmonic_count=int(max(self.cfg.coarse_formant_harmonic_count, 1)),
+                    include_fundamental=bool(self.cfg.coarse_formant_include_fundamental),
+                    formant_scale=float(self.cfg.coarse_formant_scale),
+                    phase_jitter=float(self.cfg.coarse_formant_phase_jitter),
+                )
+                preamble, _ = build_preamble(
+                    length=n_samples,
+                    sample_rate=sample_rate,
+                    bandwidth_hz=self.cfg.coarse_bandwidth_hz,
+                    mode='formant',
+                    formant_config=formant_cfg,
+                )
+                if not self.cfg.coarse_formant_missing_fundamental:
+                    metadata = dict(preamble.metadata or {})
+                    metadata['formant_analyze'] = False
+                    preamble = Preamble(
+                        samples=preamble.samples,
+                        matched_filter=preamble.matched_filter,
+                        metadata=metadata,
+                    )
+            else:
+                preamble, _ = build_preamble(
+                    length=n_samples,
+                    sample_rate=sample_rate,
+                    bandwidth_hz=self.cfg.coarse_bandwidth_hz,
+                )
             self._coarse_waveform_cache[cache_key] = preamble
         return preamble
 
