@@ -166,7 +166,9 @@ class ChronometricHandshakeConfig:
     pathfinder_noise_guard_multiplier: float = 6.0
     pathfinder_smoothing_kernel: int = 5
     pathfinder_guard_interval_s: float = 30e-9
+    pathfinder_aperture_duration_ns: float = 100.0
     pathfinder_use_simple_search: bool = True
+    pathfinder_first_path_blend: float = 0.05
 
 
 @dataclass
@@ -245,6 +247,7 @@ class ChronometricHandshakeSimulator:
                 noise_guard_multiplier=float(config.pathfinder_noise_guard_multiplier),
                 smoothing_kernel=kernel,
                 guard_interval_s=float(config.pathfinder_guard_interval_s),
+                aperture_duration_ns=float(config.pathfinder_aperture_duration_ns),
                 use_simple_search=bool(config.pathfinder_use_simple_search),
             )
         else:
@@ -925,9 +928,16 @@ class ChronometricHandshakeSimulator:
         use_pathfinder = self._pathfinder_cfg is not None and channel is not None
         if use_pathfinder:
             pf_result = find_first_arrival(corr_signal, corr_preamble, effective_rate, self._pathfinder_cfg)
-            # Use the strongest peak for the coarse hint; first-path is still
-            # captured in ``pf_result`` for channel-conditioning decisions.
-            tau_est = pf_result.peak_path_s if pf_result is not None else None
+            tau_est = None
+            if pf_result is not None:
+                peak_s = float(pf_result.peak_path_s)
+                first_s = float(pf_result.first_path_s)
+                delta = float(peak_s - first_s)
+                blend_eff = self._effective_first_path_blend(delta)
+                if blend_eff > 0.0 and np.isfinite(delta):
+                    tau_est = peak_s - blend_eff * delta
+                else:
+                    tau_est = peak_s
         else:
             tau_est = estimate_delay(corr_signal, corr_preamble, effective_rate)
             pf_result = None
@@ -963,6 +973,31 @@ class ChronometricHandshakeSimulator:
             )
             self._coarse_waveform_cache[cache_key] = preamble
         return preamble
+
+    def _effective_first_path_blend(self, delta_s: float) -> float:
+        base = float(np.clip(self.cfg.pathfinder_first_path_blend, 0.0, 1.0))
+        if base <= 0.0 or not np.isfinite(delta_s) or delta_s <= 0.0:
+            return 0.0
+
+        guard_s = self._pathfinder_cfg.guard_interval_s if (self._pathfinder_cfg and self._pathfinder_cfg.guard_interval_s > 0.0) else None
+        window_scale = 1.0
+        if guard_s:
+            ratio = float(delta_s / guard_s)
+            if ratio <= 1.0:
+                window_scale = max(ratio, 0.0)
+            else:
+                window_scale = 1.0 / (1.0 + max(ratio - 1.0, 0.0))
+
+        profile = (self._channel_profile or '').upper()
+        if profile.startswith('INDOOR'):
+            profile_scale = 1.0
+        elif profile.startswith('URBAN'):
+            profile_scale = 0.35
+        else:
+            profile_scale = 0.6
+
+        effective = base * window_scale * profile_scale
+        return float(np.clip(effective, 0.0, 1.0))
 
     def _refine_coarse_tau(
         self,

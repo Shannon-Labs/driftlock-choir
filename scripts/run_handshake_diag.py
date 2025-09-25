@@ -132,6 +132,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         pathfinder_relative_threshold_db=args.pathfinder_relative_threshold_db,
         pathfinder_noise_guard_multiplier=args.pathfinder_noise_guard_multiplier,
         pathfinder_guard_interval_s=args.pathfinder_guard_interval_ns * 1e-9,
+        pathfinder_aperture_duration_ns=args.pathfinder_aperture_duration_ns,
+        pathfinder_first_path_blend=args.pathfinder_first_path_blend,
         pathfinder_use_simple_search=not args.pathfinder_disable_simple_search,
         use_phase_slope_fit=args.use_phase_slope_fit,
     )
@@ -228,6 +230,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
+        'pathfinder_aperture_duration_ns': args.pathfinder_aperture_duration_ns,
+        'pathfinder_first_path_blend': args.pathfinder_first_path_blend,
         'pathfinder_use_simple_search': not args.pathfinder_disable_simple_search,
         'use_phase_slope_fit': args.use_phase_slope_fit,
         'debug_logging': args.debug,
@@ -255,6 +259,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
+        'pathfinder_aperture_duration_ns': args.pathfinder_aperture_duration_ns,
+        'pathfinder_first_path_blend': args.pathfinder_first_path_blend,
         'pathfinder_use_simple_search': not args.pathfinder_disable_simple_search,
         'pathfinder_alpha': args.pathfinder_alpha,
         'pathfinder_beta': args.pathfinder_beta,
@@ -390,6 +396,8 @@ def main() -> None:
     parser.add_argument('--pathfinder-relative-threshold-db', type=float, default=-12.0)
     parser.add_argument('--pathfinder-noise-guard-multiplier', type=float, default=6.0)
     parser.add_argument('--pathfinder-guard-interval-ns', type=float, default=30.0)
+    parser.add_argument('--pathfinder-aperture-duration-ns', type=float, default=100.0)
+    parser.add_argument('--pathfinder-first-path-blend', type=float, default=0.05, help='Blend factor between the pathfinder peak (0.0) and first-path (1.0) timestamps when seeding the coarse hint. Actual blend is scaled by profile heuristics.')
     parser.add_argument('--pathfinder-disable-simple-search', action='store_true', help='Skip the forward threshold scan so the aperture window is always used.')
     parser.add_argument('--pathfinder-alpha', type=float, default=0.3)
     parser.add_argument('--pathfinder-beta', type=float, default=0.5)

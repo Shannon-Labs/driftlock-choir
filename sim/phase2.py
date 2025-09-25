@@ -73,6 +73,8 @@ class Phase2Config:
     pathfinder_noise_guard_multiplier: float = 6.0
     pathfinder_smoothing_kernel: int = 5
     pathfinder_guard_interval_ns: float = 50.0
+    pathfinder_aperture_duration_ns: float = 100.0
+    pathfinder_first_path_blend: float = 0.0
     pathfinder_alpha: float = 0.3
     pathfinder_beta: float = 0.5
 
@@ -133,6 +135,8 @@ class Phase2Config:
             pathfinder_noise_guard_multiplier=self.pathfinder_noise_guard_multiplier,
             pathfinder_smoothing_kernel=self.pathfinder_smoothing_kernel,
             pathfinder_guard_interval_s=self.pathfinder_guard_interval_ns * 1e-9,
+            pathfinder_aperture_duration_ns=self.pathfinder_aperture_duration_ns,
+            pathfinder_first_path_blend=self.pathfinder_first_path_blend,
             pathfinder_alpha=self.pathfinder_alpha,
             pathfinder_beta=self.pathfinder_beta,
         )

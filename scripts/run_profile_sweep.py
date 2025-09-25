@@ -41,6 +41,8 @@ def _build_args(namespace: argparse.Namespace, profile: str, output_json: Path) 
         pathfinder_relative_threshold_db=namespace.pathfinder_relative_threshold_db,
         pathfinder_noise_guard_multiplier=namespace.pathfinder_noise_guard_multiplier,
         pathfinder_guard_interval_ns=namespace.pathfinder_guard_interval_ns,
+        pathfinder_aperture_duration_ns=namespace.pathfinder_aperture_duration_ns,
+        pathfinder_first_path_blend=namespace.pathfinder_first_path_blend,
         pathfinder_alpha=namespace.pathfinder_alpha,
         pathfinder_beta=namespace.pathfinder_beta,
         use_phase_slope_fit=namespace.use_phase_slope_fit,
@@ -99,6 +101,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--pathfinder-relative-threshold-db', type=float, default=-12.0)
     parser.add_argument('--pathfinder-noise-guard-multiplier', type=float, default=6.0)
     parser.add_argument('--pathfinder-guard-interval-ns', type=float, default=30.0)
+    parser.add_argument('--pathfinder-aperture-duration-ns', type=float, default=100.0)
+    parser.add_argument('--pathfinder-first-path-blend', type=float, default=0.05)
     parser.add_argument('--pathfinder-alpha', type=float, default=0.3)
     parser.add_argument('--pathfinder-beta', type=float, default=0.5)
     parser.add_argument('--use-phase-slope-fit', action='store_true')

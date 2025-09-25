@@ -94,6 +94,7 @@ def find_first_arrival(
     # --- Step 1: Try a simple forward search first ---
     start_search_idx = int(np.searchsorted(lags, 0))
     first_idx = -1
+    required_window_samples = 0
     if config.use_simple_search:
         for idx in range(start_search_idx, len(magnitude)):
             if magnitude[idx] > detection_threshold:
@@ -107,22 +108,43 @@ def find_first_arrival(
         # If the candidate lies outside the configured guard window, punt to the aperture search.
         if first_idx != -1 and guard_samples is not None:
             if peak_idx - first_idx > guard_samples:
+                required_window_samples = max(required_window_samples, peak_idx - first_idx)
                 first_idx = -1
 
     # --- Step 2: If no simple path found, use the robust aperture search ---
     used_aperture = False
     if first_idx == -1:
         used_aperture = True
-        window_samples = int(config.aperture_duration_ns * 1e-9 * sample_rate)
+        base_window = int(config.aperture_duration_ns * 1e-9 * sample_rate)
+        window_samples = max(base_window, required_window_samples)
         start_window_idx = max(0, peak_idx - window_samples)
 
-        # Search backwards from peak for the leading edge
-        for idx in range(peak_idx, start_window_idx - 1, -1):
+        # Search backwards from peak for local maxima above threshold.
+        candidate_idx = -1
+        for idx in range(peak_idx - 1, start_window_idx - 1, -1):
             if magnitude[idx] < detection_threshold:
-                first_idx = idx + 1
+                continue
+            prev_val = magnitude[idx - 1] if idx > 0 else magnitude[idx]
+            next_val = magnitude[idx + 1] if idx < len(magnitude) - 1 else magnitude[idx]
+            if magnitude[idx] >= prev_val and magnitude[idx] >= next_val:
+                candidate_idx = idx
                 break
-        else: # If loop finishes without finding an edge
-            first_idx = start_window_idx
+
+        if candidate_idx != -1:
+            first_idx = candidate_idx
+        else:
+            # Fall back to threshold crossing with progressive expansion.
+            for idx in range(peak_idx, start_window_idx - 1, -1):
+                if magnitude[idx] < detection_threshold:
+                    first_idx = idx + 1
+                    break
+            else:
+                for idx in range(start_window_idx - 1, -1, -1):
+                    if magnitude[idx] < detection_threshold:
+                        first_idx = idx + 1
+                        break
+                else:
+                    first_idx = 0
 
     # --- Refine and Return ---
     refined_lag = _refine_peak_location(lags, magnitude, first_idx)
