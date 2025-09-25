@@ -132,6 +132,7 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         pathfinder_relative_threshold_db=args.pathfinder_relative_threshold_db,
         pathfinder_noise_guard_multiplier=args.pathfinder_noise_guard_multiplier,
         pathfinder_guard_interval_s=args.pathfinder_guard_interval_ns * 1e-9,
+        pathfinder_use_simple_search=not args.pathfinder_disable_simple_search,
         use_phase_slope_fit=args.use_phase_slope_fit,
     )
 
@@ -149,6 +150,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'coarse_locked': [],
             'guard_hit': [],
             'tau_var_s2': [],
+            'pathfinder_used_aperture': [],
+            'pathfinder_first_to_peak_ns': [],
         },
         'reverse': {
             'tau_bias_ps': [],
@@ -160,6 +163,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'coarse_locked': [],
             'guard_hit': [],
             'tau_var_s2': [],
+            'pathfinder_used_aperture': [],
+            'pathfinder_first_to_peak_ns': [],
         },
     }
 
@@ -193,9 +198,13 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
                 pathfinder = measurement.pathfinder
                 record['first_path_error_ps'].append((pathfinder.first_path_s - measurement.tau_true_s) * 1e12)
                 record['peak_path_error_ps'].append((pathfinder.peak_path_s - measurement.tau_true_s) * 1e12)
+                record['pathfinder_used_aperture'].append(bool(pathfinder.used_aperture_fallback))
+                record['pathfinder_first_to_peak_ns'].append((pathfinder.peak_path_s - pathfinder.first_path_s) * 1e9)
             else:
                 record['first_path_error_ps'].append(None)
                 record['peak_path_error_ps'].append(None)
+                record['pathfinder_used_aperture'].append(None)
+                record['pathfinder_first_to_peak_ns'].append(None)
             record['alias_resolved'].append(bool(measurement.alias_resolved))
             record['coarse_locked'].append(
                 None if measurement.coarse_locked is None else bool(measurement.coarse_locked)
@@ -219,6 +228,7 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
+        'pathfinder_use_simple_search': not args.pathfinder_disable_simple_search,
         'use_phase_slope_fit': args.use_phase_slope_fit,
         'debug_logging': args.debug,
     }
@@ -245,6 +255,7 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         'pathfinder_relative_threshold_db': args.pathfinder_relative_threshold_db,
         'pathfinder_noise_guard_multiplier': args.pathfinder_noise_guard_multiplier,
         'pathfinder_guard_interval_ns': args.pathfinder_guard_interval_ns,
+        'pathfinder_use_simple_search': not args.pathfinder_disable_simple_search,
         'pathfinder_alpha': args.pathfinder_alpha,
         'pathfinder_beta': args.pathfinder_beta,
         'use_phase_slope_fit': args.use_phase_slope_fit,
@@ -273,6 +284,7 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         crlb_ns = None
         if record['tau_var_s2']:
             crlb_ns = float(np.sqrt(np.mean(record['tau_var_s2'])) * 1e9)
+        fallback_values = [bool(val) for val in record['pathfinder_used_aperture'] if val is not None]
         summary['directional_metrics'][name] = {
             'tau_bias_ns': _stats_to_ns(_summary_stats(record['tau_bias_ps'])),
             'deltaf_bias_hz': _summary_stats(record['deltaf_bias_hz']),
@@ -286,6 +298,8 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'deltaf_rmse_hz': deltaf_rmse,
             'crlb_tau_ns': crlb_ns,
             'rmse_over_crlb': (tau_rmse / 1000.0) / crlb_ns if (tau_rmse is not None and crlb_ns and crlb_ns > 0) else None,
+            'pathfinder_aperture_rate': _fraction(fallback_values) if fallback_values else None,
+            'pathfinder_first_to_peak_ns': _summary_stats(record['pathfinder_first_to_peak_ns']),
         }
 
     all_locked = [bool(val) for values in directional_records.values() for val in values['coarse_locked'] if val is not None]
@@ -376,6 +390,7 @@ def main() -> None:
     parser.add_argument('--pathfinder-relative-threshold-db', type=float, default=-12.0)
     parser.add_argument('--pathfinder-noise-guard-multiplier', type=float, default=6.0)
     parser.add_argument('--pathfinder-guard-interval-ns', type=float, default=30.0)
+    parser.add_argument('--pathfinder-disable-simple-search', action='store_true', help='Skip the forward threshold scan so the aperture window is always used.')
     parser.add_argument('--pathfinder-alpha', type=float, default=0.3)
     parser.add_argument('--pathfinder-beta', type=float, default=0.5)
     parser.add_argument('--use-phase-slope-fit', action='store_true', help='Enable multi-carrier phase-slope fusion.')

@@ -55,10 +55,12 @@ PYTHONPATH=. python examples/demo_two_node_timing.py
 | 2025-09-24 | 8b2c85d | IDEAL | -0.13 | 0.13 | 0.0 | 0.12 | 1.05 | ✔ | ✖ | PASS |
 | 2025-09-24 | 8b2c85d | URBAN_CANYON | 0.45 | 1.19 | 0.0 | 0.12 | 9.88 | ✔ | ✖ | FAIL_CRLB_HIGH |
 | 2025-09-24 | 8b2c85d | INDOOR_OFFICE | 1.76 | 2.58 | 0.0 | 0.12 | 21.5 | ✔ | ✖ | FAIL_BIAS_CAP;FAIL_CRLB_HIGH |
+| 2025-09-25 | HEAD | URBAN_CANYON (guard 100 ns) | 1.02 | 4.47 | 92.96 | 0.00096 | 4.64e3 | ✔ | ✖ | FAIL_CRLB_HIGH;FAIL_BIAS_CAP |
+| 2025-09-25 | HEAD | INDOOR_OFFICE (guard 100 ns) | 2.02 | 5.44 | 59.54 | 0.00122 | 4.47e3 | ✔ | ✖ | FAIL_CRLB_HIGH;FAIL_BIAS_CAP |
 
 Δf bias collapsed from the stubborn ±85 Hz to **single-digit Hz** after trimming IIR transients (IDEAL now averages **6.7 Hz**), so the consensus filter finally sees coherent frequency updates. IDEAL’s residual mean bias is -0.13 ns, now inside the 0.2 ns target.
 
-Multipath still dominates the non-ideal profiles. `URBAN_CANYON` toggles between the direct path and a late cluster depending on SNR, while `INDOOR_OFFICE` continues to latch onto a 20–25 ns echo that survives the current guard window. The new guardrail logging highlights exactly which seeds exceed the bias caps, which makes it easier to target the remaining pruning work.
+Multipath still dominates the non-ideal profiles. `URBAN_CANYON` toggles between the direct path and a late cluster depending on SNR, while `INDOOR_OFFICE` continues to latch onto a 20–25 ns echo that survives the current guard window. With the new guard-limited Pathfinder blend (falling back to the aperture search when the first hit is >100 ns ahead of the peak) the first-path error collapsed from ~-230 ns to ~-50 ns, giving us a cleaner starting point for the remaining bias work. The guardrail logging highlights exactly which seeds exceed the bias caps, which makes it easier to target the remaining pruning work.
 
 ### Multipath Performance
 - **INDOOR_OFFICE**: +1.76 ns mean bias. This result reflects current simulation performance in challenging indoor multipath environments and is flagged by our performance guardrails, indicating ongoing refinement is needed.

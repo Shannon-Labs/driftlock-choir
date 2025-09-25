@@ -166,6 +166,7 @@ class ChronometricHandshakeConfig:
     pathfinder_noise_guard_multiplier: float = 6.0
     pathfinder_smoothing_kernel: int = 5
     pathfinder_guard_interval_s: float = 30e-9
+    pathfinder_use_simple_search: bool = True
 
 
 @dataclass
@@ -244,6 +245,7 @@ class ChronometricHandshakeSimulator:
                 noise_guard_multiplier=float(config.pathfinder_noise_guard_multiplier),
                 smoothing_kernel=kernel,
                 guard_interval_s=float(config.pathfinder_guard_interval_s),
+                use_simple_search=bool(config.pathfinder_use_simple_search),
             )
         else:
             self._pathfinder_cfg = None
