@@ -10,12 +10,14 @@ from numpy.typing import NDArray
 
 
 VOWEL_FORMANT_TABLE: Mapping[str, Tuple[float, float, float]] = {
-    # Nominal first/second/third formants for sustained vowels (Hz).
-    "A": (730.0, 1090.0, 2440.0),   # /ɑ/
-    "E": (530.0, 1840.0, 2480.0),   # /e/
-    "I": (270.0, 2290.0, 3010.0),   # /i/
-    "O": (570.0, 840.0, 2410.0),    # /o/
-    "U": (300.0, 870.0, 2240.0),    # /u/
+    # Pure Italian vowel formants for sustained vowels (Hz).
+    # Based on classical vocal pedagogy and Ingo Titze's work at University of Iowa
+    # Optimized for acoustic distinctiveness in RF beacon applications
+    "A": (700.0, 1220.0, 2600.0),   # /a/ - open central, pure
+    "E": (450.0, 2100.0, 2900.0),   # /e/ - mid-front, distinct from /i/
+    "I": (300.0, 2700.0, 3400.0),   # /i/ - close front, maximum forward/shrill
+    "O": (500.0, 900.0, 2400.0),    # /o/ - close-mid back, pure rounded
+    "U": (350.0, 750.0, 2200.0),    # /u/ - close back, maximum dark/rounded
 }
 
 DEFAULT_FUNDAMENTAL_HZ = 25_000.0
@@ -178,6 +180,7 @@ def analyze_missing_fundamental(
         return None
     if top_peaks <= 0:
         top_peaks = 1
+    top_peaks = min(top_peaks, magnitudes.size)
     top_indices = np.argpartition(magnitudes, -top_peaks)[-top_peaks:]
     top_indices = top_indices[np.argsort(magnitudes[top_indices])[::-1]]
     top_freqs = freqs[top_indices]

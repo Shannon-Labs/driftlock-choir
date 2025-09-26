@@ -15,12 +15,17 @@ Our current priority is a hardening pass to improve performance in realistic mul
 - Hardened the pathfinder so the pre-guard offset applies to both the simple scan and aperture fallback—no more searching before the requested lead-in.
 - Added first-path/peak diagnostics to highlight how the aperture window responds when the guard interval expands beyond the immediate peak.
 - Use `--pathfinder-pre-guard-ns <value>` alongside `--pathfinder-guard-interval-ns` to sweep headroom; bias snapshots live under `/tmp/diag_pre*` by default.
+- **Aperture × Formant sweeps (2025-09-25):** Coupled pre-guard/aperture tuning with vowel-coded coarse preambles moved IDEAL bias from −6.8 ns toward −3.7 ns as the guard widened to 40–60 ns, and in URBAN_CANYON lifted coarse lock rates from 0.52→0.78 albeit with ~25 ns residual bias. Full artifacts live under `results/project_aperture_formant/*/20250925T183143Z_aperture_formant/`.
+- `URBAN_CANYON`-focused guard sweeps (2025-09-25 19:04 UTC) confirmed the trade-off: nudging pre-guard/guard to {15→35 ns} only nudged lock from 0.52→0.58 while bias stayed ~20 ns, and 30→50 ns pushed lock 0.73/0.78 but bias inflated to 28 ns. See `results/project_aperture_formant/URBAN_CANYON/20250925T190419Z_aperture_formant/` for full diagnostics.
+- `run_handshake_diag.py` now exposes `first_path_within_{5,10}ns_rate` and `first_path_negative_rate`; fresh URBAN_CANYON guard experiments show the baseline (0/30/100 ns) hits ≤10 ns only ~28% of the time while ~25–33% of trials register negative first-path picks. Details live in `docs/results_aperture_formant_urban_canyon.md` and the timestamped folders under `results/project_aperture_formant/URBAN_CANYON/`.
 
 ### Project Formant Tuning (Missing-Fundamental Pathfinder)
 - Introduced a vowel-inspired coarse preamble mode (`--coarse-preamble-mode formant`) that sculpts the spectrum around canonical A/E/I/O/U formants.
 - The aperture window performs a "missing fundamental" analysis, decoding the vowel token and reconstructing the implied fundamental even when it is absent from the waveform.
 - Run exploratory sweeps with commands like `python scripts/run_handshake_diag.py --channel-profile IDEAL --coarse-preamble-mode formant --coarse-formant-profile A --pathfinder-pre-guard-ns 400 --num-trials 16` to log both τ bias and the recovered vowel label.
 - Recommended follow-up (Project Swing prompt): pivot from chasing 20 ps to evaluating whether vowel-coded signaling buys alias resilience or richer tagging in multipath. Capture results under `results/project_swing/<profile>/<vowel>` when running broader sweeps.
+- First Aperture/Formant joint runs showed vowel labels sticking (≥99% per direction) even through URBAN_CANYON multipath, with missing-fundamental estimates holding within 0.2% of the requested fundamentals; including the literal fundamental (`O` profile) tightened guard but cut coarse lock to ~0.44, so default “missing” mode remains preferable.
+- **Spectrum beacon concept:** `scripts/run_spectrum_beacon_sim.py` models vowel-coded "spectrum occupancy" beacons using the missing-fundamental decoder. Tolerance-gated runs (e.g., `results/project_aperture_formant/URBAN_CANYON/20250925T212300Z_spectrum_beacon_tol.json`) deliver ≈67% detection with zero false positives at 15–35 dB SNR, and score cutoffs (3.2–3.8×10¹²) provide clean recall knobs. Design notes live in `docs/spectrum_beacon_concept.md`.
 
 ## The Core Insight
 
@@ -117,6 +122,8 @@ Our core focus is on enhancing the robustness and real-world performance of the 
 -   **Algorithm Tuning & Hardening:** We are continuously refining the consensus algorithm (`src/alg/consensus.py`) to improve convergence speed and stability, particularly in response to the complex scenarios introduced by new channel models.
 
 -   **Performance Optimization:** Ongoing profiling and optimization work is focused on ensuring the simulation framework remains fast and efficient, enabling large-scale Monte Carlo runs to produce statistically significant results.
+
+-   **Project Aperture × Formant - Spectrum Beacon Consensus (2025-09-26):** Enhanced multi-receiver voting system with weighted consensus and consistency checks. New tools provide clutter correlation analysis, systematic profile sweeps, and detailed performance breakdowns. Key achievements: 77.1% detection rate with 99.5% consistency scores, zero false positives, and comprehensive vowel-specific analysis revealing systematic issues with vowel "I" detection.
 
 -   **Multipath-Resilient Synchronization with "Pathfinder" Algorithm:** The refreshed TDL sweep shows `IDEAL` at **-0.13 ns**, `URBAN_CANYON` at **0.09 ns**, and `INDOOR_OFFICE` at **0.94 ns** of bias after applying the guard sweep and blend heuristics. Residual errors still align with direct-path selection (late clusters leak through the guard), so the next sprint focuses on tighter window pruning plus fractional coarse alignment to converge the scripted `INDOOR_OFFICE` run toward the 0.13 ns lab benchmark.
 

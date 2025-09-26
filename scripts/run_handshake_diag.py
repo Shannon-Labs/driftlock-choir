@@ -339,6 +339,10 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
         deltaf_rmse = _rmse(record['deltaf_bias_hz'])
         locked_rate = _fraction(locked_values) if locked_values else None
         guard_rate = _fraction(guard_values) if guard_values else None
+        first_path_values = [val for val in record['first_path_error_ps'] if val is not None]
+        first_path_within_5 = [abs(val) < 5_000.0 for val in first_path_values]
+        first_path_within_10 = [abs(val) < 10_000.0 for val in first_path_values]
+        first_path_negative = [val < 0.0 for val in first_path_values]
         crlb_ns = None
         if record['tau_var_s2']:
             crlb_ns = float(np.sqrt(np.mean(record['tau_var_s2'])) * 1e9)
@@ -362,6 +366,9 @@ def run_diagnostic(args: argparse.Namespace) -> Dict[str, Any]:
             'pathfinder_dominant_hz': _summary_stats(record['pathfinder_dominant_hz']),
             'pathfinder_formant_score': _summary_stats(record['pathfinder_formant_score']),
             'pathfinder_formant_labels': _categorical_distribution(record['pathfinder_formant_label']) or None,
+            'first_path_within_5ns_rate': _fraction(first_path_within_5) if first_path_within_5 else None,
+            'first_path_within_10ns_rate': _fraction(first_path_within_10) if first_path_within_10 else None,
+            'first_path_negative_rate': _fraction(first_path_negative) if first_path_negative else None,
         }
 
     all_locked = [bool(val) for values in directional_records.values() for val in values['coarse_locked'] if val is not None]
