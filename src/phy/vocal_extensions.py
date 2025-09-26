@@ -91,7 +91,7 @@ def create_diphthong_descriptor(
         for start, end in zip(start_formants, end_formants)
     )
     
-    # Generate harmonic series based on averaged formants
+    # Generate harmonic series based on averaged formants - FIX: Add more harmonics
     partials: Dict[float, float] = {}
     
     for harmonic_idx in range(1, harmonic_count + 1):
@@ -101,17 +101,20 @@ def create_diphthong_descriptor(
         amplitude = 0.0
         for formant_freq in avg_formants:
             if formant_freq > 0:
-                # Gaussian envelope around each formant
+                # Gaussian envelope around each formant - WIDER bandwidth for more harmonics
                 freq_diff = abs(harmonic_freq - formant_freq)
-                formant_bw = formant_freq * 0.1  # 10% bandwidth
+                formant_bw = formant_freq * 0.2  # Increased from 0.1 to 0.2
                 amplitude += np.exp(-(freq_diff / formant_bw) ** 2)
         
-        if amplitude > 0.01:  # Threshold for inclusion
+        # LOWERED threshold to include more harmonics
+        if amplitude > 0.005:  # Was 0.01, now 0.005
             partials[harmonic_freq] = float(amplitude)
     
-    if not partials:
-        # Fallback: include fundamental
-        partials[fundamental_hz] = 1.0
+    # ENSURE we always have multiple harmonics
+    if len(partials) < 3:
+        # Add fundamental and a few harmonics if too sparse
+        for i in range(1, 4):
+            partials[fundamental_hz * i] = 1.0 / i
     
     # Sort by frequency and normalize
     harmonic_freqs, amplitudes = zip(*sorted(partials.items()))
