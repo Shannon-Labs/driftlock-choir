@@ -1,12 +1,12 @@
 """Hardware imperfection models."""
 
-from .trx import TransceiverNode, TransceiverConfig
+from .trx import TrxParams, Transceiver
 from .lo import LocalOscillator, LOConfig
 from .adc import ADCModel, ADCParams
 from .iq import IQImbalance, IQImbalanceParams
 
 __all__ = [
-    'TransceiverNode', 'TransceiverConfig',
+    'TrxParams', 'Transceiver',
     'LocalOscillator', 'LOConfig',
     'ADCModel', 'ADCParams',
     'IQImbalance', 'IQImbalanceParams'

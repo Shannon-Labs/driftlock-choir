@@ -124,12 +124,14 @@ TDL_PROFILES = {
         "powers_db": [0.0, -2.5, -8.0, -13.2, -18.0, -24.0],
     },
     "RURAL_LINE_OF_SIGHT": {
-        "delays_ns": [0.0, 50.0, 150.0],
-        "powers_db": [0.0, -15.0, -20.0],
+        "delays_ns": [0.0, 100.0, 200.0],
+        "powers_db": [0.0, -10.0, -20.0],
+        "doppler_hz": [0.0, 10.0, 20.0],
     },
     "DENSE_INDOOR_FACTORY": {
-        "delays_ns": [0.0, 10.0, 30.0, 60.0, 100.0],
-        "powers_db": [0.0, -3.0, -5.0, -8.0, -12.0],
+        "delays_ns": [0.0, 50.0, 100.0, 150.0, 200.0],
+        "powers_db": [0.0, -3.0, -6.0, -9.0, -12.0],
+        "doppler_hz": [0.0, 5.0, 10.0, 15.0, 20.0],
     },
 }
 
@@ -151,6 +153,7 @@ def tdl_from_profile(profile_name: str, rng: np.random.Generator) -> TappedDelay
 
     delays_s = np.array(profile["delays_ns"], dtype=float) * 1e-9
     powers_db = np.array(profile["powers_db"], dtype=float)
+    doppler_hz = profile.get("doppler_hz", 0.0)
 
     # Convert powers from dB to linear scale
     linear_powers = 10 ** (powers_db / 10.0)
@@ -166,4 +169,4 @@ def tdl_from_profile(profile_name: str, rng: np.random.Generator) -> TappedDelay
     if total_power > 0:
         gains_c /= np.sqrt(total_power)
 
-    return TappedDelayLine(delays_s=delays_s, gains_c=gains_c)
+    return TappedDelayLine(delays_s=delays_s, gains_c=gains_c, doppler_hz=doppler_hz)

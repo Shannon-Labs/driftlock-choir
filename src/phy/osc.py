@@ -7,7 +7,7 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from phy.noise import PowerLawPhaseNoiseGenerator
+from .noise import PowerLawPhaseNoiseGenerator
 
 
 @dataclass

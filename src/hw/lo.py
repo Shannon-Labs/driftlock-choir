@@ -7,7 +7,7 @@ from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
-from phy.osc import AllanDeviationGenerator, OscillatorParams
+from ..phy.osc import AllanDeviationGenerator, OscillatorParams
 
 
 @dataclass

@@ -15,7 +15,7 @@ VOWEL_FORMANT_TABLE: Mapping[str, Tuple[float, float, float]] = {
     # Optimized for acoustic distinctiveness in RF beacon applications
     "A": (700.0, 1220.0, 2600.0),   # /a/ - open central, pure
     "E": (450.0, 2100.0, 2900.0),   # /e/ - mid-front, distinct from /i/
-    "I": (300.0, 2700.0, 3400.0),   # /i/ - close front, maximum forward/shrill
+    "I": (300.0, 2850.0, 3400.0),   # /i/ - close front, maximum forward/shrill
     "O": (500.0, 900.0, 2400.0),    # /o/ - close-mid back, pure rounded
     "U": (350.0, 750.0, 2200.0),    # /u/ - close back, maximum dark/rounded
 }
@@ -23,6 +23,9 @@ VOWEL_FORMANT_TABLE: Mapping[str, Tuple[float, float, float]] = {
 DEFAULT_FUNDAMENTAL_HZ = 25_000.0
 DEFAULT_FORMANT_SCALE = 1_000.0
 DEFAULT_HARMONIC_COUNT = 12
+
+
+DEFAULT_BANDWIDTH_HZ = 75.0
 
 
 @dataclass(frozen=True)
@@ -81,16 +84,25 @@ def build_formant_library(
     for label, raw_formants in VOWEL_FORMANT_TABLE.items():
         scaled_formants = tuple(float(f) * formant_scale for f in raw_formants)
         partials: Dict[float, float] = {}
+        bandwidth = DEFAULT_BANDWIDTH_HZ * formant_scale
 
         start_harmonic = 1 if include_fundamental else 2
         for n in range(start_harmonic, start_harmonic + harmonic_count):
             freq = float(fundamental_hz) * float(n)
-            partials[freq] = max(partials.get(freq, 0.0), 0.2)
+            
+            # Calculate amplitude based on proximity to formants using bandwidth
+            amplitude = 0.0
+            for formant in scaled_formants:
+                # Lorentzian-like amplitude shaping: A = 1 / ( (f - F)^2 + (B/2)^2 )
+                diff = freq - formant
+                amplitude += 1.0 / (diff * diff + (bandwidth / 2.0) ** 2)
+            
+            partials[freq] = amplitude
 
-        emphasis = 1.0
+        # Ensure exact formant frequencies are included with high amplitude (1.0)
+        # to maintain distinctiveness, overriding any harmonic amplitude if present.
         for formant in scaled_formants:
-            partials[formant] = max(partials.get(formant, 0.0), emphasis)
-            emphasis = max(0.3, emphasis - 0.2)
+            partials[formant] = max(partials.get(formant, 0.0), 1.0)
 
         harmonic_freqs, amplitudes = zip(*sorted(partials.items()))
         amplitudes_arr = np.asarray(amplitudes, dtype=float)
@@ -190,17 +202,37 @@ def analyze_missing_fundamental(
     best_score = float('inf')
 
     for descriptor in descriptors:
-        expected = np.asarray(descriptor.harmonics_hz, dtype=float)
-        amplitudes = np.asarray(descriptor.amplitudes, dtype=float)
-        usable = min(expected.size, top_freqs.size)
+        expected_all = np.asarray(descriptor.harmonics_hz, dtype=float)
+        amplitudes_all = np.asarray(descriptor.amplitudes, dtype=float)
+        
+        usable = min(expected_all.size, top_freqs.size)
         if usable == 0:
             continue
-        expected = expected[:usable]
-        amplitudes = amplitudes[:usable]
+            
+        # 1. Select the 'usable' expected frequencies with the highest expected amplitudes.
+        # Sort indices by amplitude descending
+        sort_indices = np.argsort(amplitudes_all)[::-1]
+        
+        # Select the top 'usable' frequencies and their corresponding amplitudes
+        expected_selected = expected_all[sort_indices][:usable]
+        amplitudes_selected = amplitudes_all[sort_indices][:usable]
+        
+        # 2. Sort the selected expected frequencies and their amplitudes by frequency for comparison.
+        temp_data = list(zip(expected_selected, amplitudes_selected))
+        temp_data.sort(key=lambda x: x[0])
+        
+        expected = np.asarray([f for f, a in temp_data], dtype=float)
+        amplitudes = np.asarray([a for f, a in temp_data], dtype=float)
+        
+        # 3. Sort observed (top magnitude peaks) by frequency for comparison.
         observed = np.sort(top_freqs[:usable])
+        
+        # 4. Calculate score
         weight = 1.0 / np.maximum(amplitudes, 1e-3)
         score = float(np.mean(((observed - expected) ** 2) * (weight ** 2)))
         score += 0.1 * abs(dominant_hz - descriptor.dominant_hz)
+        if not np.isfinite(score):
+            continue
         if score < best_score:
             best_score = score
             best_descriptor = descriptor
