@@ -179,6 +179,18 @@ class ChronometricHandshakeConfig:
     pathfinder_aperture_duration_ns: float = 100.0
     pathfinder_use_simple_search: bool = True
     pathfinder_first_path_blend: float = 0.05
+    pathfinder_aperture_lead_ns: float = 60.0
+    pathfinder_aperture_trail_ns: float = 40.0
+    pathfinder_threshold_relax_db: float = 6.0
+    pathfinder_local_percentile: float = 60.0
+    pathfinder_fractional_oversample: int = 4
+    pathfinder_min_peak_ratio: float = 0.18
+    pathfinder_fractional_refine: bool = False
+    pathfinder_refine_window_ns: float = 20.0
+    pathfinder_refine_grid: int = 32
+    multipath_two_ray_alpha: Optional[float] = None
+    pathfinder_alpha: float = 0.3
+
 
 
 @dataclass
@@ -260,9 +272,18 @@ class ChronometricHandshakeSimulator:
                 pre_guard_interval_s=float(config.pathfinder_pre_guard_ns) * 1e-9,
                 aperture_duration_ns=float(config.pathfinder_aperture_duration_ns),
                 use_simple_search=bool(config.pathfinder_use_simple_search),
+                aperture_lead_ns=float(config.pathfinder_aperture_lead_ns),
+                aperture_trail_ns=float(config.pathfinder_aperture_trail_ns),
+                threshold_relax_db=float(config.pathfinder_threshold_relax_db),
+                local_floor_percentile=float(config.pathfinder_local_percentile),
+                fractional_oversample=max(int(config.pathfinder_fractional_oversample), 1),
+                minimum_peak_ratio=self._profile_min_peak_ratio(float(config.pathfinder_min_peak_ratio)),
             )
         else:
             self._pathfinder_cfg = None
+        self._fractional_refine_enabled = bool(config.pathfinder_fractional_refine)
+        self._fractional_refine_window_ns = float(config.pathfinder_refine_window_ns)
+        self._fractional_refine_grid = max(int(config.pathfinder_refine_grid), 1)
 
     # Public API -------------------------------------------------------
 
@@ -948,7 +969,7 @@ class ChronometricHandshakeSimulator:
                 peak_s = float(pf_result.peak_path_s)
                 first_s = float(pf_result.first_path_s)
                 delta = float(peak_s - first_s)
-                blend_eff = self._effective_first_path_blend(delta)
+                blend_eff = self._effective_first_path_blend(delta, pf_result)
                 if blend_eff > 0.0 and np.isfinite(delta):
                     tau_est = peak_s - blend_eff * delta
                 else:
@@ -968,6 +989,20 @@ class ChronometricHandshakeSimulator:
                 effective_rate,
                 corr_preamble.length,
             )
+            if (
+                tau_value is not None
+                and self._fractional_refine_enabled
+                and self._pathfinder_cfg is not None
+                and pf_result is not None
+            ):
+                tau_value = self._fractional_peak_search(
+                    corr_signal,
+                    corr_preamble,
+                    effective_rate,
+                    tau_value,
+                    self._fractional_refine_window_ns,
+                    self._fractional_refine_grid,
+                )
         locked: Optional[bool]
         if tau_value is None:
             locked = None
@@ -1030,7 +1065,20 @@ class ChronometricHandshakeSimulator:
             self._coarse_waveform_cache[cache_key] = preamble
         return preamble
 
-    def _effective_first_path_blend(self, delta_s: float) -> float:
+    def _profile_min_peak_ratio(self, base_ratio: float) -> float:
+        profile = (self._channel_profile or '').upper()
+        ratio = float(np.clip(base_ratio, 0.0, 1.0))
+        if profile.startswith('INDOOR'):
+            ratio = max(ratio, 0.24)
+        elif profile.startswith('URBAN'):
+            ratio = min(ratio, 0.16)
+        return float(np.clip(ratio, 0.05, 0.6))
+
+    def _effective_first_path_blend(
+        self,
+        delta_s: float,
+        pf_result: Optional[PathfinderResult],
+    ) -> float:
         base = float(np.clip(self.cfg.pathfinder_first_path_blend, 0.0, 1.0))
         if base <= 0.0 or not np.isfinite(delta_s) or delta_s <= 0.0:
             return 0.0
@@ -1052,8 +1100,14 @@ class ChronometricHandshakeSimulator:
         else:
             profile_scale = 0.6
 
-        effective = base * window_scale * profile_scale
-        return float(np.clip(effective, 0.0, 1.0))
+        amplitude_boost = 1.0
+        if pf_result is not None and np.isfinite(pf_result.peak_to_first_ratio):
+            amp_ratio = float(np.clip(pf_result.peak_to_first_ratio, 0.0, 1.0))
+            # When the first path is weak relative to the peak, emphasize the blend.
+            amplitude_boost = 1.0 + 1.5 * (1.0 - amp_ratio)
+
+        effective = base * window_scale * profile_scale * amplitude_boost
+        return float(np.clip(effective, 0.0, 0.95))
 
     def _refine_coarse_tau(
         self,
@@ -1081,6 +1135,36 @@ class ChronometricHandshakeSimulator:
         refined_lag = (clamped_index + delta) - (preamble_len - 1)
         tau_refined = refined_lag / sample_rate
         return float(tau_refined), guard_hit
+
+    def _fractional_peak_search(
+        self,
+        corr_signal: NDArray[np.complex128],
+        preamble: Preamble,
+        sample_rate: float,
+        tau_initial: float,
+        window_ns: float,
+        grid_points: int,
+    ) -> float:
+        if grid_points <= 1:
+            return float(tau_initial)
+        half_window_s = max(window_ns * 0.5e-9, 1.0 / sample_rate)
+        start_tau = float(tau_initial - half_window_s)
+        stop_tau = float(tau_initial + half_window_s)
+        taus = np.linspace(start_tau, stop_tau, grid_points)
+        best_tau = float(tau_initial)
+        best_val = -np.inf
+        for tau in taus:
+            shift_samples = int(np.floor(tau * sample_rate))
+            frac = tau * sample_rate - shift_samples
+            if shift_samples < 0 or shift_samples + preamble.length >= corr_signal.size:
+                continue
+            segment = corr_signal[shift_samples:shift_samples + preamble.length]
+            weight = np.exp(-2j * np.pi * frac * np.arange(preamble.length) / preamble.length)
+            value = np.abs(np.vdot(segment * weight, preamble.matched_filter[:preamble.length]))
+            if value > best_val:
+                best_val = value
+                best_tau = tau
+        return float(best_tau)
 
     def _fractional_delay(
         self,

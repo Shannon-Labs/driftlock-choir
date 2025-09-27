@@ -26,6 +26,12 @@ class PathfinderConfig:
     pre_guard_interval_s: float = 0.0
     aperture_duration_ns: float = 100.0  # Duration of the search window in nanoseconds
     use_simple_search: bool = True  # Disable to force aperture-based fallback
+    aperture_lead_ns: float = 60.0  # Extra lead when falling back to the aperture window
+    aperture_trail_ns: float = 40.0  # Trailing padding behind peak when scanning backwards
+    threshold_relax_db: float = 6.0  # Additional dB slack applied once noise guards are satisfied
+    local_floor_percentile: float = 60.0  # Percentile used to estimate within-window noise floor
+    fractional_oversample: int = 4  # Oversample factor for fractional lag refinement
+    minimum_peak_ratio: float = 0.18  # Minimum |first|/|peak| ratio for accepting early candidates
 
 
 @dataclass(frozen=True)
@@ -84,10 +90,15 @@ def find_first_arrival(
             lag_samples_peak=0,
         )
 
+    lead_samples = max(int(round(config.aperture_lead_ns * 1e-9 * sample_rate)), 0)
+    trail_samples = max(int(round(config.aperture_trail_ns * 1e-9 * sample_rate)), 0)
+    base_aperture_samples = max(int(round(config.aperture_duration_ns * 1e-9 * sample_rate)), 1)
+
     noise_slice = magnitude[:max(preamble.length, 1)]
-    noise_floor = float(np.median(noise_slice))
+    noise_floor = float(np.median(noise_slice)) if noise_slice.size else 0.0
     rel_threshold = peak_amp * (10.0 ** (config.relative_threshold_db / 20.0))
-    detection_threshold = max(rel_threshold, noise_floor * config.noise_guard_multiplier, _EPS)
+
+    lag_zero_idx = int(np.searchsorted(lags, 0))
 
     # Guard interval expressed in samples for quick comparisons.
     guard_samples: Optional[int]
@@ -95,12 +106,35 @@ def find_first_arrival(
         guard_samples = max(int(round(config.guard_interval_s * sample_rate)), 0)
     else:
         guard_samples = None
+    guard_limit_samples: Optional[int]
+    if guard_samples is not None and guard_samples > 3:
+        guard_limit_samples = guard_samples
+    else:
+        guard_limit_samples = None
 
-    # --- Step 1: Try a simple forward search first ---
     pre_guard_samples: int = 0
     if config.pre_guard_interval_s > 0.0:
         pre_guard_samples = max(int(round(config.pre_guard_interval_s * sample_rate)), 0)
-    start_search_idx = int(np.searchsorted(lags, 0)) + pre_guard_samples
+
+    local_floor = noise_floor
+    if config.local_floor_percentile > 0.0:
+        lookback = max(lead_samples, base_aperture_samples)
+        local_start = max(lag_zero_idx + pre_guard_samples - lookback, 0)
+        local_end = max(lag_zero_idx + pre_guard_samples, local_start + 1)
+        local_slice = magnitude[local_start:local_end]
+        if local_slice.size:
+            percentile = float(np.clip(config.local_floor_percentile, 0.0, 100.0))
+            local_floor = max(local_floor, float(np.percentile(local_slice, percentile)))
+
+    guard_threshold = max(local_floor, noise_floor) * config.noise_guard_multiplier
+    detection_threshold = max(rel_threshold, guard_threshold, _EPS)
+    if config.threshold_relax_db > 0.0:
+        relaxed_db = config.relative_threshold_db - float(config.threshold_relax_db)
+        relaxed_threshold = peak_amp * (10.0 ** (relaxed_db / 20.0))
+        detection_threshold = max(min(detection_threshold, relaxed_threshold), guard_threshold, _EPS)
+
+    # --- Step 1: Try a simple forward search first ---
+    start_search_idx = lag_zero_idx + pre_guard_samples
     first_idx = -1
     required_window_samples = 0
     if config.use_simple_search:
@@ -113,11 +147,21 @@ def find_first_arrival(
                     first_idx = idx
                     break  # Found it!
 
-        # If the candidate lies outside the configured guard window, punt to the aperture search.
+        # If the candidate lies outside the configured guard window, check if it still
+        # meets the relaxed gating criteria; otherwise punt to the aperture search.
         if first_idx != -1 and guard_samples is not None:
             if peak_idx - first_idx > guard_samples:
-                required_window_samples = max(required_window_samples, peak_idx - first_idx)
-                first_idx = -1
+                candidate_val = magnitude[first_idx]
+                ratio = candidate_val / peak_amp if peak_amp > _EPS else 0.0
+                delta_fraction = 1.0
+                required_ratio_guard = config.minimum_peak_ratio + 0.2 * min(delta_fraction, 1.5)
+                required_ratio_guard = float(np.clip(required_ratio_guard, config.minimum_peak_ratio, 0.7))
+                candidate_time = lags[first_idx] / sample_rate
+                if ratio >= required_ratio_guard and candidate_time >= -5e-9:
+                    pass  # Keep this early candidate despite exceeding guard
+                else:
+                    required_window_samples = max(required_window_samples, peak_idx - first_idx)
+                    first_idx = -1
 
     # --- Step 2: If no simple path found, use the robust aperture search ---
     used_aperture = False
@@ -125,41 +169,131 @@ def find_first_arrival(
 
     if first_idx == -1:
         used_aperture = True
-        base_window = int(config.aperture_duration_ns * 1e-9 * sample_rate)
-        window_samples = max(base_window, required_window_samples)
-        start_window_idx = max(min_aperture_idx, peak_idx - window_samples)
+        window_lead = max(required_window_samples, base_aperture_samples, lead_samples)
+        if (
+            guard_limit_samples is not None
+            and guard_limit_samples >= required_window_samples
+            and window_lead > guard_limit_samples
+        ):
+            window_lead = guard_limit_samples
+        window_trail = max(trail_samples, base_aperture_samples // 4)
+        start_window_idx = max(min_aperture_idx, peak_idx - window_lead)
+        end_window_idx = min(len(magnitude), peak_idx + window_trail + 1)
 
-        # Search backwards from peak for local maxima above threshold.
-        candidate_idx = -1
-        for idx in range(peak_idx - 1, start_window_idx - 1, -1):
-            if magnitude[idx] < detection_threshold:
-                continue
-            prev_val = magnitude[idx - 1] if idx > 0 else magnitude[idx]
-            next_val = magnitude[idx + 1] if idx < len(magnitude) - 1 else magnitude[idx]
-            if magnitude[idx] >= prev_val and magnitude[idx] >= next_val:
-                candidate_idx = idx
-                break
-
-        if candidate_idx != -1:
-            first_idx = candidate_idx
-        else:
-            # Fall back to threshold crossing with progressive expansion.
-            for idx in range(peak_idx, start_window_idx - 1, -1):
-                if magnitude[idx] < detection_threshold:
-                    first_idx = idx + 1
+        aperture_slice = magnitude[start_window_idx:end_window_idx]
+        if aperture_slice.size:
+            # Scan from the leading edge and take the first local peak that clears the
+            # relaxed threshold so genuinely early arrivals win over later, stronger taps.
+            for offset, value in enumerate(aperture_slice):
+                if value < detection_threshold:
+                    continue
+                idx = start_window_idx + offset
+                if guard_limit_samples is not None and (peak_idx - idx) > guard_limit_samples:
+                    continue
+                ratio = value / peak_amp if peak_amp > _EPS else 0.0
+                delta_fraction = 0.0
+                if window_lead > 0:
+                    delta_fraction = max(peak_idx - idx, 0) / float(window_lead)
+                required_ratio = config.minimum_peak_ratio + 0.1 * min(delta_fraction, 1.5)
+                required_ratio = float(np.clip(required_ratio, config.minimum_peak_ratio, 0.6))
+                if ratio < required_ratio:
+                    continue
+                candidate_time = lags[idx] / sample_rate
+                if candidate_time < -5e-9:
+                    continue
+                prev_val = magnitude[idx - 1] if idx > 0 else value
+                next_val = magnitude[idx + 1] if idx < len(magnitude) - 1 else value
+                if value >= prev_val and value >= next_val:
+                    first_idx = idx
                     break
+
+        if first_idx == -1:
+            # Search backwards from peak for local maxima above threshold.
+            candidate_idx = -1
+            for idx in range(peak_idx - 1, start_window_idx - 1, -1):
+                if magnitude[idx] < detection_threshold:
+                    continue
+                if guard_limit_samples is not None and (peak_idx - idx) > guard_limit_samples:
+                    continue
+                prev_val = magnitude[idx - 1] if idx > 0 else magnitude[idx]
+                next_val = magnitude[idx + 1] if idx < len(magnitude) - 1 else magnitude[idx]
+                ratio = magnitude[idx] / peak_amp if peak_amp > _EPS else 0.0
+                delta_fraction = 0.0
+                if window_lead > 0:
+                    delta_fraction = max(peak_idx - idx, 0) / float(window_lead)
+                required_ratio = config.minimum_peak_ratio + 0.1 * min(delta_fraction, 1.5)
+                required_ratio = float(np.clip(required_ratio, config.minimum_peak_ratio, 0.6))
+                if ratio < required_ratio:
+                    continue
+                candidate_time = lags[idx] / sample_rate
+                if candidate_time < -5e-9:
+                    continue
+                if magnitude[idx] >= prev_val and magnitude[idx] >= next_val:
+                    candidate_idx = idx
+                    break
+
+            if candidate_idx != -1:
+                first_idx = candidate_idx
             else:
-                for idx in range(start_window_idx - 1, min_aperture_idx - 1, -1):
+                # Fall back to threshold crossing with progressive expansion.
+                for idx in range(peak_idx, start_window_idx - 1, -1):
                     if magnitude[idx] < detection_threshold:
-                        first_idx = idx + 1
+                        candidate = min(idx + 1, len(magnitude) - 1)
+                        if guard_limit_samples is not None and (peak_idx - candidate) > guard_limit_samples:
+                            continue
+                        value = magnitude[candidate]
+                        if value < detection_threshold:
+                            continue
+                        ratio = value / peak_amp if peak_amp > _EPS else 0.0
+                        delta_fraction = 0.0
+                        if window_lead > 0:
+                            delta_fraction = max(peak_idx - candidate, 0) / float(window_lead)
+                        required_ratio = config.minimum_peak_ratio + 0.1 * min(delta_fraction, 1.5)
+                        required_ratio = float(np.clip(required_ratio, config.minimum_peak_ratio, 0.6))
+                        if ratio < required_ratio:
+                            continue
+                        candidate_time = lags[candidate] / sample_rate
+                        if candidate_time < -5e-9:
+                            continue
+                        first_idx = candidate
                         break
                 else:
-                    first_idx = min_aperture_idx
+                    for idx in range(start_window_idx - 1, min_aperture_idx - 1, -1):
+                        if magnitude[idx] < detection_threshold:
+                            candidate = min(idx + 1, len(magnitude) - 1)
+                            if guard_limit_samples is not None and (peak_idx - candidate) > guard_limit_samples:
+                                continue
+                            value = magnitude[candidate]
+                            if value < detection_threshold:
+                                continue
+                            ratio = value / peak_amp if peak_amp > _EPS else 0.0
+                            delta_fraction = 0.0
+                            if window_lead > 0:
+                                delta_fraction = max(peak_idx - candidate, 0) / float(window_lead)
+                            required_ratio = config.minimum_peak_ratio + 0.1 * min(delta_fraction, 1.5)
+                            required_ratio = float(np.clip(required_ratio, config.minimum_peak_ratio, 0.6))
+                            if ratio < required_ratio:
+                                continue
+                            candidate_time = lags[candidate] / sample_rate
+                            if candidate_time < -5e-9:
+                                continue
+                            first_idx = candidate
+                            break
+                    else:
+                        first_idx = min_aperture_idx
+                        if guard_limit_samples is not None:
+                            first_idx = max(peak_idx - guard_limit_samples, first_idx)
 
     # --- Refine and Return ---
-    refined_lag = _refine_peak_location(lags, magnitude, first_idx)
+    refined_lag, refined_amp = _refine_peak_location(
+        lags,
+        magnitude,
+        corr,
+        first_idx,
+        max(int(config.fractional_oversample), 1),
+    )
     first_time = refined_lag / sample_rate
-    first_amp = float(magnitude[first_idx])
+    first_amp = refined_amp
     
     peak_lag = lags[peak_idx]
     peak_time = peak_lag / sample_rate
@@ -210,33 +344,60 @@ def find_first_arrival(
         formant_score=None if formant_analysis is None else formant_analysis.score,
     )
 
-
-def _refine_peak_location(lags: NDArray, magnitude: NDArray, peak_idx: int) -> float:
-    """Refine peak location using parabolic interpolation."""
-    # Check if we can use 3 points around the peak
+def _parabolic_refine(lags: NDArray, magnitude: NDArray, peak_idx: int) -> tuple[float, float]:
     if peak_idx <= 0 or peak_idx >= len(magnitude) - 1:
-        return float(lags[peak_idx])
+        lag = float(lags[peak_idx])
+        amp = float(magnitude[peak_idx])
+        return lag, amp
 
-    # Use parabolic interpolation on 3 points around the peak
+    x1, x2, x3 = float(lags[peak_idx - 1]), float(lags[peak_idx]), float(lags[peak_idx + 1])
+    y1, y2, y3 = float(magnitude[peak_idx - 1]), float(magnitude[peak_idx]), float(magnitude[peak_idx + 1])
+
+    denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
+    if abs(denom) < 1e-12:
+        lag = float(lags[peak_idx])
+        amp = float(magnitude[peak_idx])
+        return lag, amp
+
+    a = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
+    b = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / denom
+    vertex = -b / (2 * a) if abs(a) > 1e-12 else float(lags[peak_idx])
+    refined_index = float(vertex - lags[0])
+    refined_index = float(np.clip(refined_index, 0.0, len(magnitude) - 1.0))
+    refined_lag = float(lags[0]) + refined_index
+    refined_amp = float(np.interp(refined_index, np.arange(len(magnitude)), magnitude))
+    return refined_lag, refined_amp
+
+
+def _refine_peak_location(
+    lags: NDArray,
+    magnitude: NDArray,
+    corr: NDArray,
+    peak_idx: int,
+    oversample: int,
+) -> tuple[float, float]:
+    oversample = int(max(oversample, 1))
+    parabolic_lag, parabolic_amp = _parabolic_refine(lags, magnitude, peak_idx)
+    if oversample <= 1:
+        return parabolic_lag, parabolic_amp
+
+    start = max(peak_idx - 2, 0)
+    end = min(peak_idx + 3, corr.size)
+    segment = corr[start:end]
+    if segment.size < 3:
+        return parabolic_lag, parabolic_amp
+
     try:
-        # Get the three points: previous, current, next
-        x1, x2, x3 = float(lags[peak_idx - 1]), float(lags[peak_idx]), float(lags[peak_idx + 1])
-        y1, y2, y3 = magnitude[peak_idx - 1], magnitude[peak_idx], magnitude[peak_idx + 1]
+        upsampled = signal.resample_poly(segment, oversample, 1)
+    except Exception:
+        return parabolic_lag, parabolic_amp
 
-        # Parabolic interpolation for sub-sample accuracy
-        # Using the formula for a parabola y = ax^2 + bx + c passing through 3 points
-        denom = (x1 - x2) * (x1 - x3) * (x2 - x3)
-        if abs(denom) < 1e-12:
-            return float(lags[peak_idx])
+    if upsampled.size == 0:
+        return parabolic_lag, parabolic_amp
 
-        # Calculate coefficients for the parabola y = ax^2 + bx + c
-        a = (x3 * (y2 - y1) + x2 * (y1 - y3) + x1 * (y3 - y2)) / denom
-        b = (x3**2 * (y1 - y2) + x2**2 * (y3 - y1) + x1**2 * (y2 - y3)) / denom
-        c = (x2 * x3 * (x2 - x3) * y1 + x3 * x1 * (x3 - x1) * y2 + x1 * x2 * (x1 - x2) * y3) / denom
-
-        # Find the vertex of the parabola (where dy/dx = 0)
-        # dy/dx = 2ax + b = 0 => x = -b / (2a)
-        refined_lag = -b / (2 * a) if abs(a) > 1e-12 else float(lags[peak_idx])
-        return refined_lag
-    except:
-        return float(lags[peak_idx])
+    up_mag = np.abs(upsampled)
+    local_idx = int(np.argmax(up_mag))
+    refined_index = start + local_idx / oversample
+    refined_lag = float(lags[0]) + refined_index
+    refined_amp = float(up_mag[local_idx])
+    return refined_lag, refined_amp
