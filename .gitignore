@@ -39,9 +39,20 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Data files
+# Data files and results
 data/
 results/
+*.json
+*.jsonl
+*.trials.jsonl
+
+# Media files that shouldn't be in git
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
 
 # Node modules if any
 node_modules/
@@ -53,6 +64,19 @@ secrets.json
 
 # Founder profile (private)
 HUNTER_BOWN_FOUNDER_PROFILE.md
+
+# Cache and temporary directories
+.pytest_cache/
+.coverage
+.coverage.*
+.cache/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Simulation outputs that shouldn't be versioned
+driftlock_choir_sim/outputs/
 
 # Jupyter Notebook
 .ipynb_checkpoints
