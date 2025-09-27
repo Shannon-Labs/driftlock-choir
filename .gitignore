@@ -1,8 +1,12 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,25 +20,39 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual Environment
+# Virtual environments
 venv/
-ENV/
 env/
-.venv/
+ENV/
 
-# IDE
-.vscode/
+# IDEs
 .idea/
+.vscode/
 *.swp
 *.swo
-*~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Data files
+data/
+results/
+
+# Node modules if any
+node_modules/
+
+# User-specific files
+config.json
+secrets.json
+*.log
+
+# Founder profile (private)
+HUNTER_BOWN_FOUNDER_PROFILE.md
 
 # Jupyter Notebook
 .ipynb_checkpoints
