@@ -25,17 +25,17 @@ def main():
     print("Basic Beat Note Generation Demo")
     print("=" * 40)
     
-    # Configuration
-    tx_frequency = Hertz(2.4e9)  # 2.4 GHz
-    rx_frequency = Hertz(2.4e9 + 100.0)  # 2.4 GHz + 100 Hz offset
+    # Configuration - using realistic frequencies for OSS demo
+    tx_frequency = Hertz(100e3)  # 100 kHz (realistic for sampling)
+    rx_frequency = Hertz(100e3 + 100.0)  # 100 kHz + 100 Hz offset
     sampling_rate = Hertz(10e6)  # 10 MS/s
     duration = Seconds(0.01)  # 10 ms
-    true_tau = Picoseconds(1000.0)  # 1 ns time-of-flight
+    true_tau = Picoseconds(100.0)  # 100 ps time-of-flight
     true_delta_f = Hertz(50.0)  # 50 Hz frequency offset
-    snr_db = 40.0  # High SNR for clean measurement
+    snr_db = 30.0  # 30 dB SNR
     
-    print(f"TX Frequency: {tx_frequency/1e9:.1f} GHz")
-    print(f"RX Frequency: {rx_frequency/1e9:.1f} GHz")
+    print(f"TX Frequency: {tx_frequency/1e3:.1f} kHz")
+    print(f"RX Frequency: {rx_frequency/1e3:.1f} kHz")
     print(f"Sampling Rate: {sampling_rate/1e6:.1f} MS/s")
     print(f"Duration: {duration*1000:.1f} ms")
     print(f"True τ: {true_tau:.1f} ps")
@@ -91,7 +91,7 @@ def main():
         tx_signal=tx_signal,
         rx_signal=rx_signal,
         tx_frequency=tx_frequency,
-        rx_frequency=rx_frequency,
+        rx_frequency=rx_frequency + true_delta_f,  # Include the offset in the frequency
         duration=duration,
         timestamp=timestamp,
         add_noise=False,  # Noise already added
