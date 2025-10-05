@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/driftlockchoir/driftlockchoir-oss/blob/main/LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/Shannon-Labs/driftlock-choir/blob/main/LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue)](https://www.python.org/)
 
 **Picosecond-level clock synchronization through chronometric interferometry**
@@ -85,8 +85,8 @@ driftlockchoir-oss/
 
 ```bash
 # Clone the repository
-git clone https://github.com/driftlockchoir/driftlockchoir-oss.git
-cd driftlockchoir-oss
+git clone https://github.com/Shannon-Labs/driftlock-choir.git
+cd driftlock-choir
 
 # Install dependencies
 pip install -r requirements.txt
@@ -264,8 +264,8 @@ We welcome contributions! Areas where help is especially valuable:
 ### Development Setup
 
 ```bash
-git clone https://github.com/driftlockchoir/driftlockchoir-oss.git
-cd driftlockchoir-oss
+git clone https://github.com/Shannon-Labs/driftlock-choir.git
+cd driftlock-choir
 pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
@@ -292,7 +292,7 @@ This work builds on foundational research in:
 ## 📞 Contact
 
 - **Questions & Collaboration**: hunter@shannonlabs.dev
-- **Bug Reports**: [GitHub Issues](https://github.com/driftlockchoir/driftlockchoir-oss/issues)
+- **Bug Reports**: [GitHub Issues](https://github.com/Shannon-Labs/driftlock-choir/issues)
 
 ---
 
