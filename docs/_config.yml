@@ -1,0 +1,111 @@
+# Driftlock Choir GitHub Pages Configuration
+
+# Site settings
+title: "Driftlock Choir"
+description: "Ultra-Precise Distributed Timing Through Chronometric Interferometry"
+author: "Shannon Labs"
+email: "hunter@shannonlabs.dev"
+baseurl: "/driftlock-choir" # GitHub Pages repository path
+url: "https://shannon-labs.github.io" # GitHub Pages domain
+
+# GitHub repository
+repository: "shannon-labs/driftlock-choir"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Kramdown settings
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  math_engine: mathjax
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Collections for organized content
+collections:
+  experiments:
+    output: true
+    permalink: /:collection/:name/
+  visualizations:
+    output: true
+    permalink: /:collection/:name/
+
+# Default layouts
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+  - scope:
+      path: ""
+      type: "experiments"
+    values:
+      layout: "experiment"
+  - scope:
+      path: ""
+      type: "visualizations"
+    values:
+      layout: "visualization"
+
+# Site navigation
+navigation:
+  - title: "Home"
+    url: "/"
+  - title: "Interactive Demo"
+    url: "/demo/"
+  - title: "Audio Laboratory"
+    url: "/audio/"
+  - title: "Technology"
+    url: "/technology/"
+  - title: "Get Started"
+    url: "/getting-started/"
+  - title: "Documentation"
+    url: "/documentation/"
+  - title: "GitHub"
+    url: "https://github.com/shannon-labs/driftlock-choir"
+
+# Performance metrics for display
+performance:
+  timing_precision: "2.1 ps RMSE"
+  frequency_accuracy: "0.8 ppb RMSE"
+  convergence_time: "< 100 ms"
+  scalability: "500+ nodes"
+  test_coverage: "47 test suites, 312+ test cases"
+
+# Audio demonstrations
+audio_files:
+  - name: "Beat-Note Formation"
+    file: "e1_beat_note_formation.wav"
+    description: "Two oscillators creating beat patterns revealing timing (τ) and frequency (Δf) information"
+    size: "689 KB"
+  - name: "Chronomagnetic Pulses"
+    file: "e1_chronomagnetic_pulses.wav"
+    description: "Information materializing at specific temporal frequencies—the 'out-of-tune' effect"
+    size: "861 KB"
+  - name: "τ/Δf Modulation"
+    file: "e1_tau_delta_f_modulation.wav"
+    description: "Time-of-flight (τ) and frequency offset (Δf) as audible interference patterns"
+    size: "1034 KB"
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - README.md
+  - LICENSE

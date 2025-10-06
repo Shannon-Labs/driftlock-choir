@@ -2,11 +2,10 @@
 Algorithm implementations for Driftlock Choir OSS.
 """
 
+from .consensus import (ConsensusAlgorithm, ConsensusMessage,
+                        ConsensusSimulator, InverseVarianceConsensus,
+                        MetropolisConsensus)
 from .estimator import EstimatorFactory
-from .consensus import (
-    ConsensusAlgorithm, MetropolisConsensus, InverseVarianceConsensus,
-    ConsensusSimulator, ConsensusMessage
-)
 
 __all__ = [
     "EstimatorFactory",

@@ -2,8 +2,8 @@
 Experiment framework for Driftlock Choir OSS.
 """
 
-from .runner import ExperimentRunner, ExperimentContext
 from .e1_basic_beat_note import ExperimentE1
+from .runner import ExperimentContext, ExperimentRunner
 
 __all__ = [
     "ExperimentRunner",

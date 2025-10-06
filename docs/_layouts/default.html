@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+  
+  <!-- SEO and Social Media -->
+  <meta property="og:title" content="{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}">
+  <meta property="og:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
+  
+  <!-- Stylesheets -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+  
+  <!-- MathJax for equations -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      }
+    };
+  </script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <!-- D3.js for visualizations -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  
+  <!-- Prism.js for code highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{{ '/assets/images/favicon.png' | relative_url }}">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="{{ '/' | relative_url }}">
+        <span class="brand-icon">🎵⚡</span>
+        <span class="brand-text">Driftlock Choir</span>
+      </a>
+      
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          {% for item in site.navigation %}
+          <li class="nav-item">
+            {% if item.url contains 'http' %}
+            <a class="nav-link" href="{{ item.url }}" target="_blank">
+              {{ item.title }} <i class="fas fa-external-link-alt ms-1"></i>
+            </a>
+            {% else %}
+            <a class="nav-link" href="{{ item.url | relative_url }}">{{ item.title }}</a>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {{ content }}
+  </main>
+
+  <footer class="footer bg-dark text-light">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4">
+          <h5>Driftlock Choir</h5>
+          <p class="text-muted">Ultra-precise distributed timing through chronometric interferometry.</p>
+          <div class="social-links">
+            <a href="{{ site.repository }}" class="text-light me-3" target="_blank">
+              <i class="fab fa-github"></i>
+            </a>
+            <a href="mailto:{{ site.email }}" class="text-light">
+              <i class="fas fa-envelope"></i>
+            </a>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <h5>Quick Links</h5>
+          <ul class="list-unstyled">
+            <li><a href="{{ '/demo/' | relative_url }}" class="text-muted">Interactive Demo</a></li>
+            <li><a href="{{ '/audio/' | relative_url }}" class="text-muted">Audio Laboratory</a></li>
+            <li><a href="{{ '/technology/' | relative_url }}" class="text-muted">Technology</a></li>
+            <li><a href="{{ '/getting-started/' | relative_url }}" class="text-muted">Get Started</a></li>
+          </ul>
+        </div>
+        
+        <div class="col-md-4">
+          <h5>Performance Highlights</h5>
+          <ul class="list-unstyled text-muted">
+            <li><strong class="text-light">2.1 ps</strong> timing precision</li>
+            <li><strong class="text-light">0.8 ppb</strong> frequency accuracy</li>
+            <li><strong class="text-light">47 test suites</strong> with 100% pass rate</li>
+            <li><strong class="text-light">500+ nodes</strong> linear scalability</li>
+          </ul>
+        </div>
+      </div>
+      
+      <hr class="my-4">
+      
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <p class="mb-0 text-muted">
+            © {{ 'now' | date: "%Y" }} Shannon Labs. Licensed under MIT License.
+          </p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-0 text-muted">
+            From musical harmony to electromagnetic synchronization.
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom JavaScript -->
+  <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
+  
+  {% if page.custom_js %}
+    {% for js_file in page.custom_js %}
+    <script src="{{ '/assets/js/' | append: js_file | relative_url }}"></script>
+    {% endfor %}
+  {% endif %}
+</body>
+</html>

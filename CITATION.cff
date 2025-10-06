@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use Driftlock Choir in your research, please cite it as below."
+title: "Driftlock Choir: Ultra-Precise Distributed Timing Through Chronometric Interferometry"
+version: 1.0.0
+date-released: 2025-01-01
+authors:
+  - family-names: "Shannon Labs"
+    email: "hunter@shannonlabs.dev"
+repository-code: "https://github.com/Shannon-Labs/driftlock-choir"
+url: "https://github.com/Shannon-Labs/driftlock-choir"
+abstract: >
+  Driftlock Choir is an open-source framework achieving picosecond-level
+  distributed clock synchronization through chronometric interferometry.
+  The framework treats distributed oscillators as a synchronizing "choir,"
+  analyzing RF beat-note patterns to achieve 2.1 ps timing precision and
+  part-per-billion frequency accuracy in simulations. Validated across 13
+  comprehensive experiments spanning basic physics to deployment scenarios
+  including Byzantine fault tolerance, large-scale networks (500+ nodes),
+  and realistic channel conditions.
+keywords:
+  - distributed systems
+  - clock synchronization
+  - precision timing
+  - chronometric interferometry
+  - consensus algorithms
+  - RF signal processing
+  - wireless networks
+  - 6G
+  - quantum metrology
+license: MIT
+preferred-citation:
+  type: software
+  title: "Driftlock Choir: Ultra-Precise Distributed Timing Through Chronometric Interferometry"
+  authors:
+    - family-names: "Shannon Labs"
+      email: "hunter@shannonlabs.dev"
+  year: 2025
+  url: "https://github.com/Shannon-Labs/driftlock-choir"
+  notes: "Open-source framework achieving 2.1 ps timing precision through musical-inspired RF synchronization"

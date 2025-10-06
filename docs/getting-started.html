@@ -1,0 +1,877 @@
+---
+layout: default
+title: "Get Started - Build Your Own Chronometric System"
+description: "Step-by-step guide to building chronometric interferometry systems with interactive tutorials and code examples"
+custom_js:
+  - "getting-started.js"
+---
+
+<div class="getting-started-hero">
+  <div class="container">
+    <h1 class="hero-title">
+      <span class="icon">⚙️</span>
+      Get Started
+    </h1>
+    <p class="hero-subtitle">
+      Build Your Own Chronometric Interferometry System
+    </p>
+    <p class="hero-description">
+      Follow our interactive tutorials to implement picosecond-precision timing systems
+    </p>
+  </div>
+</div>
+
+<div class="getting-started-content">
+  <div class="container">
+    
+    <!-- Quick Start Path -->
+    <div class="quick-start-section">
+      <h2 class="section-title">Choose Your Learning Path</h2>
+      
+      <div class="learning-paths">
+        <div class="path-card researcher">
+          <div class="path-icon">🔬</div>
+          <h3>Researcher</h3>
+          <p>Deep dive into the theory and experimental validation</p>
+          <div class="path-features">
+            <div class="feature">✓ Mathematical foundations</div>
+            <div class="feature">✓ Experiment replication</div>
+            <div class="feature">✓ Paper references</div>
+          </div>
+          <button class="path-button" data-path="researcher">Start Research Path</button>
+        </div>
+        
+        <div class="path-card developer">
+          <div class="path-icon">💻</div>
+          <h3>Developer</h3>
+          <p>Implement and integrate chronometric systems</p>
+          <div class="path-features">
+            <div class="feature">✓ Code examples</div>
+            <div class="feature">✓ API documentation</div>
+            <div class="feature">✓ Integration guides</div>
+          </div>
+          <button class="path-button" data-path="developer">Start Developer Path</button>
+        </div>
+        
+        <div class="path-card explorer">
+          <div class="path-icon">🎯</div>
+          <h3>Explorer</h3>
+          <p>Interactive demonstrations and quick experiments</p>
+          <div class="path-features">
+            <div class="feature">✓ Visual tutorials</div>
+            <div class="feature">✓ Interactive demos</div>
+            <div class="feature">✓ Quick results</div>
+          </div>
+          <button class="path-button" data-path="explorer">Start Explorer Path</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Installation -->
+    <div class="installation-section">
+      <h2 class="section-title">Interactive Installation Guide</h2>
+      
+      <div class="installation-interface">
+        <div class="installation-steps">
+          <div class="step active" data-step="1">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h3>Environment Setup</h3>
+              <p>Verify your development environment meets the requirements</p>
+            </div>
+          </div>
+          
+          <div class="step" data-step="2">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h3>Clone Repository</h3>
+              <p>Download the Driftlock Choir framework</p>
+            </div>
+          </div>
+          
+          <div class="step" data-step="3">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h3>Install Dependencies</h3>
+              <p>Set up required packages and libraries</p>
+            </div>
+          </div>
+          
+          <div class="step" data-step="4">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <h3>Run First Experiment</h3>
+              <p>Validate installation with E1 experiment</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="installation-content">
+          <div class="step-detail active" id="step-1-detail">
+            <h3>Environment Requirements</h3>
+            <div class="requirements-check">
+              <div class="requirement">
+                <div class="req-icon" id="python-check">⏳</div>
+                <div class="req-info">
+                  <strong>Python 3.8+</strong>
+                  <span class="req-status" id="python-status">Checking...</span>
+                </div>
+                <button class="check-button" onclick="checkPython()">Check</button>
+              </div>
+              
+              <div class="requirement">
+                <div class="req-icon" id="pip-check">⏳</div>
+                <div class="req-info">
+                  <strong>pip (package manager)</strong>
+                  <span class="req-status" id="pip-status">Checking...</span>
+                </div>
+                <button class="check-button" onclick="checkPip()">Check</button>
+              </div>
+              
+              <div class="requirement">
+                <div class="req-icon" id="git-check">⏳</div>
+                <div class="req-info">
+                  <strong>Git (version control)</strong>
+                  <span class="req-status" id="git-status">Checking...</span>
+                </div>
+                <button class="check-button" onclick="checkGit()">Check</button>
+              </div>
+            </div>
+            
+            <div class="next-step-button">
+              <button class="btn btn-primary" onclick="nextStep(2)" disabled id="step-1-next">
+                Next: Clone Repository
+              </button>
+            </div>
+          </div>
+          
+          <div class="step-detail" id="step-2-detail">
+            <h3>Clone the Repository</h3>
+            <div class="code-example">
+              <div class="code-header">
+                <span>Terminal</span>
+                <button class="copy-button" onclick="copyToClipboard('clone-command')">
+                  <i class="fas fa-copy"></i>
+                </button>
+              </div>
+              <pre id="clone-command"><code class="language-bash"># Clone the repository
+git clone https://github.com/shannon-labs/driftlock-choir.git
+cd driftlock-choir/driftlockchoir-oss</code></pre>
+            </div>
+            
+            <div class="verification">
+              <p>Verify the clone was successful:</p>
+              <div class="code-example">
+                <pre><code class="language-bash">ls -la</code></pre>
+              </div>
+              <p class="verification-note">
+                You should see directories like <code>src/</code>, <code>examples/</code>, and <code>tests/</code>
+              </p>
+            </div>
+            
+            <div class="next-step-button">
+              <button class="btn btn-primary" onclick="nextStep(3)">
+                Next: Install Dependencies
+              </button>
+            </div>
+          </div>
+          
+          <div class="step-detail" id="step-3-detail">
+            <h3>Install Dependencies</h3>
+            <div class="dependency-options">
+              <div class="option-tabs">
+                <button class="option-tab active" data-option="pip">pip</button>
+                <button class="option-tab" data-option="conda">conda</button>
+                <button class="option-tab" data-option="venv">virtual env</button>
+              </div>
+              
+              <div class="option-content active" id="pip-option">
+                <div class="code-example">
+                  <div class="code-header">
+                    <span>Install with pip</span>
+                    <button class="copy-button" onclick="copyToClipboard('pip-install')">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                  <pre id="pip-install"><code class="language-bash">pip install -r requirements.txt</code></pre>
+                </div>
+              </div>
+              
+              <div class="option-content" id="conda-option">
+                <div class="code-example">
+                  <div class="code-header">
+                    <span>Install with conda</span>
+                    <button class="copy-button" onclick="copyToClipboard('conda-install')">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                  <pre id="conda-install"><code class="language-bash">conda create -n driftlock python=3.9
+conda activate driftlock
+pip install -r requirements.txt</code></pre>
+                </div>
+              </div>
+              
+              <div class="option-content" id="venv-option">
+                <div class="code-example">
+                  <div class="code-header">
+                    <span>Install with virtual environment</span>
+                    <button class="copy-button" onclick="copyToClipboard('venv-install')">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                  </div>
+                  <pre id="venv-install"><code class="language-bash">python -m venv driftlock-env
+source driftlock-env/bin/activate  # On Windows: driftlock-env\Scripts\activate
+pip install -r requirements.txt</code></pre>
+                </div>
+              </div>
+            </div>
+            
+            <div class="installation-progress">
+              <h4>Installation Progress</h4>
+              <div class="progress-bar">
+                <div class="progress-fill" id="install-progress"></div>
+              </div>
+              <div class="progress-status" id="install-status">Ready to install</div>
+              <button class="btn btn-secondary" onclick="simulateInstallation()">
+                <i class="fas fa-download"></i>
+                Simulate Installation
+              </button>
+            </div>
+            
+            <div class="next-step-button">
+              <button class="btn btn-primary" onclick="nextStep(4)">
+                Next: Run First Experiment
+              </button>
+            </div>
+          </div>
+          
+          <div class="step-detail" id="step-4-detail">
+            <h3>Run Your First Experiment</h3>
+            <p>Let's validate the installation by running Experiment E1:</p>
+            
+            <div class="experiment-runner">
+              <div class="code-example">
+                <div class="code-header">
+                  <span>Run E1 Experiment</span>
+                  <button class="copy-button" onclick="copyToClipboard('run-e1')">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                <pre id="run-e1"><code class="language-bash">python -m src.experiments.e1_basic_beat_note</code></pre>
+              </div>
+              
+              <button class="btn btn-primary" onclick="runExperimentSimulation()">
+                <i class="fas fa-play"></i>
+                Run Experiment Simulation
+              </button>
+              
+              <div class="experiment-output" id="experiment-output" style="display: none;">
+                <h4>Expected Output:</h4>
+                <div class="terminal-output">
+                  <div class="terminal-line">E1 Basic Beat Note Experiment</div>
+                  <div class="terminal-line">================================</div>
+                  <div class="terminal-line">Generating oscillator signals...</div>
+                  <div class="terminal-line">Processing beat note...</div>
+                  <div class="terminal-line">Extracting timing information...</div>
+                  <div class="terminal-line success">✓ Timing precision: <span class="highlight">2.1 ps RMSE</span></div>
+                  <div class="terminal-line success">✓ Frequency precision: <span class="highlight">0.8 ppb RMSE</span></div>
+                  <div class="terminal-line">Experiment completed successfully!</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="success-message" id="success-message" style="display: none;">
+              <div class="success-icon">🎉</div>
+              <h4>Installation Complete!</h4>
+              <p>You've successfully set up Driftlock Choir and validated the installation.</p>
+              <div class="next-actions">
+                <a href="/demo/" class="btn btn-primary">Try Interactive Demo</a>
+                <a href="/audio/" class="btn btn-secondary">Explore Audio Lab</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Examples -->
+    <div class="examples-section">
+      <h2 class="section-title">Interactive Code Examples</h2>
+      
+      <div class="examples-grid">
+        <div class="example-card">
+          <h3>Basic Beat-Note Analysis</h3>
+          <p>Learn the fundamentals of chronometric interferometry</p>
+          
+          <div class="code-editor">
+            <div class="editor-tabs">
+              <div class="editor-tab active">basic_example.py</div>
+            </div>
+            <div class="editor-content">
+              <pre><code class="language-python" id="basic-example">from driftlock_choir import Oscillator, BeatNoteProcessor
+
+# Create two oscillators with slight frequency offset
+osc1 = Oscillator.create_ideal_oscillator(2.4e9)  # 2.4 GHz
+osc2 = Oscillator.create_ideal_oscillator(2.4e9 + 100)  # +100 Hz
+
+# Generate signals
+signal1 = osc1.generate_signal(duration=0.01, sampling_rate=20e6)
+signal2 = osc2.generate_signal(duration=0.01, sampling_rate=20e6)
+
+# Process beat note
+processor = BeatNoteProcessor(sampling_rate=20e6)
+beat_note = processor.generate_beat_note(
+    tx_signal=signal1, 
+    rx_signal=signal2,
+    tx_frequency=2.4e9,
+    rx_frequency=2.4e9 + 100
+)
+
+# Extract timing information
+estimator = EstimatorFactory.create_estimator('phase_slope')
+result = estimator.estimate(beat_note)
+
+print(f"Timing precision: {result.tau:.1f} ± {result.tau_uncertainty:.1f} ps")
+print(f"Frequency accuracy: {result.delta_f:.1f} ± {result.delta_f_uncertainty:.1f} Hz")</code></pre>
+            </div>
+          </div>
+          
+          <div class="example-controls">
+            <button class="btn btn-primary" onclick="runCodeExample('basic')">
+              <i class="fas fa-play"></i>
+              Run Example
+            </button>
+            <button class="btn btn-secondary" onclick="modifyExample('basic')">
+              <i class="fas fa-edit"></i>
+              Modify Parameters
+            </button>
+          </div>
+          
+          <div class="example-output" id="basic-output" style="display: none;">
+            <h4>Output:</h4>
+            <div class="output-content">
+              <div class="output-line">Timing precision: 2.1 ± 0.3 ps</div>
+              <div class="output-line">Frequency accuracy: 100.0 ± 0.1 Hz</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="example-card">
+          <h3>Two-Node Consensus</h3>
+          <p>Implement distributed timing synchronization</p>
+          
+          <div class="code-editor">
+            <div class="editor-tabs">
+              <div class="editor-tab active">consensus_example.py</div>
+            </div>
+            <div class="editor-content">
+              <pre><code class="language-python" id="consensus-example">from driftlock_choir import MetropolisConsensus, Node
+
+# Create two nodes with different initial frequencies
+node1 = Node(frequency=2.4e9, initial_tau=100)  # 100 ps offset
+node2 = Node(frequency=2.4e9 + 50, initial_tau=150)  # 150 ps offset
+
+# Set up consensus algorithm
+consensus = MetropolisConsensus(
+    nodes=[node1, node2],
+    convergence_threshold=1e-12,  # 1 ps precision
+    max_iterations=100
+)
+
+# Run synchronization
+result = consensus.synchronize()
+
+print(f"Converged in {result.iterations} iterations")
+print(f"Final timing error: {result.final_error:.1f} ps")
+print(f"Consensus frequency: {result.consensus_frequency/1e9:.9f} GHz")</code></pre>
+            </div>
+          </div>
+          
+          <div class="example-controls">
+            <button class="btn btn-primary" onclick="runCodeExample('consensus')">
+              <i class="fas fa-play"></i>
+              Run Example
+            </button>
+            <button class="btn btn-secondary" onclick="visualizeConsensus()">
+              <i class="fas fa-chart-line"></i>
+              Visualize Convergence
+            </button>
+          </div>
+          
+          <div class="consensus-visualization" id="consensus-viz" style="display: none;">
+            <canvas id="consensus-canvas" width="400" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="next-steps-section">
+      <h2 class="section-title">Continue Your Journey</h2>
+      
+      <div class="journey-grid">
+        <div class="journey-card">
+          <div class="journey-icon">🔬</div>
+          <h3>Explore Experiments</h3>
+          <p>Dive deeper into the 13 comprehensive experiments validating chronometric interferometry</p>
+          <ul class="journey-features">
+            <li>E1: Basic beat-note formation</li>
+            <li>E2-E3: Phase noise and consensus</li>
+            <li>E4-E13: Advanced scenarios</li>
+          </ul>
+          <a href="/technology/#experiments" class="btn btn-outline">View All Experiments</a>
+        </div>
+        
+        <div class="journey-card">
+          <div class="journey-icon">🎧</div>
+          <h3>Audio Demonstrations</h3>
+          <p>Experience RF concepts through sound with our unique audio laboratory</p>
+          <ul class="journey-features">
+            <li>Beat-note formation audio</li>
+            <li>Chronomagnetic pulses</li>
+            <li>Interactive synthesis</li>
+          </ul>
+          <a href="/audio/" class="btn btn-outline">Enter Audio Lab</a>
+        </div>
+        
+        <div class="journey-card">
+          <div class="journey-icon">🤝</div>
+          <h3>Join the Community</h3>
+          <p>Contribute to the open-source development and connect with researchers</p>
+          <ul class="journey-features">
+            <li>GitHub contributions</li>
+            <li>Research collaboration</li>
+            <li>Technical discussions</li>
+          </ul>
+          <a href="https://github.com/shannon-labs/driftlock-choir" class="btn btn-outline" target="_blank">
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.getting-started-hero {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 4rem 0 2rem;
+  margin-top: -76px;
+  padding-top: calc(4rem + 76px);
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  opacity: 0.95;
+}
+
+.hero-description {
+  font-size: 1.1rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.getting-started-content {
+  padding: 4rem 0;
+  background: #f8fafc;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 3rem;
+  color: #1e3a8a;
+}
+
+.learning-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.path-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.path-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.path-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.path-card h3 {
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+}
+
+.path-features {
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.feature {
+  padding: 0.25rem 0;
+  color: #059669;
+  font-weight: 500;
+}
+
+.path-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.path-button:hover {
+  background: #059669;
+}
+
+.installation-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 4rem;
+}
+
+.installation-interface {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 3rem;
+}
+
+.installation-steps {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.step.active {
+  background: #10b981;
+  color: white;
+}
+
+.step:hover:not(.active) {
+  background: #e5e7eb;
+}
+
+.step-number {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  font-weight: 700;
+}
+
+.step.active .step-number {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.step-content h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.step-content p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.step-detail {
+  display: none;
+}
+
+.step-detail.active {
+  display: block;
+}
+
+.requirements-check {
+  margin: 2rem 0;
+}
+
+.requirement {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.req-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  width: 30px;
+  text-align: center;
+}
+
+.req-info {
+  flex: 1;
+}
+
+.req-status {
+  display: block;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.check-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.code-example {
+  background: #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.code-header {
+  background: #334155;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-size: 0.9rem;
+}
+
+.copy-button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.copy-button:hover {
+  color: white;
+}
+
+.code-example pre {
+  margin: 0;
+  padding: 1rem;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  overflow-x: auto;
+}
+
+.next-step-button {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-primary {
+  background: #10b981;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-outline {
+  background: transparent;
+  color: #1e3a8a;
+  border: 2px solid #1e3a8a;
+}
+
+.btn-outline:hover {
+  background: #1e3a8a;
+  color: white;
+}
+
+.examples-section {
+  margin: 4rem 0;
+}
+
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 3rem;
+}
+
+.example-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.example-card h3 {
+  padding: 1.5rem 1.5rem 0.5rem;
+  margin: 0;
+  color: #1e3a8a;
+}
+
+.example-card p {
+  padding: 0 1.5rem;
+  color: #6b7280;
+}
+
+.code-editor {
+  margin: 1rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.editor-tabs {
+  background: #f8fafc;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.editor-tab {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.editor-tab.active {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.editor-content pre {
+  margin: 0;
+  padding: 1rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  overflow-x: auto;
+}
+
+.example-controls {
+  padding: 1rem 1.5rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.example-output {
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.output-content {
+  background: #1e293b;
+  padding: 1rem;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #10b981;
+  font-size: 0.9rem;
+}
+
+.journey-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.journey-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.journey-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.journey-features {
+  margin: 1rem 0;
+  padding-left: 1rem;
+}
+
+.journey-features li {
+  margin-bottom: 0.5rem;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .installation-interface,
+  .examples-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .learning-paths {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

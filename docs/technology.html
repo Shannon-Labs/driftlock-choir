@@ -1,0 +1,472 @@
+---
+layout: default
+title: "Technology Deep Dive - Chronometric Interferometry"
+description: "Explore the mathematical foundations and system architecture behind picosecond timing precision"
+---
+
+<div class="tech-hero">
+  <div class="container">
+    <h1 class="tech-title">
+      <span class="icon">🔬</span>
+      Technology Deep Dive
+    </h1>
+    <p class="tech-subtitle">The Science Behind Picosecond Precision</p>
+  </div>
+</div>
+
+<div class="tech-content">
+  <div class="container">
+    
+    <!-- Mathematical Foundation -->
+    <div class="math-section">
+      <h2 class="section-title">Mathematical Foundation</h2>
+      
+      <div class="equation-card">
+        <h3>Core Equation: Time-of-Flight Extraction</h3>
+        <div class="equation-display">
+          $$\tau = \frac{\Delta\phi}{2\pi \Delta f}$$
+        </div>
+        <p class="equation-description">
+          Where τ is the time-of-flight delay, Δφ is the phase difference, and Δf is the frequency offset.
+          This fundamental relationship enables picosecond timing precision through phase-slope analysis.
+        </p>
+      </div>
+      
+      <div class="equation-card">
+        <h3>Precision Estimation</h3>
+        <div class="equation-display">
+          $$\sigma_\tau = \frac{\sigma_\phi}{2\pi \Delta f \sqrt{SNR}}$$
+        </div>
+        <p class="equation-description">
+          Timing precision improves with higher SNR and larger frequency offsets, 
+          enabling sub-picosecond measurements under optimal conditions.
+        </p>
+      </div>
+    </div>
+
+    <!-- System Architecture -->
+    <div class="architecture-section">
+      <h2 class="section-title">System Architecture</h2>
+      
+      <div class="architecture-diagram">
+        <div class="layer signal-layer">
+          <h3>Signal Processing Layer</h3>
+          <div class="components">
+            <div class="component">Oscillator Models</div>
+            <div class="component">Beat-Note Processor</div>
+            <div class="component">Channel Simulator</div>
+          </div>
+        </div>
+        
+        <div class="layer estimation-layer">
+          <h3>Estimation Layer</h3>
+          <div class="components">
+            <div class="component">Phase-Slope Estimator</div>
+            <div class="component">ML Estimator</div>
+            <div class="component">Uncertainty Quantification</div>
+          </div>
+        </div>
+        
+        <div class="layer consensus-layer">
+          <h3>Consensus Layer</h3>
+          <div class="components">
+            <div class="component">Metropolis Protocol</div>
+            <div class="component">Network Topology</div>
+            <div class="component">Convergence Analysis</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="performance-section">
+      <h2 class="section-title">Performance Achievements</h2>
+      
+      <div class="metrics-comparison">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Driftlock Choir</th>
+              <th>Industry Standard</th>
+              <th>Improvement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Timing Precision</td>
+              <td class="achievement">2.1 ps RMSE</td>
+              <td class="standard">100 ns (NTP)</td>
+              <td class="improvement">47,600× better</td>
+            </tr>
+            <tr>
+              <td>Frequency Accuracy</td>
+              <td class="achievement">0.8 ppb RMSE</td>
+              <td class="standard">1 ppm (PTP)</td>
+              <td class="improvement">1,250× better</td>
+            </tr>
+            <tr>
+              <td>Convergence Time</td>
+              <td class="achievement">&lt; 100 ms</td>
+              <td class="standard">seconds-minutes</td>
+              <td class="improvement">10-600× faster</td>
+            </tr>
+            <tr>
+              <td>Network Scale</td>
+              <td class="achievement">500+ nodes</td>
+              <td class="standard">10-100 nodes</td>
+              <td class="improvement">5-50× larger</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Applications -->
+    <div class="applications-section">
+      <h2 class="section-title">Real-World Applications</h2>
+      
+      <div class="applications-grid">
+        <div class="application-card">
+          <div class="app-icon">📡</div>
+          <h3>6G Network Infrastructure</h3>
+          <p>Ultra-precise synchronization for higher-frequency carriers and massive MIMO systems.</p>
+          <div class="app-specs">
+            <div class="spec">Target: &lt;10 ps timing error</div>
+            <div class="spec">Scale: 1000+ base stations</div>
+          </div>
+        </div>
+        
+        <div class="application-card">
+          <div class="app-icon">🔬</div>
+          <h3>Quantum Sensor Networks</h3>
+          <p>Phase-coherent distributed sensing with quantum-limited precision.</p>
+          <div class="app-specs">
+            <div class="spec">Target: Coherence maintenance</div>
+            <div class="spec">Scale: 100+ quantum nodes</div>
+          </div>
+        </div>
+        
+        <div class="application-card">
+          <div class="app-icon">⚖️</div>
+          <h3>Precision Metrology</h3>
+          <p>Enhanced atomic clock networks for improved timekeeping standards.</p>
+          <div class="app-specs">
+            <div class="spec">Target: 10⁻¹⁹ stability</div>
+            <div class="spec">Scale: Global distribution</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Research Papers -->
+    <div class="research-section">
+      <h2 class="section-title">Academic Foundation</h2>
+      
+      <div class="research-content">
+        <p class="research-intro">
+          Driftlock Choir builds upon decades of research in distributed systems, 
+          precision timing, and signal processing. Our approach uniquely combines 
+          musical harmony principles with electromagnetic synchronization.
+        </p>
+        
+        <div class="citation-box">
+          <h3>Citation</h3>
+          <div class="citation">
+            <pre><code>@software{driftlock_choir_2025,
+  title = {Driftlock Choir: Ultra-Precise Distributed Timing 
+           Through Chronometric Interferometry},
+  author = {Shannon Labs},
+  year = {2025},
+  url = {https://github.com/Shannon-Labs/driftlock-choir},
+  note = {Open-source framework achieving 2.1 ps timing 
+          precision through musical-inspired RF synchronization}
+}</code></pre>
+          </div>
+          <button class="copy-citation" onclick="copyCitation()">
+            <i class="fas fa-copy"></i> Copy Citation
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.tech-hero {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  padding: 4rem 0 2rem;
+  margin-top: -76px;
+  padding-top: calc(4rem + 76px);
+}
+
+.tech-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.tech-subtitle {
+  font-size: 1.5rem;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.tech-content {
+  padding: 4rem 0;
+  background: #f8fafc;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 3rem;
+  color: #1e3a8a;
+}
+
+.math-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 4rem;
+}
+
+.equation-card {
+  margin-bottom: 3rem;
+  padding: 2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.equation-display {
+  text-align: center;
+  font-size: 1.5rem;
+  margin: 2rem 0;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+}
+
+.equation-description {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.architecture-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 4rem;
+}
+
+.architecture-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.layer {
+  padding: 2rem;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+
+.signal-layer {
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+  border-color: #f59e0b;
+}
+
+.estimation-layer {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border-color: #3b82f6;
+}
+
+.consensus-layer {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-color: #10b981;
+}
+
+.layer h3 {
+  margin-bottom: 1rem;
+  color: #1e3a8a;
+}
+
+.components {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.component {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.performance-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 4rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.comparison-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #374151;
+}
+
+.achievement {
+  color: #10b981;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.standard {
+  color: #6b7280;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.improvement {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.applications-section {
+  margin-bottom: 4rem;
+}
+
+.applications-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.application-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.app-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.app-specs {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.spec {
+  padding: 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.research-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.research-intro {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.citation-box {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.citation pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+}
+
+.copy-citation {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.copy-citation:hover {
+  background: #2563eb;
+}
+
+@media (max-width: 768px) {
+  .tech-title {
+    font-size: 2rem;
+  }
+  
+  .components {
+    grid-template-columns: 1fr;
+  }
+  
+  .applications-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .comparison-table {
+    font-size: 0.9rem;
+  }
+}
+</style>
+
+<script>
+function copyCitation() {
+  const citation = document.querySelector('.citation pre code').textContent;
+  navigator.clipboard.writeText(citation).then(() => {
+    const button = document.querySelector('.copy-citation');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+    button.style.background = '#10b981';
+    
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.style.background = '#3b82f6';
+    }, 2000);
+  });
+}
+</script>

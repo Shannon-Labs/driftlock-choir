@@ -1,0 +1,15 @@
+# Requirements for E1 Hardware Experiment
+# RF Chronometric Interferometry with Adafruit Feathers and RTL-SDR
+
+# Core scientific computing
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.5.0
+
+# Hardware interfaces
+pyserial>=3.5
+pyrtlsdr>=0.2.91
+
+# Optional: Enhanced signal processing
+# scikit-learn>=1.0.0  # For ML-based signal analysis
+# plotly>=5.0.0        # For interactive plots

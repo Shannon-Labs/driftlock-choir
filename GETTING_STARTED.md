@@ -15,11 +15,11 @@ pip install -r requirements.txt
 
 ### 2. Verify Installation
 ```bash
-# Quick validation test
-python quick_test.py
+# Core simulation smoke test
+python -m src.experiments.e1_basic_beat_note
 
-# Basic functionality test
-python test_e1.py
+# Unit tests
+pytest tests/test_e1.py -v
 ```
 
 ### 3. Run Examples

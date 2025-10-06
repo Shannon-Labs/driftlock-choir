@@ -74,3 +74,9 @@ logs/
 
 # Documentation builds
 docs/_build/
+docs/_site/
+docs/.bundle/
+docs/vendor/
+
+# Sass cache
+.sass-cache/

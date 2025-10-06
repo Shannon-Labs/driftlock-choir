@@ -1,0 +1,439 @@
+---
+layout: default
+title: "Audio Laboratory - RF Concepts Through Sound"
+description: "Experience chronometric interferometry through carefully crafted audio demonstrations"
+custom_js:
+  - "audio-lab.js"
+---
+
+<div class="audio-hero">
+  <div class="container">
+    <h1 class="audio-title">
+      <span class="icon">🎧</span>
+      Audio Laboratory
+    </h1>
+    <p class="audio-subtitle">RF Concepts Through Sound: Where Physics Meets Perception</p>
+  </div>
+</div>
+
+<div class="audio-content">
+  <div class="container">
+    
+    <!-- Introduction -->
+    <div class="intro-section">
+      <div class="intro-grid">
+        <div class="intro-text">
+          <h2>The Science of Audible RF</h2>
+          <p class="lead">
+            These audio demonstrations represent the exact same physical relationships 
+            that enable picosecond timing precision in RF systems.
+          </p>
+          <div class="key-insight">
+            <div class="insight-icon">💡</div>
+            <div class="insight-text">
+              <strong>Key Insight:</strong> Musical harmony principles enable 
+              electromagnetic synchronization with unprecedented precision.
+            </div>
+          </div>
+        </div>
+        <div class="frequency-translation">
+          <div class="rf-side">
+            <h4>RF Domain</h4>
+            <div class="freq-display">2.4 GHz</div>
+            <div class="wave-icon">📡</div>
+          </div>
+          <div class="translation-arrow">→</div>
+          <div class="audio-side">
+            <h4>Audio Domain</h4>
+            <div class="freq-display">440 Hz</div>
+            <div class="wave-icon">🎵</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Demonstrations -->
+    <div class="demonstrations-section">
+      <h2 class="section-title">Three Core Demonstrations</h2>
+      
+      <!-- Demo 1: Beat-Note Formation -->
+      <div class="demo-card" id="demo-1">
+        <div class="demo-header">
+          <div class="demo-number">01</div>
+          <div class="demo-title-group">
+            <h3>Beat-Note Formation</h3>
+            <p class="demo-subtitle">Two oscillators creating beat patterns revealing timing (τ) and frequency (Δf)</p>
+          </div>
+        </div>
+        
+        <div class="demo-content">
+          <div class="audio-player-section">
+            <div class="custom-audio-player">
+              <audio id="audio-1" controls>
+                <source src="{{ '/assets/audio/e1_beat_note_formation.wav' | relative_url }}" type="audio/wav">
+              </audio>
+            </div>
+          </div>
+          
+          <div class="visualization-section">
+            <canvas id="viz-canvas-1" width="400" height="200"></canvas>
+          </div>
+        </div>
+        
+        <div class="explanation-section">
+          <h4>Physical Interpretation</h4>
+          <div class="explanation-grid">
+            <div class="explanation-item">
+              <strong>Carrier (440 Hz):</strong> Base RF frequency
+            </div>
+            <div class="explanation-item">
+              <strong>Beat (100 Hz):</strong> Frequency difference containing timing info
+            </div>
+            <div class="explanation-item">
+              <strong>τ Modulation (2 Hz):</strong> Time-of-flight delay encoding
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo 2: Chronomagnetic Pulses -->
+      <div class="demo-card" id="demo-2">
+        <div class="demo-header">
+          <div class="demo-number">02</div>
+          <div class="demo-title-group">
+            <h3>Chronomagnetic Pulses</h3>
+            <p class="demo-subtitle">Information materializing at specific temporal frequencies</p>
+          </div>
+        </div>
+        
+        <div class="demo-content">
+          <div class="audio-player-section">
+            <div class="custom-audio-player">
+              <audio id="audio-2" controls>
+                <source src="{{ '/assets/audio/e1_chronomagnetic_pulses.wav' | relative_url }}" type="audio/wav">
+              </audio>
+            </div>
+          </div>
+          
+          <div class="visualization-section">
+            <canvas id="viz-canvas-2" width="400" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo 3: τ/Δf Modulation -->
+      <div class="demo-card" id="demo-3">
+        <div class="demo-header">
+          <div class="demo-number">03</div>
+          <div class="demo-title-group">
+            <h3>τ/Δf Modulation</h3>
+            <p class="demo-subtitle">Time-of-flight and frequency offset as audible patterns</p>
+          </div>
+        </div>
+        
+        <div class="demo-content">
+          <div class="audio-player-section">
+            <div class="custom-audio-player">
+              <audio id="audio-3" controls>
+                <source src="{{ '/assets/audio/e1_tau_delta_f_modulation.wav' | relative_url }}" type="audio/wav">
+              </audio>
+            </div>
+          </div>
+          
+          <div class="visualization-section">
+            <canvas id="viz-canvas-3" width="400" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Synthesis -->
+    <div class="synthesis-section">
+      <h2 class="section-title">Interactive Audio Synthesis</h2>
+      
+      <div class="synthesis-interface">
+        <div class="synthesis-controls">
+          <h3>Parameter Controls</h3>
+          
+          <div class="control-group">
+            <label for="carrier-freq">Carrier Frequency</label>
+            <input type="range" id="carrier-freq" min="200" max="800" value="440">
+            <span id="carrier-freq-value">440 Hz</span>
+          </div>
+          
+          <div class="control-group">
+            <label for="beat-freq">Beat Frequency</label>
+            <input type="range" id="beat-freq" min="10" max="200" value="100">
+            <span id="beat-freq-value">100 Hz</span>
+          </div>
+          
+          <button id="generate-audio" class="btn btn-primary">
+            <i class="fas fa-play"></i> Generate & Play
+          </button>
+        </div>
+        
+        <div class="synthesis-visualization">
+          <canvas id="synthesis-canvas" width="400" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.audio-hero {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  color: white;
+  padding: 4rem 0 2rem;
+  margin-top: -76px;
+  padding-top: calc(4rem + 76px);
+}
+
+.audio-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.audio-subtitle {
+  font-size: 1.5rem;
+  text-align: center;
+  opacity: 0.95;
+}
+
+.audio-content {
+  padding: 4rem 0;
+  background: #f8fafc;
+}
+
+.intro-section {
+  background: white;
+  padding: 3rem;
+  margin-bottom: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+.lead {
+  font-size: 1.25rem;
+  color: #3b82f6;
+  margin-bottom: 1.5rem;
+}
+
+.key-insight {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f0f9ff;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+}
+
+.frequency-translation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.freq-display {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin: 0.5rem 0;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.wave-icon {
+  font-size: 2rem;
+}
+
+.translation-arrow {
+  font-size: 2rem;
+  color: #8b5cf6;
+  margin: 0 1rem;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 3rem;
+  color: #1e3a8a;
+}
+
+.demo-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 3rem;
+  overflow: hidden;
+}
+
+.demo-header {
+  display: flex;
+  align-items: center;
+  padding: 2rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.demo-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #8b5cf6;
+  margin-right: 2rem;
+  width: 60px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.demo-title-group h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1e3a8a;
+  font-size: 1.5rem;
+}
+
+.demo-subtitle {
+  color: #6b7280;
+  margin: 0;
+}
+
+.demo-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.custom-audio-player {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.custom-audio-player audio {
+  width: 100%;
+}
+
+.visualization-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  background: white;
+}
+
+.explanation-section {
+  padding: 2rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.explanation-item {
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.synthesis-section {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin-top: 3rem;
+}
+
+.synthesis-interface {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+}
+
+.control-group {
+  margin-bottom: 1.5rem;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.control-group span {
+  font-family: 'JetBrains Mono', monospace;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #8b5cf6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.synthesis-visualization {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .intro-grid,
+  .demo-content,
+  .synthesis-interface {
+    grid-template-columns: 1fr;
+  }
+  
+  .audio-title {
+    font-size: 2rem;
+  }
+  
+  .frequency-translation {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .translation-arrow {
+    transform: rotate(90deg);
+  }
+}
+</style>
