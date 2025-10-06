@@ -40,7 +40,13 @@ This musical-inspired method unlocks picosecond synchronization for 6G, distribu
 
 ![E1 Experiment Results](docs/assets/images/e1_experiment_result.png)
 
-Figure: Phase slope estimation showing beat-note formation and frequency convergence in Experiment E1 chronomagnetic interferometry.
+**What this graph shows:**
+- **Blue line**: Phase measurement over time as two oscillators synchronize
+- **Red dashed line**: The estimated trend (what our algorithm predicts)
+- **Shaded area**: Uncertainty in our measurement (gets smaller as we learn)
+- **Bottom panel**: Frequency difference showing convergence (oscillators becoming more in-tune)
+
+Think of it like two musicians tuning their instruments - this graph shows them finding the same note, with picosecond precision!
 
 ---
 
