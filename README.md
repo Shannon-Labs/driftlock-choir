@@ -36,6 +36,12 @@ Chronometric interferometry analyzes the phase slope of mixed oscillators:
 
 This musical-inspired method unlocks picosecond synchronization for 6G, distributed sensing, and precision metrology.
 
+### Experiment Results
+
+![E1 Experiment Results](docs/assets/images/e1_experiment_result.png)
+
+Figure: Phase slope estimation showing beat-note formation and frequency convergence in Experiment E1 chronomagnetic interferometry.
+
 ---
 
 ## Highlights
