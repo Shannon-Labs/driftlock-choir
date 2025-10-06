@@ -36,17 +36,19 @@ Chronometric interferometry analyzes the phase slope of mixed oscillators:
 
 This musical-inspired method unlocks picosecond synchronization for 6G, distributed sensing, and precision metrology.
 
-### Experiment Results
+### Chronometric Interferometry Method
 
-![E1 Experiment Results](docs/assets/images/e1_experiment_result.png)
+![Chronometric Interferometry Visualization](docs/assets/images/chronometric_interferometry.png)
 
-**What this graph shows:**
-- **Blue line**: Phase measurement over time as two oscillators synchronize
-- **Red dashed line**: The estimated trend (what our algorithm predicts)
-- **Shaded area**: Uncertainty in our measurement (gets smaller as we learn)
-- **Bottom panel**: Frequency difference showing convergence (oscillators becoming more in-tune)
+**Technical Approach:**
 
-Think of it like two musicians tuning their instruments - this graph shows them finding the same note, with picosecond precision!
+1. **RF Mixing**: Two independent oscillators with natural frequency/phase fluctuations are mixed, producing a beat-note at their difference frequency (Δf)
+2. **Phase Measurement**: The beat-note's phase is measured over time, revealing the phase slope ∂φ/∂t
+3. **Timing Extraction**: Time-of-flight (τ) is extracted from the phase slope relationship τ = ∂φ/∂ω, where ω is angular frequency
+
+**Key Insight**: The framework doesn't actively "tune" oscillators - it measures the natural beat-note patterns that emerge from existing frequency/phase variations and extracts timing information from these inherent fluctuations.
+
+**Applications**: Distributed sensing, 6G synchronization, precision metrology where existing oscillator noise can be leveraged as a timing resource rather than treated as an error source.
 
 ---
 
