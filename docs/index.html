@@ -31,8 +31,8 @@ description: "Ultra-precise distributed timing through chronometric interferomet
 
     <div class="hero-buttons">
       <a href="#performance-metrics" class="btn btn-primary">View Benchmarks</a>
-      <a href="/demo/" class="btn btn-secondary">Launch Interactive Lab</a>
-      <a href="/documentation/" class="btn btn-secondary">Browse Documentation</a>
+      <a href="demo.html" class="btn btn-secondary">Launch Interactive Lab</a>
+      <a href="documentation.html" class="btn btn-secondary">Browse Documentation</a>
       <a href="/technology.html" class="btn btn-outline">Review Architecture</a>
     </div>
   </div>
@@ -44,7 +44,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
     
     <div class="metrics-grid">
       <div class="metric-card timing-precision">
-        <div class="metric-icon">⏱️</div>
         <div class="metric-value" data-target="14.71">0</div>
         <div class="metric-unit">ps RMSE</div>
         <div class="metric-label">Timing Precision</div>
@@ -56,7 +55,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
       </div>
       
       <div class="metric-card frequency-accuracy">
-        <div class="metric-icon">📡</div>
         <div class="metric-value" data-target="20.44">0</div>
         <div class="metric-unit">ppb RMSE</div>
         <div class="metric-label">Frequency Accuracy</div>
@@ -68,7 +66,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
       </div>
       
       <div class="metric-card test-coverage">
-        <div class="metric-icon">✅</div>
         <div class="metric-value" data-target="47">0</div>
         <div class="metric-unit">test suites</div>
         <div class="metric-label">Development Rigor</div>
@@ -79,7 +76,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
       </div>
       
       <div class="metric-card convergence">
-        <div class="metric-icon">🔄</div>
         <div class="metric-value" data-target="100">0</div>
         <div class="metric-unit">ms</div>
         <div class="metric-label">Convergence Time</div>
@@ -98,7 +94,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
 
     <div class="preview-cards">
       <div class="preview-card audio-preview">
-        <div class="card-icon">📈</div>
         <h3>Systems Dashboard</h3>
         <p>Inspect live telemetry from synchronized oscillators and track convergence behaviour under changing RF environments.</p>
         <div class="audio-quick-play">
@@ -108,11 +103,10 @@ description: "Ultra-precise distributed timing through chronometric interferomet
   "lock_state": "stable"
 }</code></pre>
         </div>
-        <a href="/demo/" class="card-link">Open Monitoring Console →</a>
+        <a href="demo.html" class="card-link">Open Monitoring Console →</a>
       </div>
 
       <div class="preview-card demo-preview">
-        <div class="card-icon">🛰️</div>
         <h3>Deployment Scenarios</h3>
         <p>Interactive visualizations showing latency budgets, oscillator offsets, and adaptive correction strategies.</p>
         <div class="demo-visualization">
@@ -122,7 +116,6 @@ description: "Ultra-precise distributed timing through chronometric interferomet
       </div>
 
       <div class="preview-card build-preview">
-        <div class="card-icon">⚙️</div>
         <h3>Implementation Toolkit</h3>
         <p>Get started with Python APIs, reference hardware designs, and repeatable calibration workflows.</p>
         <div class="code-preview">
@@ -131,7 +124,7 @@ description: "Ultra-precise distributed timing through chronometric interferomet
 # Generates metrics under results/metrics/
 main()</code></pre>
         </div>
-        <a href="/getting-started/" class="card-link">Get Started Guide →</a>
+        <a href="getting-started.html" class="card-link">Get Started Guide →</a>
       </div>
     </div>
   </div>
@@ -146,9 +139,9 @@ main()</code></pre>
           <div class="card-body">
             <h3 class="card-title">Simulation Evidence</h3>
             <ul class="list-unstyled mb-0">
-              <li>📊 Deterministic snapshots saved to <code>results/metrics/e1_*.{json,csv}</code></li>
-              <li>🧪 Phase-slope estimator now reports regression-based confidence intervals</li>
-              <li>📁 Fractional-delay channel modeling validated via new regression tests</li>
+              <li>Deterministic snapshots saved to <code>results/metrics/e1_*.{json,csv}</code></li>
+              <li>Phase-slope estimator now reports regression-based confidence intervals</li>
+              <li>Fractional-delay channel modeling validated via new regression tests</li>
             </ul>
           </div>
         </div>
@@ -158,9 +151,9 @@ main()</code></pre>
           <div class="card-body">
             <h3 class="card-title">Hardware Path</h3>
             <ul class="list-unstyled mb-0">
-              <li>🔌 <code>hardware_experiment/offline_bridge.py</code> ingests RTL-SDR captures into estimators</li>
-              <li>🛠️ Feather + SDR bench scripts share the same processing pipeline as simulations</li>
-              <li>🗓️ Upcoming milestone: publish mixed-signal capture using the new bridge</li>
+              <li><code>hardware_experiment/offline_bridge.py</code> ingests RTL-SDR captures into estimators</li>
+              <li>Feather + SDR bench scripts share the same processing pipeline as simulations</li>
+              <li>Upcoming milestone: publish mixed-signal capture using the new bridge</li>
             </ul>
           </div>
         </div>
@@ -198,7 +191,7 @@ main()</code></pre>
             <div class="spectrum-line freq-2"></div>
             <div class="spectrum-line freq-3"></div>
           </div>
-          <div class="transformation-arrow">⇄</div>
+          <div class="transformation-arrow"></div>
           <div class="phase-lock">
             <div class="lock-line"></div>
             <div class="lock-line"></div>
@@ -216,31 +209,33 @@ main()</code></pre>
     
     <div class="applications-grid">
       <div class="application-card">
-        <div class="app-icon">📡</div>
         <h3>6G Network Infrastructure</h3>
         <p>Ultra-precise synchronization for high-frequency carriers</p>
         <div class="market-value">$2.3B market by 2030</div>
       </div>
       
       <div class="application-card">
-        <div class="app-icon">🔬</div>
         <h3>Quantum Sensor Networks</h3>
         <p>Phase-coherent distributed sensing</p>
         <div class="market-value">$1.8B quantum sensing market</div>
       </div>
       
       <div class="application-card">
-        <div class="app-icon">⚖️</div>
         <h3>Precision Metrology</h3>
         <p>Enhanced atomic clock network performance</p>
         <div class="market-value">$890M precision timing market</div>
       </div>
       
       <div class="application-card">
-        <div class="app-icon">💻</div>
         <h3>Edge Computing</h3>
         <p>Synchronized AI processing nodes</p>
         <div class="market-value">$15.7B edge computing market</div>
+      </div>
+      
+      <div class="application-card">
+        <h3>ROS2 & Robotics</h3>
+        <p>Synchronize distributed nodes for coherent sensor fusion and multi-robot collaboration.</p>
+        <div class="market-value">Supports $18B robotics market</div>
       </div>
     </div>
   </div>
@@ -257,17 +252,14 @@ main()</code></pre>
       
       <div class="github-stats">
         <div class="stat">
-          <div class="stat-icon">⭐</div>
           <div class="stat-value">{{ site.github.stargazers_count | default: "0" }}</div>
           <div class="stat-label">Stars</div>
         </div>
         <div class="stat">
-          <div class="stat-icon">🍴</div>
           <div class="stat-value">{{ site.github.forks_count | default: "0" }}</div>
           <div class="stat-label">Forks</div>
         </div>
         <div class="stat">
-          <div class="stat-icon">👥</div>
           <div class="stat-value">{{ site.github.contributors_count | default: "1" }}</div>
           <div class="stat-label">Contributors</div>
         </div>
@@ -277,7 +269,7 @@ main()</code></pre>
         <a href="{{ site.repository }}" class="btn btn-github">
           <i class="fab fa-github"></i> View on GitHub
         </a>
-        <a href="/getting-started/" class="btn btn-primary">Get Started</a>
+        <a href="getting-started.html" class="btn btn-primary">Get Started</a>
         <a href="mailto:{{ site.email }}" class="btn btn-contact">Contact Us</a>
       </div>
     </div>

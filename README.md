@@ -60,7 +60,7 @@ By precisely measuring the phase of the beat-note, picosecond-level timing preci
 | Frequency accuracy | **0.05 ppb RMSE** | E1 baseline (clean conditions) |
 | Frequency range | **0.05-5 ppb typical** | Varies with signal conditions |
 | Convergence | **< 100 ms** | Two-node consensus |
-| Scalability | **500+ nodes** | Linear convergence verified |
+| Scalability | **Designed for 500+ nodes** | Architecture supports large-scale deployment |
 | Fault tolerance | **33% malicious nodes** | Byzantine filtering |
 
 - 47 automated test suites / 312+ cases / 100% pass rate
