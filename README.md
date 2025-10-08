@@ -1,33 +1,32 @@
 # Driftlock Choir
 
-> Precision timing infrastructure for distributed systems.
+> Precision timing infrastructure for distributed systems through RF chronometric interferometry.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/ci.yml)
 [![Pages](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/pages.yml)
 
-- **Live site:** https://shannon-labs.github.io/driftlock-choir/
-- **Documentation hub:** https://shannon-labs.github.io/driftlock-choir/documentation/
-- **Audio laboratory:** https://shannon-labs.github.io/driftlock-choir/audio/
+- **Documentation:** https://shannon-labs.github.io/driftlock-choir/
+- **Technical Overview:** https://shannon-labs.github.io/driftlock-choir/technology/
+- **Implementation Guide:** https://shannon-labs.github.io/driftlock-choir/getting-started/
 
 ---
 
 ## Contents
 
-1. [Overview](#overview)
-2. [Highlights](#highlights)
-3. [Signal Reconstructions](#signal-reconstructions)
+1. [Technical Overview](#technical-overview)
+2. [Performance Characteristics](#performance-characteristics)
+3. [Core Experiment](#core-experiment)
 4. [Quick Start](#quick-start)
-5. [Experiment Suite](#experiment-suite)
+5. [Repository Structure](#repository-structure)
 6. [Documentation](#documentation)
-7. [Contributing & Support](#contributing--support)
+7. [Validation & Testing](#validation--testing)
+8. [Citation](#citation)
 
 ---
 
-## Overview
-
-## Overview
+## Technical Overview
 
 Driftlock Choir is a framework for achieving ultra-precise time and frequency synchronization in distributed systems. It uses a novel technique called chronometric interferometry, which leverages the beat-note interference between oscillators to measure time-of-flight (τ) and frequency offset (Δf). The framework combines signal processing, estimation algorithms, and consensus protocols to achieve picosecond-level timing precision and sub-ppb frequency accuracy in simulation.
 
@@ -52,28 +51,20 @@ By precisely measuring the phase of the beat-note, picosecond-level timing preci
 
 ---
 
-## Highlights
+## Performance Characteristics
 
-| Capability | Result | Notes |
+| Metric | Result | Context |
 | --- | --- | --- |
-| Timing precision | **~10 ps RMSE** | E1 median: 9.5 ps (range 1.5-30 ps) |
-| Frequency accuracy | **0.05-40 ppb** | E1 baseline: 0.05 ppb (clean), ~20 ppb typical |
+| Timing precision | **13.5 ps RMSE** | E1 baseline (clean conditions) |
+| Timing range | **5-20 ps typical** | 2-30 ps depending on SNR and Δf |
+| Frequency accuracy | **0.05 ppb RMSE** | E1 baseline (clean conditions) |
+| Frequency range | **0.05-5 ppb typical** | Varies with signal conditions |
 | Convergence | **< 100 ms** | Two-node consensus |
 | Scalability | **500+ nodes** | Linear convergence verified |
 | Fault tolerance | **33% malicious nodes** | Byzantine filtering |
 
 - 47 automated test suites / 312+ cases / 100% pass rate
 - Hardware validation roadmap using RTL-SDR and Feather microcontrollers
-
----
-
-## Signal Reconstructions
-
-| Demo | Listen | Concept |
-| --- | --- | --- |
-| Beat-note formation | [Play](e1_audio_demonstrations/e1_beat_note_formation.wav) | Interference between oscillators reveals τ and Δf |
-| Chronomagnetic pulses | [Play](e1_audio_demonstrations/e1_chronomagnetic_pulses.wav) | Temporal frequency excursions |
-| τ/Δf modulation | [Play](e1_audio_demonstrations/e1_tau_delta_f_modulation.wav) | Phase slope dynamics rendered in the audio band |
 
 ---
 
@@ -98,21 +89,58 @@ python examples/basic_consensus_demo.py
 pytest tests/ -v
 ```
 
-Expected (E1): ~10 ps timing RMSE (1.5-30 ps range), 0.05-40 ppb frequency accuracy depending on SNR, visualization plots stored under `results/`.
+Expected (E1): 13.5 ps timing RMSE (5-20 ps typical), 0.05 ppb frequency RMSE (0.05-5 ppb typical), visualization plots stored under `results/`.
 
 ---
 
-## Experiment Suite
+## Core Experiment
+
+The framework provides a comprehensive validation of chronometric interferometry through a single, rigorously designed experiment:
 
 ```
 src/
-├── algorithms/        # Estimators, consensus methods, resilience tools
-├── core/              # Typed units, configuration, metadata
-├── signal_processing/ # Oscillator, channel, beat-note models
-└── experiments/       # Reproducible experiments (E1–E13)
+├── algorithms/        # τ/Δf estimators, consensus protocols
+├── core/              # Typed physical units, experiment configuration
+├── signal_processing/ # Oscillator models, channel simulation, beat-note analysis
+└── experiments/       # Core chronometric interferometry validation
 ```
 
-Current experiments cover beat-note extraction, phase-noise characterization, adaptive consensus, hardware constraints, and Byzantine filtering. Hardware preparation lives in [`hardware_experiment/`](hardware_experiment/README.md) with firmware sketches and controller scripts.
+The core experiment validates beat-note formation, phase-slope estimation, and performance characterization under realistic RF conditions. Hardware validation tools are provided in [`hardware_experiment/`](hardware_experiment/README.md) for RTL-SDR integration.
+
+---
+
+## Repository Structure
+
+```
+driftlock-choir/
+├── src/
+│   ├── algorithms/        # τ/Δf estimation methods and consensus protocols
+│   ├── core/              # Type-safe physical units and experiment configuration
+│   ├── signal_processing/ # Oscillator models, RF channel simulation, beat-note analysis
+│   └── experiments/       # Core chronometric interferometry validation
+├── tests/                 # Comprehensive test suite (47 test suites, 312+ cases)
+├── docs/                  # Technical documentation and mathematical derivations
+├── examples/              # Implementation demonstrations and usage patterns
+├── hardware_experiment/   # RTL-SDR integration and hardware validation tools
+└── requirements.txt       # Python dependencies
+```
+
+---
+
+## Validation & Testing
+
+The framework includes comprehensive validation:
+
+- **Unit Tests**: 47 automated test suites covering all algorithms
+- **Integration Tests**: End-to-end experiment validation
+- **Performance Baselines**: Reproducible metrics with deterministic seeds
+- **Statistical Analysis**: Parameter sweeps across SNR and frequency ranges
+
+Run validation:
+```bash
+pytest tests/ -v
+python -m src.experiments.e1_basic_beat_note
+```
 
 ---
 
@@ -151,13 +179,14 @@ If you use Driftlock Choir in your research, please cite it as below:
 
 ```
 @software{driftlock_choir_2025,
-  title = {Driftlock Choir: Ultra-Precise Distributed Timing 
+  title = {Driftlock Choir: Ultra-Precise Distributed Timing
            Through Chronometric Interferometry},
   author = {Shannon Labs},
   year = {2025},
   url = {https://github.com/Shannon-Labs/driftlock-choir},
-  note = {Open-source framework demonstrating ~2.1 ps timing precision in simulation
-          through musical-inspired RF synchronization; hardware validation in progress}
+  note = {Open-source framework achieving 13.5 ps timing RMSE and 0.05 ppb
+          frequency accuracy in simulation through RF chronometric interferometry;
+          hardware validation in progress}
 }
 ```
 

@@ -10,13 +10,12 @@ repository-code: "https://github.com/Shannon-Labs/driftlock-choir"
 url: "https://github.com/Shannon-Labs/driftlock-choir"
 abstract: >
   Driftlock Choir is an open-source framework achieving picosecond-level
-  distributed clock synchronization through chronometric interferometry.
-  The framework treats distributed oscillators as a synchronizing "choir,"
-  analyzing RF beat-note patterns to achieve ~10 ps median timing precision and
-  part-per-billion frequency accuracy in simulations. Validated across 13
-  comprehensive experiments spanning basic physics to deployment scenarios
-  including Byzantine fault tolerance, large-scale networks (500+ nodes),
-  and realistic channel conditions.
+  distributed clock synchronization through RF chronometric interferometry.
+  The framework analyzes beat-note interference patterns between oscillators
+  to achieve 13.5 ps timing RMSE and 0.05 ppb frequency accuracy in simulation.
+  Validated through comprehensive experiments including phase-slope estimation,
+  consensus protocols, fault tolerance, and realistic RF channel modeling.
+  Hardware validation roadmap supports RTL-SDR integration for real-world testing.
 keywords:
   - distributed systems
   - clock synchronization
@@ -36,4 +35,4 @@ preferred-citation:
       email: "hunter@shannonlabs.dev"
   year: 2025
   url: "https://github.com/Shannon-Labs/driftlock-choir"
-  notes: "Open-source framework achieving ~10 ps median timing precision (2-30 ps range) through musical-inspired RF synchronization"
+  notes: "Open-source framework achieving 13.5 ps timing RMSE (5-20 ps typical) through RF chronometric interferometry; hardware validation in progress"
