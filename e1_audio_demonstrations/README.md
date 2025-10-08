@@ -12,7 +12,7 @@ All audio files are located in this directory and can be played with any standar
 
 ## Simulation-Based Demonstration
 
-These audio representations are based on our simulation framework that accurately models the physics of chronometric interferometry. While the audio demonstrates the theoretical relationships validated in E1 (achieving 2.1 ps timing precision and 0.8 ppb frequency precision in simulations), actual hardware validation remains to be performed.
+These audio representations are based on our simulation framework that accurately models the physics of chronometric interferometry. While the audio demonstrates the theoretical relationships validated in E1 (achieving ~10 ps median timing precision and 0.05-40 ppb frequency precision in simulations), actual hardware validation remains to be performed.
 
 ## Hardware Roadmap
 
@@ -41,7 +41,7 @@ We are actively planning hardware experiments to validate these principles in re
 ## Scientific Context:
 
 Experiment E1 achieved:
-- **2.1 ps timing precision** (τ measurements)
+- **~10 ps median timing precision** (τ measurements, range 2-30 ps)
 - **0.8 ppb frequency precision** (Δf measurements)
 
 These audio representations demonstrate how information about timing and frequency relationships can be encoded in audible signals, showing the "out-of-tune" phenomenon where information about chronometric interferometry relationships manifests at specific temporal frequencies.

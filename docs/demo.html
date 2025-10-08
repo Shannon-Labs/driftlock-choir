@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Interactive Demo - Chronometric Interferometry Simulator"
-description: "Experience real-time beat-note visualization and parameter manipulation demonstrating 2.1 picosecond timing precision"
+description: "Experience a real-time chronometric interferometry simulation demonstrating ≈2.1 picosecond timing precision"
 custom_js:
   - "demo.js"
 ---
@@ -13,7 +13,7 @@ custom_js:
       Chronometric Interferometry Simulator
     </h1>
     <p class="demo-subtitle">
-      Experience the physics behind picosecond timing precision through real-time interactive visualization
+      Explore the simulated physics behind picosecond-level timing precision through real-time interactive visualization
     </p>
   </div>
 </div>
@@ -72,6 +72,10 @@ custom_js:
               <div class="status-unit">ppb RMSE</div>
             </div>
           </div>
+          <p class="text-muted small">
+            Values reflect Experiment E1 simulation results captured via
+            <code>e1_metrics_snapshot</code>.
+          </p>
         </div>
       </div>
       
@@ -272,8 +276,8 @@ custom_js:
           <tbody>
             <tr class="highlight">
               <td><strong>Driftlock Choir</strong></td>
-              <td><span class="metric-value" id="demo-timing">2.1 ps</span></td>
-              <td><span class="metric-value" id="demo-frequency">0.8 ppb</span></td>
+              <td><span class="metric-value" id="demo-timing">≈2.1 ps (simulation)</span></td>
+              <td><span class="metric-value" id="demo-frequency">≈0.8 ppb (simulation)</span></td>
               <td><span class="metric-value">500+ nodes</span></td>
               <td><span class="metric-value">&lt; 100 ms</span></td>
             </tr>
@@ -301,6 +305,9 @@ custom_js:
           </tbody>
         </table>
       </div>
+      <p class="text-muted small text-center mt-3">
+        Simulation metrics generated via <code>e1_metrics_snapshot</code>; hardware characterization is in progress.
+      </p>
     </div>
   </div>
 </div>

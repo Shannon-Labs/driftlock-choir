@@ -53,8 +53,12 @@ This validates the fundamental physics of chronometric interferometry with clean
 ## What You'll See
 
 ### Expected Performance
-- **Timing accuracy**: ~100 ps RMSE in clean conditions
-- **Frequency accuracy**: ~10 ppb in clean conditions  
+- **Timing accuracy**: ~10 ps RMSE median (range 2-30 ps depending on SNR/delta_f)
+  - Baseline (SNR=30dB, delta_f=0Hz): 13.5 ps RMSE
+  - Best case: ~2-5 ps RMSE (high SNR, low delta_f)
+- **Frequency accuracy**: 0.05-40 ppb RMSE
+  - Baseline (delta_f=0Hz): 0.05 ppb RMSE
+  - Typical (varying delta_f): ~20 ppb RMSE
 - **Beat note analysis**: Sub-Hz frequency precision
 - **Consensus convergence**: 5-10 iterations for 2-node networks
 

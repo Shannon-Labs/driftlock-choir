@@ -2,26 +2,19 @@
 
 ## Introduction
 
-RF Chronometric Interferometry is a technique for precise time-of-flight and frequency offset estimation based on the analysis of beat notes between two oscillators. This methodology enables picosecond-precision distance and synchronization measurements using RF signals.
+Time and frequency transfer are fundamental to modern science and technology. This document provides an overview of a technique for achieving picosecond-level time synchronization and sub-ppb frequency stability between two or more nodes. The method is based on the principles of two-way time transfer (TWTT) and heterodyne interferometry. By exchanging RF signals and analyzing the resulting beat frequency, we can precisely measure the time-of-flight (ToF) and frequency offset between oscillators.
 
 The technique is particularly valuable in wireless systems where precise timing and synchronization are critical, such as in 5G/6G networks, distributed sensor arrays, and precision positioning systems.
 
 ## Core Principle
 
-The fundamental principle involves exchanging RF signals between two nodes to measure:
-1. **Time-of-flight (τ)**: The propagation delay between nodes
-2. **Frequency offset (Δf)**: Differences in local oscillator frequencies
+The core of the technique is a two-way exchange of RF signals between two nodes, which allows for the cancellation of common-mode noise sources. Each node transmits a signal at a known frequency. When a node receives a signal from the other node, it mixes the incoming signal with its own local oscillator (LO). This process, known as heterodyning, produces a beat frequency signal at the difference between the two oscillator frequencies.
 
-The key insight is that when two oscillators with slightly different frequencies interact, they produce a "beat note" - a signal whose phase and frequency characteristics encode information about both the propagation delay and oscillator frequency differences.
+The phase of this beat frequency signal contains information about the propagation delay (time-of-flight) and the frequency offset between the oscillators. By measuring the phase of the beat signal over time, we can extract these parameters with high precision.
 
 ## Mathematical Foundation
 
-When Node A transmits a signal at frequency f_A and Node B receives it at frequency f_B, the round-trip phase accumulation includes:
-- Propagation delay effects (time-of-flight)
-- Oscillator drift effects (frequency offsets)
-- Channel effects (multipath, fading)
-
-The received beat note can be modeled as:
+The received signal at Node B, which was transmitted from Node A, can be modeled as a sinusoid with a phase that depends on the time-of-flight and the frequency offset. When this signal is mixed with Node B's local oscillator, the resulting beat note signal can be expressed in complex baseband form as:
 ```
 s(t) = A * exp[j(2π(f_A - f_B)t + φ_0 + 2π(f_A - f_B)τ)]
 ```
@@ -40,32 +33,32 @@ Where:
 - Include typical RF channel effects (multipath, fading, noise)
 
 ### Processing Chain
-1. **Signal Exchange**: Two-way signal transmission between nodes
-2. **Beat Note Formation**: Mixing of received and local signals
-3. **Phase/Frequency Analysis**: Extracting instantaneous phase and frequency
-4. **Parameter Estimation**: Computing τ and Δf from phase/frequency slopes
+1. **Two-Way Time Transfer (TWTT)**: Bidirectional signal exchange between nodes.
+2. **Down-conversion & Heterodyning**: Mixing of the received signal with the local oscillator to produce a beat note.
+3. **Quadrature Demodulation**: Extracting the in-phase (I) and quadrature (Q) components of the beat note.
+4. **Phase & Frequency Estimation**: Using a phase-locked loop (PLL) or other algorithms to estimate the phase and frequency of the beat note.
+5. **Parameter Estimation**: Computing τ and Δf from the estimated phase and frequency.
 
 ### Estimation Methods
-- **Phase Slope Method**: Linear regression of phase vs. time
-- **Maximum Likelihood**: Numerical optimization of likelihood function
-- **Cramér-Rao Lower Bound**: Theoretical performance limits
+- **Phase-Locked Loop (PLL)**: A feedback control system that tracks the phase of the beat note.
+- **Kalman Filtering**: An optimal recursive filter for estimating the state of a dynamic system, in this case, the phase and frequency of the beat note.
+- **Maximum Likelihood Estimation (MLE)**: A statistical method for finding the most likely parameters (τ and Δf) that fit the observed data.
+- **Cramér-Rao Lower Bound (CRLB)**: A theoretical lower bound on the variance of any unbiased estimator, providing a benchmark for performance.
 
-## Applications in RF Systems
+### Applications in RF Systems
 
-### Wireless Networks
-- Ultra-precise synchronization in 5G/6G systems
-- Coordinated multipoint transmission
-- Network slicing with microsecond timing
+### Wireless Communications
+- **5G/6G and Beyond**: Ultra-precise synchronization for advanced features like Coordinated Multipoint (CoMP), beamforming, and network slicing.
+- **Device-to-Device (D2D) Communications**: Enabling direct communication between devices with high-precision timing.
 
-### Positioning and Navigation
-- Indoor positioning with sub-meter accuracy
-- Distributed sensor network synchronization
-- GNSS augmentation systems
+### Positioning, Navigation, and Timing (PNT)
+- **Indoor Positioning**: High-accuracy indoor navigation in GPS-denied environments.
+- **GNSS Augmentation**: Improving the accuracy and robustness of Global Navigation Satellite Systems (GNSS).
 
-### Scientific Instruments
-- Distributed radio telescope arrays
-- Particle detector synchronization
-- Precision measurement networks
+### Scientific and Industrial Applications
+- **Very Long Baseline Interferometry (VLBI)**: Synchronizing radio telescopes for high-resolution imaging of celestial objects.
+- **Distributed Sensing**: Coherent processing of data from distributed sensors for applications in seismology, acoustics, and environmental monitoring.
+- **Particle Accelerators**: Synchronizing components in large-scale physics experiments.
 
 ## Implementation Details
 

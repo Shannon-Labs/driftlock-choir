@@ -20,7 +20,7 @@
 - [ ] Installation instructions are complete and testable
 - [ ] Quick start examples work as described
 - [ ] Audio demonstration links are functional and appropriately contextualized
-- [ ] Technical accuracy of all claims (2.1 ps precision, etc.)
+- [ ] Technical accuracy of all claims (≈2.1 ps simulation precision, etc.)
 - [ ] Appropriate balance of technical detail vs. accessibility
 - [ ] All internal links resolve correctly
 - [ ] Badges (license, Python version, etc.) are accurate
@@ -95,7 +95,7 @@
 ### Performance Claims
 
 **Verify**:
-- [ ] "2.1 ps timing precision" - Is this substantiated by E1 results?
+- [ ] "≈2.1 ps timing precision" - Is this substantiated by E1 simulation results?
 - [ ] "<1 ppb frequency accuracy" - Is this validated in experiments?
 - [ ] "100% test pass rate" - Confirm with actual test execution
 - [ ] "500+ node scalability" - Verify E10 experimental validation
@@ -462,7 +462,7 @@ safety check -r requirements.txt
 ### Claims That Require Extra Scrutiny
 
 **Verify These Don't Overstate**:
-- [ ] "2.1 ps precision" → Is this best-case, average, or guaranteed?
+- [ ] "≈2.1 ps simulation precision" → Is this best-case, average, or guaranteed?
 - [ ] "Picosecond-level" → Consistent usage? Always qualified as simulation?
 - [ ] "Musical-inspired" → Does this add value or distract from technical merit?
 - [ ] "Novel approach" → Is chronometric interferometry truly novel or a rebranding?

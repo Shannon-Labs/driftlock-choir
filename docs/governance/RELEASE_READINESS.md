@@ -64,7 +64,7 @@
 ### Critical Areas for AI Reviewer to Validate:
 
 #### 1. **Technical Accuracy**
-- Verify "2.1 ps timing precision" claim against E1 experimental data
+- Verify "≈2.1 ps timing precision" claim against E1 simulation data
 - Cross-check all performance metrics with corresponding experiments
 - Validate mathematical formulations in CHRONOMETRIC_INTERFEROMETRY_EXPLAINED.md
 - Confirm test suite actually achieves 100% pass rate

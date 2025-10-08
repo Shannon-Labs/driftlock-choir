@@ -46,7 +46,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="{{ '/assets/images/favicon.png' | relative_url }}">
 </head>
-<body>
+<body class="{% if page.title == 'Chronometric Interferometry: A Method for Picosecond-Scale Time and Frequency Transfer' %}whitepaper{% endif %}">
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container">
       <a class="navbar-brand" href="{{ '/' | relative_url }}">
@@ -109,11 +109,12 @@
         <div class="col-md-4">
           <h5>Performance Highlights</h5>
           <ul class="list-unstyled text-muted">
-            <li><strong class="text-light">2.1 ps</strong> timing precision</li>
-            <li><strong class="text-light">0.8 ppb</strong> frequency accuracy</li>
-            <li><strong class="text-light">47 test suites</strong> with 100% pass rate</li>
-            <li><strong class="text-light">500+ nodes</strong> linear scalability</li>
+            <li><strong class="text-light">{{ site.performance.timing_precision }}</strong></li>
+            <li><strong class="text-light">{{ site.performance.frequency_accuracy }}</strong></li>
+            <li><strong class="text-light">{{ site.performance.test_coverage }}</strong></li>
+            <li><strong class="text-light">{{ site.performance.scalability }}</strong></li>
           </ul>
+          <small class="text-muted d-block">All metrics are simulation outputs captured via <code>results/metrics/e1_baseline.json</code>.</small>
         </div>
       </div>
       

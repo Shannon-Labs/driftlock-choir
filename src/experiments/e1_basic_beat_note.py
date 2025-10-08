@@ -21,6 +21,7 @@ from ..core.types import (PPB, BeatNoteData, EstimationResult,
 from ..signal_processing.beat_note import BeatNoteProcessor
 from ..signal_processing.channel import ChannelSimulator
 from ..signal_processing.oscillator import Oscillator
+from ..signal_processing.utils import apply_fractional_delay
 from .runner import ExperimentContext
 
 
@@ -85,18 +86,21 @@ class ExperimentE1:
 
     def create_default_config(self) -> ExperimentConfig:
         """Create default experiment configuration."""
+        tx_frequency_hz = 2442e6  # 2442 MHz - GPS L1 band (for reference)
+        true_delta_f_hz = 0.0  # Expect zero residual frequency offset after mixing
+
         return ExperimentConfig(
             experiment_id=self.name,
             description=self.description,
             parameters={
                 # Realistic RF frequencies for chronometric interferometry
-                "tx_frequency_hz": 2442e6,  # 2442 MHz - GPS L1 band (for reference)
-                "rx_frequency_hz": 2442e6 + 100.0,  # 2442 MHz + 100 Hz offset
+                "tx_frequency_hz": tx_frequency_hz,
+                "rx_frequency_hz": tx_frequency_hz + 100.0,  # RX frequency offset for beat note
                 "sampling_rate_hz": 20e6,  # 20 MS/s (adequate for baseband processing)
                 "duration_seconds": 0.01,  # 10 ms (reduced for better performance)
                 # True values for validation
                 "true_tau_ps": 100.0,  # 100 ps time-of-flight (realistic for RF)
-                "true_delta_f_hz": 50.0,  # 50 Hz frequency offset
+                "true_delta_f_hz": true_delta_f_hz,
                 # Signal parameters
                 "snr_db": 30.0,  # Moderate SNR for realistic conditions
                 "add_noise": True,
@@ -180,11 +184,13 @@ class ExperimentE1:
         )
 
         # Apply time delay to simulate time-of-flight (chronometric interferometry)
-        delay_samples = int(true_tau * sampling_rate * 1e-12)
-        if delay_samples > 0:
-            rx_signal = np.concatenate(
-                [np.zeros(delay_samples, dtype=complex), rx_signal[:-delay_samples]]
+        total_delay_samples = float(true_tau) * float(sampling_rate) * 1e-12
+        if total_delay_samples < 0:
+            return self._build_failure_result(
+                context, "Time-of-flight delay must be non-negative."
             )
+        if total_delay_samples > 0:
+            rx_signal = apply_fractional_delay(rx_signal, total_delay_samples)
 
         # Create realistic channel simulator with multipath effects
         channel_sim = ChannelSimulator(sampling_rate)
@@ -201,12 +207,7 @@ class ExperimentE1:
 
         # Add thermal noise if requested
         if add_noise:
-            # Convert SNR to noise figure for thermal noise addition
-            # For now, use a reasonable noise figure based on SNR
-            noise_figure_db = max(1.0, 10.0 - snr_db)  # Simple approximation
-            rx_signal = channel_sim.add_thermal_noise(
-                rx_signal, noise_figure_db=noise_figure_db
-            )
+            rx_signal = channel_sim.add_thermal_noise(rx_signal, snr_db=snr_db)
 
         # Create beat note processor
         beat_processor = BeatNoteProcessor(sampling_rate)
@@ -229,13 +230,13 @@ class ExperimentE1:
         estimation_result = estimator.estimate(beat_note)
 
         # Calculate errors
-        tau_error = abs(estimation_result.tau - true_tau)
-        delta_f_error = abs(estimation_result.delta_f - true_delta_f)
+        tau_error_ps = abs(float(estimation_result.tau) - float(true_tau))
+        delta_f_error_hz = abs(float(estimation_result.delta_f) - float(true_delta_f))
 
         # Create performance metrics
         metrics = PerformanceMetrics(
-            rmse_timing=Picoseconds(tau_error),
-            rmse_frequency=delta_f_error / tx_frequency * 1e9,  # Convert to ppb
+            rmse_timing=Picoseconds(tau_error_ps),
+            rmse_frequency=PPB(delta_f_error_hz / float(tx_frequency) * 1e9),
             convergence_time=Seconds(0.0),  # Not applicable for single measurement
             iterations_to_convergence=1,
             final_spectral_gap=1.0,  # Not applicable for single measurement
@@ -256,15 +257,15 @@ class ExperimentE1:
 
         # Determine success with more reasonable criteria for OSS demo
         success = (
-            tau_error < 500.0  # Within 500 ps (reasonable for OSS demo)
-            and delta_f_error < 25.0  # Within 25 Hz (reasonable for OSS demo)
+            tau_error_ps < 500.0  # Within 500 ps (reasonable for OSS demo)
+            and delta_f_error_hz < 25.0  # Within 25 Hz (reasonable for OSS demo)
             and estimation_result.quality != MeasurementQuality.INVALID
         )
 
         error_message = (
             None
             if success
-            else f"Large errors: τ={tau_error:.1f}ps, Δf={delta_f_error:.1f}Hz"
+            else f"Large errors: τ={tau_error_ps:.1f}ps, Δf={delta_f_error_hz:.1f}Hz"
         )
 
         return ExperimentResult(

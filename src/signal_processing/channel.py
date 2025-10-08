@@ -9,6 +9,7 @@ import numpy as np
 from ..core.constants import PhysicalConstants
 from ..core.types import (BeatNoteData, ChannelModel, Hertz,
                           MeasurementQuality, Meters, Picoseconds, Seconds)
+from .utils import apply_fractional_delay
 
 
 class ChannelSimulator:
@@ -42,14 +43,13 @@ class ChannelSimulator:
         Returns:
             Signal with channel effects applied
         """
-        # Get impulse response
-        impulse_response = channel_model.get_impulse_response(self.sampling_rate)
-
-        # Apply multipath using convolution
-        if len(impulse_response) > 1:
-            output_signal = np.convolve(signal, impulse_response, mode="same")
-        else:
+        if not channel_model.path_delays:
             output_signal = signal.copy()
+        else:
+            output_signal = np.zeros_like(signal, dtype=complex)
+            for gain, delay in zip(channel_model.path_gains, channel_model.path_delays):
+                delayed = self._apply_delay(signal, delay)
+                output_signal += gain * delayed
 
         # Apply Doppler shift
         if channel_model.doppler_shift != 0:
@@ -69,6 +69,13 @@ class ChannelSimulator:
             output_signal = self._apply_path_loss(output_signal, path_loss_db)
 
         return output_signal
+
+    def _apply_delay(self, signal: np.ndarray, delay_ps: Picoseconds) -> np.ndarray:
+        """Apply fractional delay to signal for given picosecond offset."""
+        delay_samples = float(delay_ps) * float(self.sampling_rate) * 1e-12
+        if delay_samples < 0:
+            raise ValueError("Channel delays must be non-negative")
+        return apply_fractional_delay(signal, delay_samples)
 
     def create_awgn_channel(
         self, delay: Picoseconds = 0.0, noise_figure_db: float = 5.0

@@ -14,10 +14,12 @@ import unittest
 import numpy as np
 
 from src.algorithms.estimator import EstimatorFactory
-from src.core.types import Hertz, Picoseconds, Seconds, Timestamp
+from src.core.constants import PhysicalConstants
+from src.core.types import ChannelModel, Hertz, Picoseconds, Seconds, Timestamp
 from src.signal_processing.beat_note import BeatNoteProcessor
 from src.signal_processing.channel import ChannelSimulator
 from src.signal_processing.oscillator import Oscillator
+from src.signal_processing.utils import apply_fractional_delay
 
 
 class TestBasicBeatNote(unittest.TestCase):
@@ -66,6 +68,53 @@ class TestBasicBeatNote(unittest.TestCase):
         # Check signal magnitude (should be approximately 1)
         magnitude = np.mean(np.abs(signal))
         self.assertAlmostEqual(magnitude, 1.0, places=1)
+
+    def test_fractional_delay_accuracy(self):
+        """Fractional delay should closely match analytic shift."""
+        sampling_rate = float(self.sampling_rate)
+        n_samples = 2048
+        time = np.arange(n_samples) / sampling_rate
+        tone_freq = 50e3
+        signal = np.exp(1j * 2 * np.pi * tone_freq * time)
+
+        delay_samples = 0.37
+        delayed = apply_fractional_delay(signal, delay_samples)
+
+        expected = np.exp(
+            1j * 2 * np.pi * tone_freq * (time - delay_samples / sampling_rate)
+        )
+
+        error = np.mean(np.abs(delayed - expected))
+        self.assertLess(error, 5e-3)
+
+    def test_channel_fractional_delay(self):
+        """Channel simulator should apply fractional delays accurately."""
+        channel_sim = ChannelSimulator(self.sampling_rate)
+        base_signal = np.exp(1j * np.linspace(0, 2 * np.pi, 4000, endpoint=False))
+
+        delay_ps = Picoseconds(275.0)
+        channel_model = ChannelModel(
+            delay_spread=Picoseconds(0.0),
+            path_delays=[delay_ps],
+            path_gains=[1.0],
+            doppler_shift=Hertz(0.0),
+            temperature=25.0,
+            humidity=50.0,
+        )
+
+        output = channel_sim.apply_channel(base_signal, channel_model, self.tx_frequency)
+
+        fractional_delay = float(delay_ps) * float(self.sampling_rate) * 1e-12
+        expected = apply_fractional_delay(base_signal, fractional_delay)
+
+        distance_m = PhysicalConstants.ps_to_meters(float(delay_ps))
+        path_loss_db = channel_sim._calculate_free_space_path_loss(
+            distance_m, float(self.tx_frequency)
+        )
+        gain = 10 ** (-path_loss_db / 20)
+        expected *= gain
+
+        self.assertLess(np.mean(np.abs(output - expected)), 1e-3)
 
     def test_beat_note_generation(self):
         """Test beat note generation."""

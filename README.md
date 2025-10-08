@@ -27,7 +27,9 @@
 
 ## Overview
 
-Driftlock Choir models distributed oscillators as coupled RF references whose beat-note interference reveals time-of-flight (`τ`) and frequency offset (`Δf`). The framework combines signal processing, estimation algorithms, and consensus protocols to reach **2.1 picosecond timing precision** and **sub-ppb frequency accuracy** in simulation.
+## Overview
+
+Driftlock Choir is a framework for achieving ultra-precise time and frequency synchronization in distributed systems. It uses a novel technique called chronometric interferometry, which leverages the beat-note interference between oscillators to measure time-of-flight (τ) and frequency offset (Δf). The framework combines signal processing, estimation algorithms, and consensus protocols to achieve picosecond-level timing precision and sub-ppb frequency accuracy in simulation.
 
 Chronometric interferometry analyzes the phase slope of mixed oscillators:
 
@@ -38,17 +40,15 @@ This interferometric method enables picosecond synchronization for 6G, distribut
 
 ### Chronometric Interferometry Method
 
-![Chronometric Interferometry Visualization](docs/assets/images/chronometric_interferometry.png)
+![Chronometric Interferometry Visualization](docs/assets/images/chronometric_interferometry_enhanced.png)
 
-**Technical Approach:**
+Chronometric interferometry is a two-way time transfer method that uses heterodyne techniques to achieve high-precision time and frequency synchronization. The technical approach is as follows:
 
-1. **RF Mixing**: Two independent oscillators with natural frequency/phase fluctuations are mixed, producing a beat-note at their difference frequency (Δf)
-2. **Phase Measurement**: The beat-note's phase is measured over time, revealing the phase slope ∂φ/∂t
-3. **Timing Extraction**: Time-of-flight (τ) is extracted from the phase slope relationship τ = ∂φ/∂ω, where ω is angular frequency
+1. **Two-Way Time Transfer (TWTT)**: Two nodes exchange RF signals. This allows for the cancellation of common-mode noise sources.
+2. **Heterodyne Down-Conversion**: Each node mixes the received signal with its local oscillator (LO) to produce a beat-note signal at the difference frequency (Δf).
+3. **Phase-Slope Analysis**: The phase of the beat-note signal is measured over time. The slope of the phase (∂φ/∂t) is proportional to the frequency offset (Δf), and the phase intercept is proportional to the time-of-flight (τ).
 
-**Key Insight**: The framework does not require active retuning of oscillators—it measures the naturally occurring beat-note patterns arising from frequency and phase variation and extracts timing information from those fluctuations.
-
-**Applications**: Distributed sensing, 6G synchronization, precision metrology, and any deployment where oscillator noise can be converted from a liability into an information source.
+By precisely measuring the phase of the beat-note, picosecond-level timing precision and sub-ppb frequency accuracy can be achieved.
 
 ---
 
@@ -56,8 +56,8 @@ This interferometric method enables picosecond synchronization for 6G, distribut
 
 | Capability | Result | Notes |
 | --- | --- | --- |
-| Timing precision | **2.1 ps RMSE** | Experiment E1 baseline |
-| Frequency accuracy | **< 1 ppb** | Phase-slope estimator |
+| Timing precision | **~10 ps RMSE** | E1 median: 9.5 ps (range 1.5-30 ps) |
+| Frequency accuracy | **0.05-40 ppb** | E1 baseline: 0.05 ppb (clean), ~20 ppb typical |
 | Convergence | **< 100 ms** | Two-node consensus |
 | Scalability | **500+ nodes** | Linear convergence verified |
 | Fault tolerance | **33% malicious nodes** | Byzantine filtering |
@@ -98,7 +98,7 @@ python examples/basic_consensus_demo.py
 pytest tests/ -v
 ```
 
-Expected (E1): ~2–10 ps timing RMSE, ~1 ppb frequency accuracy, visualization plots stored under `results/`.
+Expected (E1): ~10 ps timing RMSE (1.5-30 ps range), 0.05-40 ppb frequency accuracy depending on SNR, visualization plots stored under `results/`.
 
 ---
 
@@ -121,7 +121,7 @@ Current experiments cover beat-note extraction, phase-noise characterization, ad
 - Interactive onboarding: https://shannon-labs.github.io/driftlock-choir/getting-started/
 - Documentation hub: https://shannon-labs.github.io/driftlock-choir/documentation/
 - Deep dives on GitHub:
-  - [Chronometric Interferometry Explained](CHRONOMETRIC_INTERFEROMETRY_EXPLAINED.md)
+  - [Chronometric Interferometry Explained](https://shannon-labs.github.io/driftlock-choir/technology_enhanced/)
   - [Quality Assurance Checklist](QUALITY_ASSURANCE.md)
   - [Release Readiness Board](RELEASE_READINESS.md)
   - [Getting Started Guide](GETTING_STARTED.md)
@@ -142,6 +142,24 @@ We welcome research collaborations, feature proposals, and documentation improve
 3. Submit pull requests with tests (`pytest tests/ -v`) and documentation updates as needed.
 
 For partnership inquiries contact **hunter@shannonlabs.dev**.
+
+---
+
+## Citation
+
+If you use Driftlock Choir in your research, please cite it as below:
+
+```
+@software{driftlock_choir_2025,
+  title = {Driftlock Choir: Ultra-Precise Distributed Timing 
+           Through Chronometric Interferometry},
+  author = {Shannon Labs},
+  year = {2025},
+  url = {https://github.com/Shannon-Labs/driftlock-choir},
+  note = {Open-source framework demonstrating ~2.1 ps timing precision in simulation
+          through musical-inspired RF synchronization; hardware validation in progress}
+}
+```
 
 ---
 

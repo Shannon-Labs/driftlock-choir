@@ -652,16 +652,29 @@ class ChannelModel:
 
     def get_impulse_response(self, sampling_rate: Hertz) -> np.ndarray:
         """Generate discrete-time impulse response."""
-        # Convert delays to sample indices
-        sample_delays = [
-            int(delay * sampling_rate * 1e-12) for delay in self.path_delays
-        ]
-        max_delay = max(sample_delays) if sample_delays else 0
+        numeric_sampling_rate = float(sampling_rate)
+        if numeric_sampling_rate <= 0:
+            raise ValueError("Sampling rate must be positive")
 
-        # Create impulse response
-        ir = np.zeros(max_delay + 1, dtype=complex)
-        for delay, gain in zip(sample_delays, self.path_gains):
-            ir[delay] = gain
+        sample_delays = [float(delay) * numeric_sampling_rate * 1e-12 for delay in self.path_delays]
+
+        if not sample_delays:
+            return np.array([1.0 + 0j])
+
+        max_delay = int(np.ceil(max(sample_delays)))
+        ir = np.zeros(max_delay + 2, dtype=complex)
+
+        for delay_samples, gain in zip(sample_delays, self.path_gains):
+            integer_part = int(np.floor(delay_samples))
+            fractional_part = delay_samples - integer_part
+
+            if fractional_part < 1e-9:
+                ir[integer_part] += gain
+            else:
+                weight_next = fractional_part
+                weight_current = 1.0 - fractional_part
+                ir[integer_part] += gain * weight_current
+                ir[integer_part + 1] += gain * weight_next
 
         return ir
 

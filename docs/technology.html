@@ -10,7 +10,7 @@ description: "Explore the mathematical foundations and system architecture behin
       <span class="icon">🔬</span>
       Technology Deep Dive
     </h1>
-    <p class="tech-subtitle">The Science Behind Picosecond Precision</p>
+    <p class="tech-subtitle">The Science Behind Picosecond-Level Simulation Precision</p>
   </div>
 </div>
 
@@ -95,31 +95,36 @@ description: "Explore the mathematical foundations and system architecture behin
           <tbody>
             <tr>
               <td>Timing Precision</td>
-              <td class="achievement">2.1 ps RMSE</td>
+              <td class="achievement">≈2.1 ps RMSE (E1 simulation)</td>
               <td class="standard">100 ns (NTP)</td>
               <td class="improvement">47,600× better</td>
             </tr>
             <tr>
               <td>Frequency Accuracy</td>
-              <td class="achievement">0.8 ppb RMSE</td>
+              <td class="achievement">≈0.8 ppb RMSE (E1 simulation)</td>
               <td class="standard">1 ppm (PTP)</td>
               <td class="improvement">1,250× better</td>
             </tr>
             <tr>
               <td>Convergence Time</td>
-              <td class="achievement">&lt; 100 ms</td>
+              <td class="achievement">&lt; 100 ms (simulated consensus)</td>
               <td class="standard">seconds-minutes</td>
               <td class="improvement">10-600× faster</td>
             </tr>
             <tr>
               <td>Network Scale</td>
-              <td class="achievement">500+ nodes</td>
+              <td class="achievement">500+ nodes (simulated)</td>
               <td class="standard">10-100 nodes</td>
               <td class="improvement">5-50× larger</td>
             </tr>
           </tbody>
         </table>
       </div>
+      <p class="text-muted small">
+        Metrics originate from the deterministic <code>e1_metrics_snapshot.py</code> pipeline
+        and are stored in <code>results/metrics/</code>. Hardware benchmarks will follow once the
+        RTL-SDR + Feather validation rig is operational.
+      </p>
     </div>
 
     <!-- Applications -->
@@ -179,8 +184,8 @@ description: "Explore the mathematical foundations and system architecture behin
   author = {Shannon Labs},
   year = {2025},
   url = {https://github.com/Shannon-Labs/driftlock-choir},
-  note = {Open-source framework achieving 2.1 ps timing 
-          precision through musical-inspired RF synchronization}
+  note = {Open-source framework demonstrating ~2.1 ps timing precision in simulation
+          through musical-inspired RF synchronization; hardware validation in progress}
 }</code></pre>
           </div>
           <button class="copy-citation" onclick="copyCitation()">

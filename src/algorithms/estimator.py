@@ -105,61 +105,91 @@ class PhaseSlopeEstimator(TauDeltaEstimator):
         Returns:
             Estimation result
         """
-        # Use FFT-based estimation for simplicity and robustness
         from ..signal_processing.beat_note import BeatNoteProcessor
 
         processor = BeatNoteProcessor(beat_note.sampling_rate)
 
-        # Get FFT peak estimation
-        fft_result = processor._estimate_fft_peak(beat_note)
-
-        # For phase slope method, we'll use a simple approach
-        # Extract instantaneous frequency for additional analysis
         try:
-            _, instantaneous_freq = processor.extract_instantaneous_frequency(beat_note)
-
-            # Expected beat frequency
-            expected_beat_freq = beat_note.get_beat_frequency()
-
-            # Frequency offset from instantaneous analysis
-            if len(instantaneous_freq) > 0:
-                delta_f = np.mean(instantaneous_freq) - expected_beat_freq
-                delta_f_uncertainty = (
-                    np.std(instantaneous_freq) / np.sqrt(len(instantaneous_freq))
-                    if len(instantaneous_freq) > 1
-                    else 1.0
-                )
-            else:
-                delta_f = 0.0
-                delta_f_uncertainty = 1.0
-
-            # Time-of-flight estimation (simplified)
-            # Use a simple relationship based on phase
-            if expected_beat_freq > 0:
-                # Estimate phase from signal
-                phase_estimate = np.angle(np.mean(beat_note.waveform))
-                tau_seconds = phase_estimate / (2 * np.pi * expected_beat_freq)
-                tau_ps = PhysicalConstants.seconds_to_ps(tau_seconds)
-                tau_uncertainty_ps = 100.0  # Simple uncertainty estimate
-            else:
-                tau_ps = 0.0
-                tau_uncertainty_ps = 1000.0
-
+            time_vector, instantaneous_phase = processor.extract_instantaneous_phase(
+                beat_note
+            )
         except Exception:
-            # Fallback to FFT result if phase analysis fails
-            return fft_result
+            return processor._estimate_fft_peak(beat_note)
 
-        # Covariance matrix
-        covariance = np.array([[tau_uncertainty_ps**2, 0], [0, delta_f_uncertainty**2]])
+        if len(time_vector) < 3:
+            return processor._estimate_fft_peak(beat_note)
 
-        # Likelihood based on SNR
-        likelihood = min(1.0, 10 ** (beat_note.snr / 20) / 100.0)
+        time_vector = time_vector - time_vector[0]
+
+        design_matrix = np.column_stack(
+            [time_vector, np.ones_like(time_vector)]
+        )
+
+        try:
+            solution, residuals, rank, _ = np.linalg.lstsq(
+                design_matrix, instantaneous_phase, rcond=None
+            )
+        except np.linalg.LinAlgError:
+            return processor._estimate_fft_peak(beat_note)
+
+        if rank < 2 or not np.all(np.isfinite(solution)):
+            return processor._estimate_fft_peak(beat_note)
+
+        slope, intercept = solution
+        expected_beat_freq = beat_note.get_beat_frequency()
+        beat_freq = float(expected_beat_freq)
+
+        if beat_freq <= 0:
+            return processor._estimate_fft_peak(beat_note)
+
+        if residuals.size > 0:
+            sigma_squared = residuals[0] / (len(time_vector) - design_matrix.shape[1])
+        else:
+            fitted_phase = design_matrix @ solution
+            residual = instantaneous_phase - fitted_phase
+            dof = max(len(time_vector) - design_matrix.shape[1], 1)
+            sigma_squared = np.sum(residual**2) / dof
+
+        try:
+            cov_phase = sigma_squared * np.linalg.inv(design_matrix.T @ design_matrix)
+        except np.linalg.LinAlgError:
+            cov_phase = np.eye(2) * sigma_squared
+
+        slope_var = max(cov_phase[0, 0], 1e-18)
+        intercept_var = max(cov_phase[1, 1], 1e-18)
+
+        estimated_frequency = slope / (2 * np.pi)
+        delta_f = estimated_frequency - beat_freq
+        delta_f_uncertainty_hz = np.sqrt(slope_var) / (2 * np.pi)
+
+        sampling_rate_hz = float(beat_note.sampling_rate)
+        tx_alias = np.mod(float(beat_note.tx_frequency), sampling_rate_hz)
+        rx_alias = np.mod(float(beat_note.rx_frequency), sampling_rate_hz)
+        alias_sum = tx_alias + rx_alias
+
+        if alias_sum < 1e-6:
+            alias_sum = float(beat_note.rx_frequency)
+
+        tau_seconds = abs(intercept) / (2 * np.pi * alias_sum)
+        tau_ps = PhysicalConstants.seconds_to_ps(tau_seconds)
+        tau_uncertainty_seconds = np.sqrt(intercept_var) / (2 * np.pi * alias_sum)
+        tau_uncertainty_ps = PhysicalConstants.seconds_to_ps(tau_uncertainty_seconds)
+
+        covariance = np.array(
+            [
+                [tau_uncertainty_ps**2, 0.0],
+                [0.0, delta_f_uncertainty_hz**2],
+            ]
+        )
+
+        residual_std = np.sqrt(sigma_squared)
+        likelihood = float(np.clip(np.exp(-residual_std), 0.0, 1.0))
 
         return EstimationResult(
             tau=Picoseconds(tau_ps),
             tau_uncertainty=Picoseconds(tau_uncertainty_ps),
             delta_f=Hertz(delta_f),
-            delta_f_uncertainty=Hertz(delta_f_uncertainty),
+            delta_f_uncertainty=Hertz(delta_f_uncertainty_hz),
             covariance=covariance,
             likelihood=likelihood,
             quality=beat_note.quality,

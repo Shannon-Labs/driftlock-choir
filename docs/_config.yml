@@ -74,10 +74,10 @@ navigation:
 
 # Performance metrics for display
 performance:
-  timing_precision: "2.1 ps RMSE"
-  frequency_accuracy: "0.8 ppb RMSE"
-  convergence_time: "< 100 ms"
-  scalability: "500+ nodes"
+  timing_precision: "~10 ps RMSE median (E1 simulation, 2-30 ps range)"
+  frequency_accuracy: "0.05-40 ppb RMSE (E1 simulation)"
+  convergence_time: "< 100 ms (simulated consensus)"
+  scalability: "500+ nodes (simulated)"
   test_coverage: "47 test suites, 312+ test cases"
 
 # Audio demonstrations

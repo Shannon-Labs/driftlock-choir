@@ -16,7 +16,7 @@ custom_js:
       Build Your Own Chronometric Interferometry System
     </p>
     <p class="hero-description">
-      Follow our interactive tutorials to implement picosecond-precision timing systems
+      Follow our interactive tutorials to reproduce picosecond-level simulation results and prep for hardware validation
     </p>
   </div>
 </div>
@@ -258,6 +258,11 @@ pip install -r requirements.txt</code></pre>
                   </button>
                 </div>
                 <pre id="run-e1"><code class="language-bash">python -m src.experiments.e1_basic_beat_note</code></pre>
+                <p class="text-muted small mt-2 mb-0">
+                  For reproducible metrics snapshots run
+                  <code>python -m src.experiments.e1_metrics_snapshot</code> to write
+                  <code>results/metrics/e1_baseline.json</code> and the sweep CSV.
+                </p>
               </div>
               
               <button class="btn btn-primary" onclick="runExperimentSimulation()">
@@ -273,8 +278,8 @@ pip install -r requirements.txt</code></pre>
                   <div class="terminal-line">Generating oscillator signals...</div>
                   <div class="terminal-line">Processing beat note...</div>
                   <div class="terminal-line">Extracting timing information...</div>
-                  <div class="terminal-line success">✓ Timing precision: <span class="highlight">2.1 ps RMSE</span></div>
-                  <div class="terminal-line success">✓ Frequency precision: <span class="highlight">0.8 ppb RMSE</span></div>
+                  <div class="terminal-line success">✓ Timing precision: <span class="highlight">≈2.1 ps RMSE (simulation)</span></div>
+                  <div class="terminal-line success">✓ Frequency precision: <span class="highlight">≈0.8 ppb RMSE (simulation)</span></div>
                   <div class="terminal-line">Experiment completed successfully!</div>
                 </div>
               </div>
@@ -350,8 +355,8 @@ print(f"Frequency accuracy: {result.delta_f:.1f} ± {result.delta_f_uncertainty:
           <div class="example-output" id="basic-output" style="display: none;">
             <h4>Output:</h4>
             <div class="output-content">
-              <div class="output-line">Timing precision: 2.1 ± 0.3 ps</div>
-              <div class="output-line">Frequency accuracy: 100.0 ± 0.1 Hz</div>
+              <div class="output-line">Timing precision: ≈2.1 ± 0.3 ps (simulation)</div>
+              <div class="output-line">Frequency accuracy: ≈50.0 ± 0.2 Hz (simulation)</div>
             </div>
           </div>
         </div>

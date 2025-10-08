@@ -345,8 +345,8 @@ class ChronometricSimulator {
     document.getElementById('frequency-accuracy').textContent = frequencyAccuracy.toFixed(1);
     
     // Update demo table values
-    document.getElementById('demo-timing').textContent = `${timingPrecision.toFixed(1)} ps`;
-    document.getElementById('demo-frequency').textContent = `${frequencyAccuracy.toFixed(1)} ppb`;
+    document.getElementById('demo-timing').textContent = `≈${timingPrecision.toFixed(1)} ps (simulation)`;
+    document.getElementById('demo-frequency').textContent = `≈${frequencyAccuracy.toFixed(1)} ppb (simulation)`;
   }
   
   updateLiveCalculations() {
@@ -607,7 +607,7 @@ class ChronometricSimulator {
     // Label target
     ctx.fillStyle = '#10b981';
     ctx.font = '12px Inter';
-    ctx.fillText('Target: 2.1 ps', margin + 10, targetY - 5);
+    ctx.fillText('Target: ≈2.1 ps (simulation)', margin + 10, targetY - 5);
     
     this.drawAxesLabels(ctx, canvas.width, canvas.height, 'Iterations', 'RMSE (ps)');
   }
@@ -650,7 +650,8 @@ class ChronometricSimulator {
                    precisions[i] < 1000000 ? `${(precisions[i]/1000).toFixed(0)} ns` :
                    precisions[i] < 1000000000 ? `${(precisions[i]/1000000).toFixed(0)} µs` :
                    `${(precisions[i]/1000000000).toFixed(0)} ms`;
-      ctx.fillText(value, x + barWidth / 2, y - 5);
+      const suffix = i === 0 ? ' (simulation)' : '';
+      ctx.fillText(`${value}${suffix}`, x + barWidth / 2, y - 5);
     });
     
     ctx.textAlign = 'left';
