@@ -1,6 +1,6 @@
 # Driftlock Choir
 
-> Ultra-precise distributed timing through chronometric interferometry.
+> Precision timing infrastructure for distributed systems.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
@@ -17,7 +17,7 @@
 
 1. [Overview](#overview)
 2. [Highlights](#highlights)
-3. [Audio Demonstrations](#audio-demonstrations)
+3. [Signal Reconstructions](#signal-reconstructions)
 4. [Quick Start](#quick-start)
 5. [Experiment Suite](#experiment-suite)
 6. [Documentation](#documentation)
@@ -27,14 +27,14 @@
 
 ## Overview
 
-Driftlock Choir models distributed oscillators as a synchronizing "choir" whose RF beat-note interference reveals time-of-flight (`τ`) and frequency offset (`Δf`). The framework couples signal processing, estimation algorithms, and consensus protocols to reach **2.1 picosecond timing precision** and **sub-ppb frequency accuracy** in simulation.
+Driftlock Choir models distributed oscillators as coupled RF references whose beat-note interference reveals time-of-flight (`τ`) and frequency offset (`Δf`). The framework combines signal processing, estimation algorithms, and consensus protocols to reach **2.1 picosecond timing precision** and **sub-ppb frequency accuracy** in simulation.
 
 Chronometric interferometry analyzes the phase slope of mixed oscillators:
 
 - `τ = Δφ / (2π·Δf)` extracts propagation delay
 - `Δf = ∂φ/∂t` recovers oscillator drift
 
-This musical-inspired method unlocks picosecond synchronization for 6G, distributed sensing, and precision metrology.
+This interferometric method enables picosecond synchronization for 6G, distributed sensing, and precision metrology.
 
 ### Chronometric Interferometry Method
 
@@ -46,9 +46,9 @@ This musical-inspired method unlocks picosecond synchronization for 6G, distribu
 2. **Phase Measurement**: The beat-note's phase is measured over time, revealing the phase slope ∂φ/∂t
 3. **Timing Extraction**: Time-of-flight (τ) is extracted from the phase slope relationship τ = ∂φ/∂ω, where ω is angular frequency
 
-**Key Insight**: The framework doesn't actively "tune" oscillators - it measures the natural beat-note patterns that emerge from existing frequency/phase variations and extracts timing information from these inherent fluctuations.
+**Key Insight**: The framework does not require active retuning of oscillators—it measures the naturally occurring beat-note patterns arising from frequency and phase variation and extracts timing information from those fluctuations.
 
-**Applications**: Distributed sensing, 6G synchronization, precision metrology where existing oscillator noise can be leveraged as a timing resource rather than treated as an error source.
+**Applications**: Distributed sensing, 6G synchronization, precision metrology, and any deployment where oscillator noise can be converted from a liability into an information source.
 
 ---
 
@@ -67,13 +67,13 @@ This musical-inspired method unlocks picosecond synchronization for 6G, distribu
 
 ---
 
-## Audio Demonstrations
+## Signal Reconstructions
 
 | Demo | Listen | Concept |
 | --- | --- | --- |
 | Beat-note formation | [Play](e1_audio_demonstrations/e1_beat_note_formation.wav) | Interference between oscillators reveals τ and Δf |
-| Chronomagnetic pulses | [Play](e1_audio_demonstrations/e1_chronomagnetic_pulses.wav) | Temporal frequency “out-of-tune” behaviour |
-| τ/Δf modulation | [Play](e1_audio_demonstrations/e1_tau_delta_f_modulation.wav) | Audible phase slope dynamics |
+| Chronomagnetic pulses | [Play](e1_audio_demonstrations/e1_chronomagnetic_pulses.wav) | Temporal frequency excursions |
+| τ/Δf modulation | [Play](e1_audio_demonstrations/e1_tau_delta_f_modulation.wav) | Phase slope dynamics rendered in the audio band |
 
 ---
 
