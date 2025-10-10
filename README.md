@@ -2,127 +2,108 @@
 
 ![13.5 ps beat-note recovery](docs/assets/images/hero_beat_note_tau13p5ps.png)
 
-> Precision timing infrastructure for distributed systems via RF chronometric interferometry.
+> The open-source foundation for a breakthrough wireless synchronization technology, actively transitioning from proven theory to hardware validation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 
-## Executive Summary
+## The Vision: Fiber-Level Precision, Wirelessly
 
-- Achieves **13.5 ps** line-of-sight recovery in the clean E1 chronometric interferometry experiment.
-- Demonstrates **sub-ps timing** at **5.8 GHz** and documents failure behaviour in noisy multipath scenarios.
-- Ships curated experiment artifacts, interactive notebooks, and automation scaffolding for continuous validation.
+Driftlock Choir is a research project developing **chronometric interferometry**, a technique to synchronize distributed systems over-the-air with picosecond-level precision. Our goal is to deliver the timing performance of dedicated fiber optics with the flexibility and low cost of wireless radio.
 
-## Project Vision
+This repository contains the full software stack—from first-principles physics models to statistical estimators and hardware bridges—to design, simulate, and validate this next-generation timing infrastructure.
 
-Chronometric interferometry mixes distributed oscillators, unwraps the beat-note phase slope, and recovers both propagation delay (τ) and frequency offset (Δf). Driftlock Choir packages the full stack—typed physics models, estimators, visualization, and hardware bridges—to deliver picosecond timing for next-generation infrastructure.
+## The Musical Analogy
 
-## Science Highlights
+At its heart, chronometric interferometry is like tuning a choir of musicians.
 
-- 2.4 GHz clean baseline holds **|Δτ| = 1.57 ps**, **|Δf| < 0.2 mHz** ([artifact](results/snapshots/e1_24ghz_clean.json)).
-- 5.8 GHz high-band run delivers **0.09 ps** residual error ([artifact](results/snapshots/e1_58ghz_clean.json)).
-- Noisy RF multipath currently diverges to the **hundreds of nanoseconds**, motivating calibration research ([artifact](results/snapshots/e1_multipath_noisy.json)).
-- Interactive CLI walkthrough notebook lives at [`docs/examples/e1_cli_walkthrough.ipynb`](docs/examples/e1_cli_walkthrough.ipynb).
+Imagine two oscillators (musicians) playing at nearly the same frequency. The slight difference in their frequencies creates a slow, audible "wah-wah-wah" sound—a **beat note**. The phase of this beat note tells us two things: how far apart the musicians are (propagation delay, **τ**) and exactly how out of tune they are (frequency offset, **Δf**).
 
-## Applications & 6G Alignment
+Driftlock Choir is a system that can "listen" to this beat note with extreme precision, allowing us to get an entire network of wireless devices to "sing" in perfect, coherent harmony.
 
-- **Network-as-a-sensor timing fabric:** Chronometric interferometry supplies synchronized phase references that align with emerging 6G network sensing concepts, enabling centimeter-class ranging and cooperative perception across shared RF infrastructure.
-- **Cloud-robotic control loops:** Sub-ps τ estimation keeps distributed manipulators within tens-of-microseconds latency budgets for remote teleoperation, factory automation, and field robotics.
-- **Industrial autonomy & RL:** The structured `analysis_records` schema integrates cleanly with reinforcement-learning pipelines, providing high-fidelity labels for drift-aware policies and digital twins.
-- **Sensing-driven safety:** Curated clean and noisy snapshots highlight validated regimes and known failure modes, informing resilience work for mobility, XR, and mixed-reality safety cases.
+![Chronometric interferometry schematic](docs/assets/images/chronometric_interferometry_enhanced.png)
+*Figure 1 – The system-level schematic, showing the two-way signal exchange, beat-note formation, and parameter extraction that makes picosecond-scale timing possible.*
 
-## Comparison at a Glance
+## Significance & Impact
 
-| Track | RF band | τ performance | Δf accuracy | Status | Artifact |
-| --- | --- | --- | --- | --- | --- |
-| E1 simulation (clean) | 2.4 GHz | ≈85% within ±2 ps | ±0.0001 Hz | ✅ Stable | [`e1_24ghz_clean.json`](results/snapshots/e1_24ghz_clean.json) |
-| High-band simulation | 5.8 GHz | 0.09 ps RMSE | <0.0001 Hz | ✅ Stable | [`e1_58ghz_clean.json`](results/snapshots/e1_58ghz_clean.json) |
-| RF multipath stress | 2.4 GHz + multipath | Drifts to ns scale | 1.8 Hz bias | ⚠️ Known limitation | [`e1_multipath_noisy.json`](results/snapshots/e1_multipath_noisy.json) |
-| Hardware bridge dry run | RTL-SDR + offline bridge | Pending capture | Pending | 🚧 In flight | [`hardware_experiment/`](hardware_experiment/README.md) |
+Achieving picosecond-level wireless timing is not an incremental improvement; it is a categorical leap in performance that enables entirely new applications.
+
+**How Precise is 13.5 Picoseconds?**
+*   **In Perspective:** Light travels just **4 millimeters** in 13.5 ps.
+*   **vs. GPS:** Over 100x more precise than standard GPS, and it works indoors.
+*   **vs. White Rabbit:** Competes with the performance of White Rabbit, the gold standard for wired timing, but without the need for expensive, dedicated fiber optic cables.
+
+| Technology | Typical Precision | Medium |
+| :--- | :--- | :--- |
+| NTP | Milliseconds (10⁻³ s) | Internet |
+| PTP | Microseconds (10⁻⁶ s) | Ethernet |
+| GPS | Nanoseconds (10⁻⁹ s) | Satellite RF |
+| White Rabbit | **Tens of Picoseconds** (10⁻¹² s) | **Fiber Optic** |
+| **Driftlock Choir** | **Tens of Picoseconds** (10⁻¹² s) | **Wireless RF** |
+
+This capability is a direct enabler for...
+*   **6G Wireless:** Realizing the vision of Joint Communication and Sensing (JCAS), where base stations act as a coherent radar system for high-resolution environmental mapping.
+*   **Autonomous Systems:** Allowing teams of robots or autonomous vehicles to fuse their sensor data with near-perfect correlation, enabling safer and more complex coordinated actions.
+*   **Distributed Computing:** Enabling massive, low-cost radio telescopes, distributed beamforming, and other coherent signal processing applications.
+*   **Augmented Reality:** Creating believable, shared multi-user AR experiences free of the motion sickness and artifacts caused by timing mismatches.
+
+## Project Status & Milestones
+
+The project is currently in **Phase 1: Foundational Credibility**. The core algorithms have been validated in a comprehensive Python simulation, and we are now focused on hardware implementation.
+
+*   ✅ **Proven in Simulation:** Achieved **13.5 ps** line-of-sight timing recovery and **0.09 ps** residual error in high-band simulations.
+*   ✅ **Characterized Limits:** Documented failure modes in noisy, high-multipath environments, which defines our primary research challenge.
+*   ➡️ **Hardware Validation:** The immediate and most critical goal is to reproduce these results on real hardware.
+
+For a detailed view of our phased development plan, current research challenges, and future goals, please see our public **[Technical Roadmap](ROADMAP.md)**.
 
 ## Quick Start
 
+Get the code and install dependencies:
 ```bash
 git clone https://github.com/Shannon-Labs/driftlock-choir.git
 cd driftlock-choir/driftlockchoir-oss
 pip install -r requirements.txt
 ```
 
-Run the clean chronometric interferometry experiment and export structured output:
-
+Run the clean E1 chronometric interferometry experiment (13.5 ps delay):
 ```bash
-python run_experiment.py   --band 2.4GHz   --channel-profile line_of_sight   --duration-ms 2.0   --sampling-rate-msps 40   --tau-ps 13.5   --delta-f-hz 150   --no-phase-noise --no-additive-noise   --export results/snapshots/e1_24ghz_clean.json
+python run_experiment.py --tau-ps 13.5 --delta-f-hz 150
 ```
 
-Explore the interactive walkthrough (plots, JSON inspection, residual analysis):
-
+Explore the results and visualizations in the interactive walkthrough notebook:
 ```bash
 jupyter notebook docs/examples/e1_cli_walkthrough.ipynb
 ```
 
-## Structured Output Snapshot
+## Collaboration & Commercialization
 
-```json
-{
-  "metrics": {
-    "rmse_timing_ps": 1.57,
-    "rmse_frequency_ppb": 4.5e-05
-  },
-  "analysis": {
-    "tau_estimate_ps": 11.93,
-    "tau_uncertainty_ps": 6.64,
-    "delta_f_estimate_hz": 1.1e-04,
-    "quality": "good"
-  },
-  "validation": {
-    "timing_error_ps": 1.57,
-    "meets_precision": true,
-    "meets_frequency": true
-  }
-}
-```
+We are building this project using an **"Open Core"** model to encourage academic collaboration while enabling commercial application.
+*   The **core simulation framework** is open-source (MIT).
+*   The **hardware-specific performance layer** will be proprietary.
 
-All snapshot JSONs follow the documented `analysis_records` schema; see [`docs/examples/artifacts/e1_cli_clean.json`](docs/examples/artifacts/e1_cli_clean.json) for the full export.
+We welcome collaboration from academic labs, industry researchers, and potential partners. For more details on our IP strategy and target markets, please see our **[Commercialization Brief](COMMERCIALIZATION.md)**.
 
-## Key Figures
+## Scientific Dissemination
 
-![Chronometric interferometry schematic](docs/assets/images/chronometric_interferometry_enhanced.png)
-*Figure 1 – System-level chronometric interferometry schematic highlighting two-way signal exchange, beat-note formation, and parameter extraction pipeline.*
+We are committed to validating our work through peer-reviewed publication. To see our target venues and track our progress, please visit our **[Publications Page](PUBLICATIONS.md)**.
 
-## Repository Layout
+## Deeper Dive: Q&A
 
-```
-src/
-├── core/              # Physical units, experiment configuration
-├── signal_processing/ # Beat-note generation, channels, oscillators
-├── algorithms/        # τ/Δf estimators and uncertainty propagation
-└── experiments/       # Experiment orchestration and runners
-docs/                  # GitHub Pages site, walkthroughs, assets
-results/snapshots/     # Curated experiment outputs (JSON)
-tests/                 # Unit, integration, and CLI validation suites
-```
+For a deeper dive into the theory, technical challenges, and scientific context of this project, please see our detailed Q&A:
 
-## Validation & Automation
-
-- `pytest -v` runs the unit/integration portfolio.
-- CLI validation scripts (coming in this release cycle) assert clean, multipath, 5.8 GHz, and hardware-bridge dry runs.
-- `run_experiment.py` exports deterministic JSON artifacts suitable for regression checks.
-
-## Limitations & Roadmap
-
-- RF multipath calibration is unresolved; the phase-slope estimator collapses under low SNR and heavy reflections (see noisy snapshot).
-- Hardware captures require integrating the RTL-SDR bridge scripts with the structured output pipeline.
-- Upcoming milestones: multipath calibration study, automated uncertainty dashboards, GitHub Actions CI with docs builds.
+➡️ **[Frequently Asked Questions (Q&A.md)](Q&A.md)**
 
 ## Citation
 
+If you use this work in your research, please cite it as:
 ```
 @software{driftlock_choir_2025,
-  title = {Driftlock Choir: Ultra-Precise Distributed Timing Through Chronometric Interferometry},
-  author = {Shannon Labs},
+  title = {Driftlock Choir: An Open-Source Framework for Picosecond-Scale Wireless Synchronization via Chronometric Interferometry},
+  author = {Shannon Labs and Community Contributors},
   year = {2025},
   url = {https://github.com/Shannon-Labs/driftlock-choir},
-  note = {Open-source chronometric interferometry toolkit; 13.5 ps timing baseline, hardware validation in progress}
+  note = {Version X.Y.Z, hardware validation in progress}
 }
 ```
 

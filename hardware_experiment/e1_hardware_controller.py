@@ -21,7 +21,16 @@ import sys
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+# Add project root to path to allow importing from src
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core.types import Hertz, Seconds, Timestamp
+from src.signal_processing.beat_note import BeatNoteProcessor
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -381,13 +390,18 @@ class BeatNoteAnalyzer:
         beat_freq = positive_freqs[peak_idx]
         peak_magnitude = positive_magnitude[peak_idx]
 
-        # Calculate SNR (simplified)
+        # Calculate SNR (simplified, as the ratio of the peak signal to the median noise floor)
         noise_floor = np.median(positive_magnitude)
-        snr_db = 20 * np.log10(peak_magnitude / noise_floor)
+        snr_db = 20 * np.log10(peak_magnitude / (noise_floor + 1e-10))
 
-        # Estimate frequency uncertainty
+        # Estimate frequency uncertainty using a simplified model based on SNR.
+        # This is an approximation related to the Cramer-Rao Lower Bound (CRLB) for
+        # estimating a single tone's frequency in white Gaussian noise, where
+        # uncertainty is inversely proportional to the signal-to-noise ratio (SNR).
+        # A higher SNR allows for a more precise frequency estimate.
         freq_resolution = self.sample_rate / len(beat_signal)
-        freq_uncertainty = freq_resolution / np.sqrt(snr_db)
+        snr_linear = 10 ** (snr_db / 10)
+        freq_uncertainty = freq_resolution / np.sqrt(snr_linear)
 
         results = {
             "beat_frequency_hz": beat_freq,
@@ -423,13 +437,17 @@ class BeatNoteAnalyzer:
         # Create time vector
         t = np.arange(len(beat_signal)) / self.sample_rate
 
-        # Estimate timing offset from initial phase
-        # τ = φ₀ / (2π * f_beat)
+        # Estimate timing offset (τ) from the initial phase (φ₀) of the beat note.
+        # The relationship is given by the core chronometry equation: τ = φ₀ / (2π * f_beat).
+        # This tells us how much of a head start one signal has over the other,
+        # expressed as a time delay.
         initial_phase = instantaneous_phase[0]
         timing_offset_seconds = initial_phase / (2 * np.pi * beat_freq)
         timing_offset_ps = timing_offset_seconds * 1e12
 
-        # Estimate phase noise and timing uncertainty
+        # Estimate timing uncertainty from the standard deviation of the phase difference (phase noise).
+        # A noisier phase measurement leads to a larger uncertainty in the timing estimate.
+        # The uncertainty in tau is proportional to the phase uncertainty.
         phase_std = np.std(np.diff(instantaneous_phase))
         timing_uncertainty_ps = abs(phase_std / (2 * np.pi * beat_freq)) * 1e12
 
@@ -463,17 +481,24 @@ class ChronometricInterferometryHardwareExperiment:
         self.expected_beat_freq = 100.0  # 100 Hz
         self.capture_duration = 10.0  # 10 seconds
 
-    def setup_hardware(self, ref_port: str, offset_port: str) -> bool:
+    def setup_hardware(self, ref_port: str, offset_port: str, dry_run: bool = False) -> bool:
         """
         Setup all hardware connections.
 
         Args:
             ref_port: Serial port for reference Feather
             offset_port: Serial port for offset Feather
+            dry_run: If True, skip actual hardware connections
 
         Returns:
             True if all connections successful
         """
+        if dry_run:
+            print("=== Skipping hardware setup (--dry-run mode) ===")
+            # Use a default sample rate for the analyzer in dry run mode
+            self.analyzer = BeatNoteAnalyzer(2.4e6)
+            return True
+
         print("=== Setting up hardware ===")
 
         # Connect to Feathers
@@ -501,55 +526,95 @@ class ChronometricInterferometryHardwareExperiment:
         print("✓ All hardware connected successfully!")
         return True
 
-    def run_experiment(self) -> Dict:
+    def _generate_simulated_samples(self, duration: float) -> np.ndarray:
+        """Generates simulated IQ samples for a dry run."""
+        # Use the same sample rate as the real hardware
+        sample_rate = 2.4e6
+        num_samples = int(duration * sample_rate)
+        t = np.arange(num_samples) / sample_rate
+
+        # Create two clean signals (complex exponentials)
+        ref_signal = np.exp(1j * 2 * np.pi * self.reference_freq * t)
+
+        # Introduce a small, known delay to the offset signal to be detected
+        tau_ps = 13.5
+        tau_sec = tau_ps * 1e-12
+        offset_signal = np.exp(1j * 2 * np.pi * self.offset_freq * (t - tau_sec))
+
+        # Combine them to simulate what the SDR would receive
+        combined_signal = ref_signal + offset_signal
+
+        # Add a small amount of noise for realism
+        signal_power = np.mean(np.abs(combined_signal) ** 2)
+        snr_db = 40.0  # High SNR for a clean dry run
+        noise_power = signal_power / (10 ** (snr_db / 10))
+        noise = np.random.normal(
+            0, np.sqrt(noise_power / 2), num_samples
+        ) + 1j * np.random.normal(0, np.sqrt(noise_power / 2), num_samples)
+
+        simulated_samples = combined_signal + noise
+
+        print(
+            f"✓ Generated {len(simulated_samples):,} simulated samples with tau={tau_ps} ps."
+        )
+        return simulated_samples
+
+    def run_experiment(self, dry_run: bool = False) -> Dict:
         """
         Run the complete chronometric interferometry demonstration.
+
+        Args:
+            dry_run: If True, use simulated data instead of hardware.
 
         Returns:
             Experiment results dictionary
         """
         print("\n=== Running Hardware Chronometric Interferometry Demo ===")
 
-        # Get initial status
-        print("\nInitial hardware status:")
-        ref_status = self.reference_feather.get_status()
-        offset_status = self.offset_feather.get_status()
-
-        print(
-            f"Reference: {ref_status['frequency']} - {'Active' if ref_status['signal_active'] else 'Idle'}"
-        )
-        print(
-            f"Offset: {offset_status['frequency']} - {'Active' if offset_status['signal_active'] else 'Idle'}"
-        )
-
         results = {
             "timestamp": datetime.now().isoformat(),
             "success": False,
             "error_message": None,
+            "dry_run": dry_run,
         }
 
         try:
-            # Start signal generation
-            print("\nStarting signal generation...")
-            ref_start = self.reference_feather.start_signal()
-            offset_start = self.offset_feather.start_signal()
+            # Start signal generation (hardware only)
+            if not dry_run:
+                print("\nInitial hardware status:")
+                ref_status = self.reference_feather.get_status()
+                offset_status = self.offset_feather.get_status()
+                print(
+                    f"Reference: {ref_status['frequency']} - {'Active' if ref_status['signal_active'] else 'Idle'}"
+                )
+                print(
+                    f"Offset: {offset_status['frequency']} - {'Active' if offset_status['signal_active'] else 'Idle'}"
+                )
 
-            if not (ref_start and offset_start):
-                results["error_message"] = "Failed to start signal generation"
-                return results
+                print("\nStarting signal generation...")
+                ref_start = self.reference_feather.start_signal()
+                offset_start = self.offset_feather.start_signal()
 
-            # Wait for signals to stabilize
-            print("Waiting for signals to stabilize...")
-            time.sleep(2)
+                if not (ref_start and offset_start):
+                    results["error_message"] = "Failed to start signal generation"
+                    return results
 
-            # Capture samples
-            print(f"\nCapturing samples for {self.capture_duration}s...")
-            samples = self.rtlsdr.capture_samples(self.capture_duration)
+                print("Waiting for signals to stabilize...")
+                time.sleep(2)
 
-            # Stop signal generation
-            print("\nStopping signal generation...")
-            self.reference_feather.stop_signal()
-            self.offset_feather.stop_signal()
+            # Capture samples (from hardware or simulation)
+            if dry_run:
+                print(f"\nGenerating simulated samples for {self.capture_duration}s...")
+                samples = self._generate_simulated_samples(self.capture_duration)
+            else:
+                print(f"\nCapturing samples for {self.capture_duration}s...")
+                samples = self.rtlsdr.capture_samples(self.capture_duration)
+
+            # Stop signal generation (hardware only)
+            if not dry_run:
+                print("\nStopping signal generation...")
+                self.reference_feather.stop_signal()
+                self.offset_feather.stop_signal()
 
             # Analyze samples
             print("\nAnalyzing captured samples...")
@@ -558,7 +623,7 @@ class ChronometricInterferometryHardwareExperiment:
 
             # Generate plots
             print("\nGenerating analysis plots...")
-            self._generate_plots(samples, analysis_results)
+            self._generate_plots(samples, results)
 
             results["success"] = True
             print("\n✓ Experiment completed successfully!")
@@ -568,11 +633,12 @@ class ChronometricInterferometryHardwareExperiment:
             print(f"\n✗ Experiment failed: {e}")
 
         finally:
-            # Ensure signals are stopped
-            if self.reference_feather:
-                self.reference_feather.stop_signal()
-            if self.offset_feather:
-                self.offset_feather.stop_signal()
+            # Ensure signals are stopped (hardware only)
+            if not dry_run:
+                if self.reference_feather:
+                    self.reference_feather.stop_signal()
+                if self.offset_feather:
+                    self.offset_feather.stop_signal()
 
         return results
 
@@ -713,8 +779,13 @@ Hardware Configuration:
 
         plt.show()
 
-    def cleanup(self):
+    def cleanup(self, dry_run: bool = False):
         """Clean up hardware connections."""
+        if dry_run:
+            print("\nSkipping hardware cleanup (--dry-run mode).")
+            print("✓ Cleanup complete")
+            return
+
         print("\nCleaning up hardware connections...")
 
         if self.reference_feather:
@@ -736,12 +807,10 @@ def main():
     )
     parser.add_argument(
         "--ref-port",
-        required=True,
         help="Serial port for reference Feather (e.g., /dev/ttyACM0 or COM3)",
     )
     parser.add_argument(
         "--offset-port",
-        required=True,
         help="Serial port for offset Feather (e.g., /dev/ttyACM1 or COM4)",
     )
     parser.add_argument(
@@ -750,13 +819,27 @@ def main():
         default=10.0,
         help="Capture duration in seconds (default: 10.0)",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run without hardware, using simulated data for testing.",
+    )
 
     args = parser.parse_args()
 
+    # If not a dry run, serial ports are required
+    if not args.dry_run:
+        if not args.ref_port or not args.offset_port:
+            parser.error(
+                "--ref-port and --offset-port are required unless --dry-run is specified."
+            )
+
     print("=== Hardware Chronometric Interferometry Demo ===")
-    print("RF Chronometric Interferometry with Adafruit Feathers and RTL-SDR")
-    print(f"Reference Feather: {args.ref_port}")
-    print(f"Offset Feather: {args.offset_port}")
+    if args.dry_run:
+        print("Running in --dry-run mode (no hardware required).")
+    else:
+        print(f"Reference Feather: {args.ref_port}")
+        print(f"Offset Feather: {args.offset_port}")
     print(f"Capture Duration: {args.duration}s")
 
     # Create experiment instance
@@ -765,12 +848,14 @@ def main():
 
     try:
         # Setup hardware
-        if not experiment.setup_hardware(args.ref_port, args.offset_port):
+        if not experiment.setup_hardware(
+            args.ref_port, args.offset_port, dry_run=args.dry_run
+        ):
             print("✗ Hardware setup failed")
             return 1
 
         # Run experiment
-        results = experiment.run_experiment()
+        results = experiment.run_experiment(dry_run=args.dry_run)
 
         # Print final results
         print("\n=== Final Results ===")
@@ -813,7 +898,7 @@ def main():
         return 1
 
     finally:
-        experiment.cleanup()
+        experiment.cleanup(dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

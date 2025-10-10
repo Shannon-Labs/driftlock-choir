@@ -60,14 +60,20 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-results/
+results/*
+!results/README.md
+!results/snapshots/
+!results/snapshots/**
+
 logs/
 *.log
-*.png
-*.jpg
-*.jpeg
-*.svg
-*.pdf
+
+# Generated figures at repository root (documentation assets live in docs/)
+/*.png
+/*.jpg
+/*.jpeg
+/*.svg
+/*.pdf
 
 # Jupyter
 .ipynb_checkpoints
