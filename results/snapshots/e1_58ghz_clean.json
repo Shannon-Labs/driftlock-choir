@@ -1,0 +1,102 @@
+{
+  "experiment_id": "E1_Basic_Beat_Note",
+  "description": "Basic beat-note formation and analysis",
+  "parameters": {
+    "tx_frequency_hz": 5800000000.0,
+    "rx_frequency_hz": 5800000240.0,
+    "sampling_rate_hz": 40000000.0,
+    "duration_seconds": 0.002,
+    "true_tau_ps": 9.5,
+    "true_delta_f_hz": 0.0,
+    "snr_db": 35.0,
+    "add_noise": false,
+    "add_phase_noise": false,
+    "oscillator_type": "tcxo",
+    "estimation_method": "phase_slope",
+    "plot_results": false,
+    "save_plots": false,
+    "channel_profile": "line_of_sight"
+  },
+  "summary": {
+    "metrics": {
+      "rmse_timing_ps": 0.09139530236179638,
+      "rmse_frequency_ppb": 1.404232534696348e-06,
+      "convergence_time_s": 0.0,
+      "iterations_to_convergence": 1
+    },
+    "success": true,
+    "error_message": null,
+    "analysis": {
+      "tau_estimate_ps": 9.408604697638204,
+      "tau_uncertainty_ps": 0.4044676576987706,
+      "delta_f_estimate_hz": 8.144548701238818e-06,
+      "delta_f_uncertainty_hz": 1.6813562422892042e-07,
+      "beat_frequency_hz": 239.99999124792083,
+      "expected_beat_frequency_hz": 240.0,
+      "expected_residual_delta_f_hz": 0.0,
+      "snr_db": 35.0,
+      "quality": "good",
+      "method": "phase_slope_single"
+    },
+    "validation": {
+      "timing_error_ps": 0.09139530236179638,
+      "frequency_error_hz": 8.144548701238818e-06,
+      "beat_frequency_error_hz": 8.752079168061755e-06,
+      "precision_gate_ps": 5.0,
+      "frequency_gate_hz": 1.0,
+      "beat_frequency_gate_hz": 1.0,
+      "meets_precision": true,
+      "meets_frequency": true,
+      "meets_beat_frequency": true
+    }
+  },
+  "analysis_records": [
+    {
+      "timestamp": {
+        "time": 0.0,
+        "uncertainty": 0.0,
+        "quality": "excellent"
+      },
+      "tx_frequency_hz": 5800000000.0,
+      "rx_frequency_hz": 5800000240.0,
+      "beat_frequency_hz": 239.99999124792083,
+      "tau_estimate_ps": 9.408604697638204,
+      "tau_uncertainty_ps": 0.4044676576987706,
+      "delta_f_estimate_hz": 8.144548701238818e-06,
+      "delta_f_uncertainty_hz": 1.6813562422892042e-07,
+      "snr_db": 35.0,
+      "estimation_method": "phase_slope_single",
+      "quality": "good"
+    }
+  ],
+  "telemetry": [
+    {
+      "timestamp": {
+        "time": 0.0,
+        "uncertainty": 0.0,
+        "quality": "excellent"
+      },
+      "tx_frequency_hz": 5800000000.0,
+      "rx_frequency_hz": 5800000240.0,
+      "beat_frequency_hz": 239.99999124792083,
+      "tau_estimate_ps": 9.408604697638204,
+      "tau_uncertainty_ps": 0.4044676576987706,
+      "delta_f_estimate_hz": 8.144548701238818e-06,
+      "delta_f_uncertainty_hz": 1.6813562422892042e-07,
+      "snr_db": 35.0,
+      "estimation_method": "phase_slope_single",
+      "quality": "good"
+    }
+  ],
+  "metrics": {
+    "rmse_timing_ps": 0.09139530236179638,
+    "rmse_frequency_ppb": 1.404232534696348e-06,
+    "convergence_time_s": 0.0,
+    "iterations_to_convergence": 1,
+    "communication_overhead_bytes": 0,
+    "computation_time_s": 0.0
+  },
+  "success": true,
+  "error_message": null,
+  "completion_time": "2025-10-10T02:56:21.074553+00:00"
+}
