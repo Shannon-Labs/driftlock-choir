@@ -1,37 +1,36 @@
-# Driftlock Choir
+# Chronometric Interferometry for Picosecond-Scale Wireless Synchronization
 
-![Driftlock Choir Synchronization Process](docs/assets/images/narrative_synchronization_13p5ps.png)
+![Chronometric Interferometry](docs/assets/images/chronometric_interferometry.png)
 
-> The open-source foundation for a breakthrough wireless synchronization technology, actively transitioning from proven theory to hardware validation.
+> An open-source framework for picosecond-scale wireless synchronization, actively transitioning from simulation to hardware validation.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 
-## The Vision: Fiber-Level Precision, Wirelessly
+## Overview
 
-Driftlock Choir is a research project developing **chronometric interferometry**, a technique to synchronize distributed systems over-the-air with picosecond-level precision. Our goal is to deliver the timing performance of dedicated fiber optics with the flexibility and low cost of wireless radio.
+This repository contains a research project developing **chronometric interferometry**, a technique to synchronize distributed systems over-the-air with picosecond-level precision. The goal is to deliver the timing performance of dedicated fiber optics with the flexibility and low cost of wireless radio.
 
-This repository contains the full software stack—from first-principles physics models to statistical estimators and hardware bridges—to design, simulate, and validate this next-generation timing infrastructure.
+The repository provides the full software stack—from first-principles physics models to statistical estimators and hardware bridges—to design, simulate, and validate this timing infrastructure.
 
-## The Musical Analogy
+## Core Concepts
 
-At its heart, chronometric interferometry is like tuning a choir of musicians.
+### What is Chronometric Interferometry?
+Our method is a form of heterodyne interferometry. We mix two signals with a known frequency offset (Δf) to produce an intermediate frequency (the "beat note") whose phase is directly proportional to the propagation delay (τ). This down-conversion allows us to measure the phase of a low-frequency beat note with high precision, which is far more feasible with commodity ADCs than trying to directly measure the phase of the multi-gigahertz carrier.
 
-Imagine two oscillators (musicians) playing at nearly the same frequency. The slight difference in their frequencies creates a slow, audible "wah-wah-wah" sound—a **beat note**. The phase of this beat note tells us two things: how far apart the musicians are (propagation delay, **τ**) and exactly how out of tune they are (frequency offset, **Δf**).
+### Why Not Just Use an Atomic Clock?
+This system addresses time *distribution* (syntonization and synchronization), not time *generation*. Atomic clocks provide a highly stable frequency reference, but they don't solve the problem of delivering that reference's phase to distributed nodes. This project provides a time-transfer technology that could use an atomic clock as its primary reference oscillator to create an end-to-end timing network that is both stable *and* precisely distributed.
 
-Driftlock Choir is a system that can "listen" to this beat note with extreme precision, allowing us to get an entire network of wireless devices to "sing" in perfect, coherent harmony.
+### The Primary Challenge: Multipath Fading
+The primary challenge is multipath fading. The current phase-slope estimator assumes a single, line-of-sight (LoS) propagation path. In a real environment, the received signal is a superposition of multiple paths, each with a different delay and attenuation. This corrupts the simple linear relationship between frequency and phase. Overcoming this requires developing advanced estimators that can identify the LoS path in a dense multipath environment.
 
-![Chronometric interferometry schematic](docs/assets/images/chronometric_interferometry_enhanced.png)
-*Figure 1 – The system-level schematic, showing the two-way signal exchange, beat-note formation, and parameter extraction that makes picosecond-scale timing possible.*
+## Performance
 
-## Significance & Impact
+Achieving picosecond-level wireless timing enables new applications across various fields.
 
-Achieving picosecond-level wireless timing is not an incremental improvement; it is a categorical leap in performance that enables entirely new applications.
-
-**How Precise is 13.5 Picoseconds?**
-*   **In Perspective:** Light travels just **4 millimeters** in 13.5 ps.
-*   **vs. GPS:** Over 100x more precise than standard GPS, and it works indoors.
-*   **vs. White Rabbit:** Competes with the performance of White Rabbit, the gold standard for wired timing, but without the need for expensive, dedicated fiber optic cables.
+**13.5 Picoseconds in Perspective:**
+*   **Distance:** Light travels just **4 millimeters** in 13.5 ps.
+*   **Comparison:** This is over 100x more precise than standard GPS and works indoors. It is competitive with the White Rabbit protocol, a standard for wired timing, without the need for dedicated fiber optic cables.
 
 | Technology | Typical Precision | Medium |
 | :--- | :--- | :--- |
@@ -39,59 +38,49 @@ Achieving picosecond-level wireless timing is not an incremental improvement; it
 | PTP | Microseconds (10⁻⁶ s) | Ethernet |
 | GPS | Nanoseconds (10⁻⁹ s) | Satellite RF |
 | White Rabbit | **Tens of Picoseconds** (10⁻¹² s) | **Fiber Optic** |
-| **Driftlock Choir** | **Tens of Picoseconds** (10⁻¹² s) | **Wireless RF** |
+| **This Project** | **Tens of Picoseconds** (10⁻¹² s) | **Wireless RF** |
 
-This capability is a direct enabler for...
-*   **6G Wireless:** Realizing the vision of Joint Communication and Sensing (JCAS), where base stations act as a coherent radar system for high-resolution environmental mapping.
-*   **Autonomous Systems:** Allowing teams of robots or autonomous vehicles to fuse their sensor data with near-perfect correlation, enabling safer and more complex coordinated actions.
-*   **Distributed Computing:** Enabling massive, low-cost radio telescopes, distributed beamforming, and other coherent signal processing applications.
-*   **Augmented Reality:** Creating believable, shared multi-user AR experiences free of the motion sickness and artifacts caused by timing mismatches.
+This capability is an enabler for:
+*   **6G Wireless:** Joint Communication and Sensing (JCAS), where base stations act as a coherent radar system.
+*   **Autonomous Systems:** Sensor fusion for robots or autonomous vehicles with near-perfect correlation.
+*   **Distributed Computing:** Coherent signal processing applications like low-cost radio telescopes.
 
-## Project Status & Milestones
+## Project Status
 
 The project is currently in **Phase 1: Foundational Credibility**. The core algorithms have been validated in a comprehensive Python simulation, and we are now focused on hardware implementation.
 
-*   ✅ **Proven in Simulation:** Achieved **13.5 ps** line-of-sight timing recovery and **0.09 ps** residual error in high-band simulations.
-*   ✅ **Characterized Limits:** Documented failure modes in noisy, high-multipath environments, which defines our primary research challenge.
-*   ➡️ **Hardware Validation:** The immediate and most critical goal is to reproduce these results on real hardware.
-
-For a detailed view of our phased development plan, current research challenges, and future goals, please see our public **[Technical Roadmap](ROADMAP.md)**.
+*   **Simulation Results:** Achieved **13.5 ps** line-of-sight timing recovery and **0.09 ps** residual error in high-band simulations.
+*   **Next Step:** The immediate goal is to reproduce these results on real hardware.
 
 ## Quick Start
 
 Get the code and install dependencies:
 ```bash
 git clone https://github.com/Shannon-Labs/driftlock-choir.git
-cd driftlock-choir/driftlockchoir-oss
+cd driftlock-choir
 pip install -r requirements.txt
 ```
 
-Run the clean E1 chronometric interferometry experiment (13.5 ps delay):
+Run the baseline E1 chronometric interferometry experiment (13.5 ps delay):
 ```bash
-python run_experiment.py --tau-ps 13.5 --delta-f-hz 150
+python e1_beat_note_analysis.py --tau-ps 13.5 --delta-f-hz 150
 ```
 
 Explore the results and visualizations in the interactive walkthrough notebook:
 ```bash
-jupyter notebook docs/examples/e1_cli_walkthrough.ipynb
+jupyter notebook examples/e1_cli_walkthrough.ipynb
 ```
 
-## Collaboration & Open Core Model
+## Collaboration
 
-This project uses an **"Open Core"** model. The core simulation framework is open-source (MIT) to foster academic collaboration and peer review. The high-performance, hardware-specific implementations (e.g., for FPGAs) are proprietary and form the basis for future commercialization.
-
-We are committed to validating our work through peer-reviewed publication in high-impact venues.
-
-For a deeper dive into the theory, technical challenges, and scientific context, please see our detailed Q&A:
-
-➡️ **[Frequently Asked Questions (Q&A.md)](Q&A.md)**
+This project uses an "Open Core" model. The core simulation framework is open-source (MIT) to foster academic collaboration and peer review. High-performance, hardware-specific implementations (e.g., for FPGAs) may be proprietary. We are committed to validating our work through peer-reviewed publication.
 
 ## Citation
 
 If you use this work in your research, please cite it as:
 ```
-@software{driftlock_choir_2025,
-  title = {Driftlock Choir: An Open-Source Framework for Picosecond-Scale Wireless Synchronization via Chronometric Interferometry},
+@software{chronometric_interferometry_2025,
+  title = {An Open-Source Framework for Picosecond-Scale Wireless Synchronization via Chronometric Interferometry},
   author = {Shannon Labs and Community Contributors},
   year = {2025},
   url = {https://github.com/Shannon-Labs/driftlock-choir},
