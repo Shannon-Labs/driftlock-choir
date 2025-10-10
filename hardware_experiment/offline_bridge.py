@@ -1,4 +1,4 @@
-"""Offline helpers to reuse the E1 estimator with recorded IQ captures."""
+"""Offline helpers to reuse the chronometric interferometry estimator with recorded IQ captures."""
 
 from __future__ import annotations
 

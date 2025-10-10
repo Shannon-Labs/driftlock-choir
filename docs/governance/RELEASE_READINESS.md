@@ -36,7 +36,7 @@
 
 - ✅ **CHANGELOG.md** - Version history
   - v1.0.0 release documentation
-  - Complete E1-E13 experiment summary
+  - Complete experiment summary and validation results
   - Performance achievements
   - Future roadmap
 
@@ -64,7 +64,7 @@
 ### Critical Areas for AI Reviewer to Validate:
 
 #### 1. **Technical Accuracy**
-- Verify "≈2.1 ps timing precision" claim against E1 simulation data
+- Verify "≈13.5 ps timing precision" claim against chronometric interferometry simulation data
 - Cross-check all performance metrics with corresponding experiments
 - Validate mathematical formulations in CHRONOMETRIC_INTERFEROMETRY_EXPLAINED.md
 - Confirm test suite actually achieves 100% pass rate
@@ -121,7 +121,7 @@
 
 ### Strengths
 
-1. **Comprehensive Validation**: 13 experiments (E1-E13) provide thorough validation from basic physics to deployment scenarios
+1. **Comprehensive Validation**: Validation provides thorough results from basic physics to deployment scenarios
 
 2. **Professional Documentation**: README, CONTRIBUTING, and technical docs maintain academic/research quality
 

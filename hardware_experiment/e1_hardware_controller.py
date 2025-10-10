@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-E1 Hardware Experiment Controller
+Hardware Experiment Controller
 Part of Driftlock Choir - RF Chronometric Interferometry Hardware Implementation
 
-This script controls the hardware E1 experiment using:
+This script controls the hardware chronometric interferometry demonstration using:
 - Two Adafruit Feather M4 Express boards for signal generation
 - RTL-SDR for signal capture and analysis
 - USB serial communication for timing coordination
@@ -447,11 +447,11 @@ class BeatNoteAnalyzer:
         return results
 
 
-class E1HardwareExperiment:
-    """Main controller for E1 hardware experiment."""
+class ChronometricInterferometryHardwareExperiment:
+    """Main controller for chronometric interferometry demonstration."""
 
     def __init__(self):
-        """Initialize E1 hardware experiment."""
+        """Initialize chronometric interferometry demonstration."""
         self.reference_feather = None
         self.offset_feather = None
         self.rtlsdr = None
@@ -503,12 +503,12 @@ class E1HardwareExperiment:
 
     def run_experiment(self) -> Dict:
         """
-        Run the complete E1 experiment.
+        Run the complete chronometric interferometry demonstration.
 
         Returns:
             Experiment results dictionary
         """
-        print("\n=== Running E1 Hardware Experiment ===")
+        print("\n=== Running Hardware Chronometric Interferometry Demo ===")
 
         # Get initial status
         print("\nInitial hardware status:")
@@ -606,7 +606,7 @@ class E1HardwareExperiment:
         """Generate analysis plots."""
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle(
-            "E1 Hardware Experiment - Chronometric Interferometry Analysis",
+            "Hardware Chronometric Interferometry Demo - Chronometric Interferometry Analysis",
             fontsize=14,
             fontweight="bold",
         )
@@ -730,9 +730,9 @@ Hardware Configuration:
 
 
 def main():
-    """Main function for E1 hardware experiment."""
+    """Main function for chronometric interferometry demonstration."""
     parser = argparse.ArgumentParser(
-        description="E1 Hardware Experiment - Chronometric Interferometry with Feathers and RTL-SDR"
+        description="Hardware Chronometric Interferometry Demo - Chronometric Interferometry with Feathers and RTL-SDR"
     )
     parser.add_argument(
         "--ref-port",
@@ -753,14 +753,14 @@ def main():
 
     args = parser.parse_args()
 
-    print("=== E1 Hardware Experiment ===")
+    print("=== Hardware Chronometric Interferometry Demo ===")
     print("RF Chronometric Interferometry with Adafruit Feathers and RTL-SDR")
     print(f"Reference Feather: {args.ref_port}")
     print(f"Offset Feather: {args.offset_port}")
     print(f"Capture Duration: {args.duration}s")
 
     # Create experiment instance
-    experiment = E1HardwareExperiment()
+    experiment = ChronometricInterferometryHardwareExperiment()
     experiment.capture_duration = args.duration
 
     try:

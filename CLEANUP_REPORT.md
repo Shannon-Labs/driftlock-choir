@@ -171,6 +171,6 @@ The codebase has undergone significant improvements with better scientific rigor
 
 ## Conclusion
 
-The technical work is **excellent and scientifically sound**. The only issue is documentation that hasn't caught up with the actual measured performance. Update the metrics to match reality (~13.5 ps, not 2.1 ps), and you're ready to publish with confidence.
+The technical work is **excellent and scientifically sound**. The only issue is documentation that hasn't caught up with the actual measured performance. Update the metrics to match reality (~13.5 ps, not 13.5 ps), and you're ready to publish with confidence.
 
 The framework is honest about being simulation-based, the code is well-tested, and the approach is scientifically valid. Just need to fix those metric numbers!

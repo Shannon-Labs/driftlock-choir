@@ -1,7 +1,7 @@
-# E1 Hardware Experiment
+# Hardware Experiment
 ## Real-World Implementation of RF Chronometric Interferometry
 
-This directory contains a complete hardware implementation of the E1 chronometric interferometry experiment using **Adafruit Feather M4 Express** boards and **RTL-SDR**.
+This directory contains a complete hardware implementation of chronometric interferometry using **Adafruit Feather M4 Express** boards and **RTL-SDR**.
 
 ## Quick Start
 
@@ -56,7 +56,7 @@ Feather A (433.0 MHz) ─┐
 Feather B (433.1 MHz) ─┘
 ```
 
-The 100 Hz beat frequency contains both timing and frequency information that can be extracted using the same algorithms demonstrated in the software E1 experiment.
+The 100 Hz beat frequency contains both timing and frequency information that can be extracted using the same algorithms demonstrated in the software chronometric interferometry demonstration.
 
 ## Scientific Significance
 

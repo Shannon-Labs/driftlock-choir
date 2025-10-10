@@ -18,12 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Restored backward compatibility for `OscillatorModel.frequency` and beat-note frequency expectations used in the existing test suite.
-- Hardened Experiment E1 parameter validation to gracefully handle invalid configurations.
+- Hardened chronometric interferometry parameter validation to gracefully handle invalid configurations.
 
 ## [0.1.0] - 2024-10-06
 
 ### Initial Open-Source Release
 - Core chronometric interferometry primitives (oscillators, channel simulator, beat-note processor).
-- Experiment E1 for basic beat-note formation and τ/Δf estimation.
+- Chronometric interferometry demonstration for basic beat-note formation and τ/Δf estimation.
 - Example scripts, pytest suite, and audio demonstrations for the Driftlock Choir OSS drop.
 - Initial documentation set including theoretical overview and hardware experiment roadmap.

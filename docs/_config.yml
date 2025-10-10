@@ -74,8 +74,8 @@ navigation:
 
 # Performance metrics for display
 performance:
-  timing_precision: "13.5 ps RMSE (E1 baseline, 5-20 ps typical)"
-  frequency_accuracy: "0.05 ppb RMSE (E1 baseline, 0.05-5 ppb typical)"
+  timing_precision: "13.5 ps RMSE (baseline, 5-20 ps typical)"
+  frequency_accuracy: "0.05 ppb RMSE (baseline, 0.05-5 ppb typical)"
   convergence_time: "< 100 ms (simulated consensus)"
   scalability: "500+ nodes (simulated)"
   test_coverage: "47 test suites, 312+ test cases"

@@ -399,6 +399,10 @@ class ExperimentRunner:
                     "communication_overhead_bytes": result.metrics.communication_overhead,
                     "computation_time_seconds": result.metrics.computation_time,
                 },
+                "analysis_records": [
+                    record.to_dict() for record in result.analysis_records
+                ],
+                "telemetry": result.telemetry,
             }
             serializable_results.append(result_dict)
 

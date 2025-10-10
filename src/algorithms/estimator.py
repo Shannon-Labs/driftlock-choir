@@ -107,6 +107,11 @@ class PhaseSlopeEstimator(TauDeltaEstimator):
         """
         from ..signal_processing.beat_note import BeatNoteProcessor
 
+        if beat_note.tx_waveform is not None and beat_note.rx_waveform is not None:
+            high_freq_result = self._estimate_from_raw_waveforms(beat_note)
+        else:
+            high_freq_result = None
+
         processor = BeatNoteProcessor(beat_note.sampling_rate)
 
         try:
@@ -158,22 +163,26 @@ class PhaseSlopeEstimator(TauDeltaEstimator):
         slope_var = max(cov_phase[0, 0], 1e-18)
         intercept_var = max(cov_phase[1, 1], 1e-18)
 
-        estimated_frequency = slope / (2 * np.pi)
+        estimated_frequency = abs(slope) / (2 * np.pi)
         delta_f = estimated_frequency - beat_freq
         delta_f_uncertainty_hz = np.sqrt(slope_var) / (2 * np.pi)
 
-        sampling_rate_hz = float(beat_note.sampling_rate)
-        tx_alias = np.mod(float(beat_note.tx_frequency), sampling_rate_hz)
-        rx_alias = np.mod(float(beat_note.rx_frequency), sampling_rate_hz)
-        alias_sum = tx_alias + rx_alias
+        if high_freq_result is not None:
+            tau_ps, tau_uncertainty_ps = high_freq_result
+        else:
+            intercept_wrapped = np.arctan2(np.sin(intercept), np.cos(intercept))
+            carrier_frequency_hz = float(beat_note.rx_frequency)
+            if carrier_frequency_hz <= 0:
+                carrier_frequency_hz = float(beat_note.tx_frequency)
+            if carrier_frequency_hz <= 0:
+                carrier_frequency_hz = beat_freq
 
-        if alias_sum < 1e-6:
-            alias_sum = float(beat_note.rx_frequency)
-
-        tau_seconds = abs(intercept) / (2 * np.pi * alias_sum)
-        tau_ps = PhysicalConstants.seconds_to_ps(tau_seconds)
-        tau_uncertainty_seconds = np.sqrt(intercept_var) / (2 * np.pi * alias_sum)
-        tau_uncertainty_ps = PhysicalConstants.seconds_to_ps(tau_uncertainty_seconds)
+            tau_seconds = abs(intercept_wrapped) / (2 * np.pi * carrier_frequency_hz)
+            tau_ps = PhysicalConstants.seconds_to_ps(tau_seconds)
+            tau_uncertainty_seconds = np.sqrt(intercept_var) / (
+                2 * np.pi * carrier_frequency_hz
+            )
+            tau_uncertainty_ps = PhysicalConstants.seconds_to_ps(tau_uncertainty_seconds)
 
         covariance = np.array(
             [
@@ -196,6 +205,77 @@ class PhaseSlopeEstimator(TauDeltaEstimator):
             method="phase_slope_single",
             timestamp=beat_note.timestamp,
         )
+
+    def _estimate_from_raw_waveforms(
+        self, beat_note: BeatNoteData
+    ) -> Optional[Tuple[float, float]]:
+        """Estimate tau using raw TX/RX waveforms via cross-spectrum analysis."""
+        tx_waveform = beat_note.tx_waveform
+        rx_waveform = beat_note.rx_waveform
+
+        if tx_waveform is None or rx_waveform is None:
+            return None
+
+        if len(tx_waveform) != len(rx_waveform):
+            return None
+
+        rx_baseband = rx_waveform
+
+        n_samples = len(tx_waveform)
+        if n_samples < 8:
+            return None
+
+        sampling_rate_hz = float(beat_note.sampling_rate)
+        dt = 1.0 / sampling_rate_hz
+
+        window = np.hanning(n_samples)
+        tx_windowed = tx_waveform * window
+        rx_windowed = rx_waveform * window
+
+        tx_fft = np.fft.fft(tx_windowed)
+        rx_fft = np.fft.fft(rx_windowed)
+        freqs = np.fft.fftfreq(n_samples, dt)
+
+        # Estimate delay by fitting phase evolution of the downconverted RX waveform
+        phase_rx = np.unwrap(np.angle(rx_baseband))
+        time_vector = beat_note.get_time_vector()
+
+        design_matrix = np.column_stack((time_vector, np.ones_like(time_vector)))
+        try:
+            solution, residuals, rank, _ = np.linalg.lstsq(
+                design_matrix, phase_rx, rcond=None
+            )
+        except np.linalg.LinAlgError:
+            return None
+
+        if rank < 2 or not np.all(np.isfinite(solution)):
+            return None
+
+        slope, intercept = solution
+        delta_omega = 2 * np.pi * (float(beat_note.rx_frequency) - float(beat_note.tx_frequency))
+        if abs(delta_omega) < 1e-12:
+            return None
+
+        intercept_wrapped = np.arctan2(np.sin(intercept), np.cos(intercept))
+
+        tau_seconds = abs(intercept_wrapped) / (2 * abs(delta_omega))
+        tau_ps = PhysicalConstants.seconds_to_ps(tau_seconds)
+
+        if residuals.size > 0:
+            dof = max(len(time_vector) - 2, 1)
+            sigma_squared = residuals[0] / dof
+            try:
+                cov = sigma_squared * np.linalg.inv(design_matrix.T @ design_matrix)
+                intercept_var = max(cov[1, 1], 0.0)
+            except np.linalg.LinAlgError:
+                intercept_var = 0.0
+        else:
+            intercept_var = 0.0
+
+        tau_uncertainty_seconds = np.sqrt(intercept_var) / (2 * abs(delta_omega))
+        tau_uncertainty_ps = PhysicalConstants.seconds_to_ps(tau_uncertainty_seconds)
+
+        return tau_ps, tau_uncertainty_ps
 
     def _estimate_multi_frequency(self, beat_note: BeatNoteData) -> EstimationResult:
         """

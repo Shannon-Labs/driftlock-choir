@@ -1,0 +1,49 @@
+{
+  "hero_beat_note_tau13p5ps.png": {
+    "title": "13.5 ps beat-note recovery",
+    "scenario": "2.4 GHz line-of-sight chronometric interferometry run",
+    "parameters": {
+      "tx_frequency_hz": 2400000000.0,
+      "rx_frequency_hz": 2400000150.0,
+      "sampling_rate_hz": 40000000.0,
+      "duration_seconds": 0.002,
+      "true_tau_ps": 13.5,
+      "delta_f_hz": 150.0,
+      "snr_db": 35.0,
+      "channel_profile": "line_of_sight"
+    },
+    "figure_notes": "Shows beat note waveform, unwrapped phase slope fit, and \u03c4 residuals highlighting 13.5 ps recovery."
+  },
+  "chronometric_interferometry_enhanced.png": {
+    "title": "Chronometric interferometry schematic",
+    "scenario": "System-level overview of two-way RF exchange and parameter extraction",
+    "parameters": {
+      "nodes": 2,
+      "nominal_frequency_hz": 2400000000.0,
+      "exchange": "Two-way time transfer"
+    },
+    "figure_notes": "Annotated workflow highlighting signal exchange, beat-note formation, and \u03c4/\u0394f extraction."
+  },
+  "e1_experiment_result.png": {
+    "title": "Legacy E1 visualization",
+    "scenario": "Baseline chronometric interferometry validation plot",
+    "parameters": {
+      "tx_frequency_hz": 2442000000.0,
+      "rx_frequency_hz": 2442000100.0,
+      "sampling_rate_hz": 20000000.0,
+      "duration_seconds": 0.01,
+      "true_tau_ps": 100.0,
+      "channel_profile": "rf_multipath"
+    },
+    "figure_notes": "Original release figure summarizing waveform, spectrum, and phase analysis."
+  },
+  "intuitive_synchronization.png": {
+    "title": "Intuitive synchronization overview",
+    "scenario": "Conceptual depiction of drift correction across nodes",
+    "parameters": {
+      "network_size": 512,
+      "synchronization_goal": "sub-ppb frequency alignment"
+    },
+    "figure_notes": "Educational graphic linking oscillator drift to consensus corrections."
+  }
+}

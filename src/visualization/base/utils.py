@@ -337,3 +337,29 @@ def validate_figure_quality(fig: plt.Figure, min_dpi: int = 300,
         pass
 
     return validation_results
+
+
+def apply_ieee_colors(fig: plt.Figure) -> None:
+    """Apply IEEE color palette to all lines in figure."""
+    from .styles import IEEEStyle
+    ieee_style = IEEEStyle()
+    colors = ieee_style.colors.get_colors(8)
+
+    for i, ax in enumerate(fig.axes):
+        for j, line in enumerate(ax.lines):
+            line.set_color(colors[j % len(colors)])
+
+    fig.canvas.draw_idle()
+
+
+def apply_nasa_colors(fig: plt.Figure) -> None:
+    """Apply NASA color palette to all lines in figure."""
+    from .styles import NASAStyle
+    nasa_style = NASAStyle()
+    colors = nasa_style.colors.get_colors(8)
+
+    for i, ax in enumerate(fig.axes):
+        for j, line in enumerate(ax.lines):
+            line.set_color(colors[j % len(colors)])
+
+    fig.canvas.draw_idle()

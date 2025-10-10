@@ -19,7 +19,7 @@ pip install -r requirements.txt
 python -m src.experiments.e1_basic_beat_note
 
 # Unit tests
-pytest tests/test_e1.py -v
+pytest tests/test_experiment_e1.py -v
 ```
 
 ### 3. Run Examples
@@ -42,7 +42,7 @@ python examples/basic_consensus_demo.py
 ```
 Demonstrates two-node consensus synchronization.
 
-### 4. Run Experiment E1
+### 4. Run Chronometric Interferometry
 ```bash
 # Run the core experiment
 python -m src.experiments.e1_basic_beat_note
@@ -140,5 +140,3 @@ Interested in the full technology? Contact hunter@shannonlabs.dev
 - **Questions & Collaboration**: hunter@shannonlabs.dev
 
 ---
-
-**Welcome to the future of distributed timing!** 🚀

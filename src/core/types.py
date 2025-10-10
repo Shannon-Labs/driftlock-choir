@@ -124,6 +124,8 @@ class BeatNoteData:
     snr: Decibels
     quality: MeasurementQuality
     measured_beat_frequency: Optional[Hertz] = None
+    tx_waveform: Optional[np.ndarray] = None
+    rx_waveform: Optional[np.ndarray] = None
 
     def __post_init__(self):
         if self.tx_frequency <= 0 or self.rx_frequency <= 0:
@@ -144,6 +146,11 @@ class BeatNoteData:
                 "measured_beat_frequency",
                 Hertz(abs(self.tx_frequency - self.rx_frequency)),
             )
+
+        if self.tx_waveform is not None and len(self.tx_waveform) != len(self.waveform):
+            raise ValueError("TX waveform length must match beat waveform length")
+        if self.rx_waveform is not None and len(self.rx_waveform) != len(self.waveform):
+            raise ValueError("RX waveform length must match beat waveform length")
 
     def get_beat_frequency(self) -> Hertz:
         """Get the beat frequency (absolute difference)."""
@@ -204,6 +211,67 @@ class EstimationResult:
                 self.delta_f + z_score * self.delta_f_uncertainty,
             ),
         }
+
+
+@dataclass(frozen=True)
+class BeatNoteAnalysisRecord:
+    """Structured summary of a beat-note analysis result."""
+
+    timestamp: Timestamp
+    tx_frequency: Hertz
+    rx_frequency: Hertz
+    beat_frequency: Hertz
+    tau_estimate: Picoseconds
+    tau_uncertainty: Picoseconds
+    delta_f_estimate: Hertz
+    delta_f_uncertainty: Hertz
+    snr_db: float
+    estimation_method: str
+    quality: MeasurementQuality
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert record to serializable dictionary."""
+        return {
+            "timestamp": {
+                "time": float(self.timestamp.time),
+                "uncertainty": float(self.timestamp.uncertainty),
+                "quality": self.timestamp.quality.value,
+            },
+            "tx_frequency_hz": float(self.tx_frequency),
+            "rx_frequency_hz": float(self.rx_frequency),
+            "beat_frequency_hz": float(self.beat_frequency),
+            "tau_estimate_ps": float(self.tau_estimate),
+            "tau_uncertainty_ps": float(self.tau_uncertainty),
+            "delta_f_estimate_hz": float(self.delta_f_estimate),
+            "delta_f_uncertainty_hz": float(self.delta_f_uncertainty),
+            "snr_db": float(self.snr_db),
+            "estimation_method": self.estimation_method,
+            "quality": self.quality.value,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BeatNoteAnalysisRecord":
+        """Create record from serialized dictionary."""
+        timestamp_data = data["timestamp"]
+        timestamp = Timestamp(
+            time=Seconds(timestamp_data["time"]),
+            uncertainty=Picoseconds(timestamp_data["uncertainty"]),
+            quality=MeasurementQuality(timestamp_data["quality"]),
+        )
+
+        return cls(
+            timestamp=timestamp,
+            tx_frequency=Hertz(data["tx_frequency_hz"]),
+            rx_frequency=Hertz(data["rx_frequency_hz"]),
+            beat_frequency=Hertz(data["beat_frequency_hz"]),
+            tau_estimate=Picoseconds(data["tau_estimate_ps"]),
+            tau_uncertainty=Picoseconds(data["tau_uncertainty_ps"]),
+            delta_f_estimate=Hertz(data["delta_f_estimate_hz"]),
+            delta_f_uncertainty=Hertz(data["delta_f_uncertainty_hz"]),
+            snr_db=data["snr_db"],
+            estimation_method=data.get("estimation_method", "unknown"),
+            quality=MeasurementQuality(data["quality"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -758,6 +826,7 @@ class ExperimentResult:
     spectral_gap_history: Optional[List[float]] = None
     step_size_history: Optional[List[float]] = None
     variance_regulation_history: Optional[List[Dict[str, Any]]] = None
+    analysis_records: List[BeatNoteAnalysisRecord] = field(default_factory=list)
 
     def __post_init__(self):
         if self.metrics is None:
@@ -779,6 +848,7 @@ class ExperimentResult:
             "spectral_gap_history": self.spectral_gap_history,
             "step_size_history": self.step_size_history,
             "variance_regulation_history": self.variance_regulation_history,
+            "analysis_records": [record.to_dict() for record in self.analysis_records],
         }
 
     @classmethod
@@ -802,7 +872,7 @@ class ExperimentResult:
         return cls(
             config=cls._config_from_dict(data["config"]),
             metrics=cls._metrics_from_dict(data["metrics"]),
-            telemetry=data["telemetry"],
+            telemetry=data.get("telemetry", []),
             final_state=final_state,
             success=data["success"],
             error_message=data["error_message"],
@@ -811,6 +881,10 @@ class ExperimentResult:
             spectral_gap_history=spectral_gap_history,
             step_size_history=step_size_history,
             variance_regulation_history=variance_regulation_history,
+            analysis_records=[
+                BeatNoteAnalysisRecord.from_dict(record)
+                for record in data.get("analysis_records", [])
+            ],
         )
 
     @staticmethod

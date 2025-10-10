@@ -1,5 +1,5 @@
 """
-Experiment E1: Basic Beat-Note Formation and Analysis
+Chronometric Interferometry: Basic Beat-Note Formation and Analysis
 
 This experiment validates the fundamental physics model of chronometric interferometry
 by generating clean beat-note waveforms from two oscillators with known offsets and
@@ -14,9 +14,9 @@ import numpy as np
 
 from ..algorithms.estimator import EstimatorFactory
 from ..core.constants import PhysicalConstants
-from ..core.types import (PPB, BeatNoteData, EstimationResult,
-                          ExperimentConfig, ExperimentResult, Hertz,
-                          MeasurementQuality, OscillatorModel,
+from ..core.types import (PPB, BeatNoteAnalysisRecord, BeatNoteData,
+                          EstimationResult, ExperimentConfig, ExperimentResult,
+                          Hertz, MeasurementQuality, OscillatorModel,
                           PerformanceMetrics, Picoseconds, Seconds, Timestamp)
 from ..signal_processing.beat_note import BeatNoteProcessor
 from ..signal_processing.channel import ChannelSimulator
@@ -27,7 +27,7 @@ from .runner import ExperimentContext
 
 class ExperimentE1:
     """
-    Experiment E1: Basic Beat-Note Formation and Analysis.
+    Chronometric Interferometry: Basic Beat-Note Formation and Analysis.
 
     Hypothesis: Two-way chronometric interferometry can extract τ and Δf from
     simple beat patterns with known ground truth.
@@ -40,7 +40,7 @@ class ExperimentE1:
     """
 
     def __init__(self):
-        """Initialize experiment E1."""
+        """Initialize chronometric interferometry."""
         self.name = "E1_Basic_Beat_Note"
         self.description = "Basic beat-note formation and analysis"
 
@@ -148,6 +148,9 @@ class ExperimentE1:
         estimation_method = parameters.get("estimation_method", "phase_slope")
         plot_results = parameters.get("plot_results", True)
         save_plots = parameters.get("save_plots", True)
+        channel_profile = parameters.get("channel_profile", "rf_multipath")
+        custom_multipath_taps = parameters.get("multipath_taps", [0.3, 0.1])
+        custom_multipath_delays = parameters.get("multipath_delays", [50.0, 120.0])
 
         validation_error = self._validate_parameters(sampling_rate, duration, snr_db)
         if validation_error:
@@ -195,12 +198,20 @@ class ExperimentE1:
         # Create realistic channel simulator with multipath effects
         channel_sim = ChannelSimulator(sampling_rate)
 
-        # Create realistic RF channel model with typical characteristics for chronometric interferometry
-        channel_model = channel_sim.create_rf_multipath_channel(
-            delay=true_tau,  # Primary path delay
-            multipath_taps=[0.3, 0.1],  # Secondary/multipath tap amplitudes
-            multipath_delays=[50.0, 120.0],  # Additional delays in ps
-        )
+        # Create channel model based on requested profile
+        if channel_profile == "rf_multipath":
+            channel_model = channel_sim.create_rf_multipath_channel(
+                delay=true_tau,
+                multipath_taps=custom_multipath_taps,
+                multipath_delays=custom_multipath_delays,
+            )
+        elif channel_profile == "line_of_sight":
+            channel_model = channel_sim.create_multipath_channel(
+                delays=[true_tau],
+                powers=[1.0],
+            )
+        else:
+            raise ValueError(f"Unsupported channel profile: {channel_profile}")
 
         # Apply channel
         rx_signal = channel_sim.apply_channel(rx_signal, channel_model, rx_frequency)
@@ -268,16 +279,31 @@ class ExperimentE1:
             else f"Large errors: τ={tau_error_ps:.1f}ps, Δf={delta_f_error_hz:.1f}Hz"
         )
 
+        analysis_record = BeatNoteAnalysisRecord(
+            timestamp=estimation_result.timestamp,
+            tx_frequency=tx_frequency,
+            rx_frequency=rx_frequency,
+            beat_frequency=beat_note.get_beat_frequency(),
+            tau_estimate=estimation_result.tau,
+            tau_uncertainty=estimation_result.tau_uncertainty,
+            delta_f_estimate=estimation_result.delta_f,
+            delta_f_uncertainty=estimation_result.delta_f_uncertainty,
+            snr_db=snr_db,
+            estimation_method=estimation_result.method,
+            quality=estimation_result.quality,
+        )
+
         return ExperimentResult(
             config=context.config,
             metrics=metrics,
-            telemetry=[],
+            telemetry=[analysis_record.to_dict()],
             final_state=None,
             success=success,
             error_message=error_message,
             completion_time=Timestamp.from_ps(
                 PhysicalConstants.seconds_to_ps(time.time())
             ),
+            analysis_records=[analysis_record],
         )
 
     def _plot_results(
@@ -480,8 +506,8 @@ class ExperimentE1:
 
 
 def main():
-    """Main function to run Experiment E1."""
-    print("Running Experiment E1: Basic Beat-Note Formation and Analysis")
+    """Main function to run chronometric interferometry."""
+    print("Running Chronometric Interferometry: Basic Beat-Note Formation and Analysis")
     print("RF Chronometric Interferometry Demonstration")
 
     # Create experiment
@@ -525,7 +551,7 @@ def main():
     runner.results = [result]  # Add single result for saving
     runner.save_results()
 
-    print("\nExperiment E1 completed!")
+    print("\nChronometric interferometry completed!")
 
 
 if __name__ == "__main__":

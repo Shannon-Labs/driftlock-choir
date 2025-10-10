@@ -66,12 +66,14 @@ class BeatNoteProcessor:
 
         # For RF frequencies (> 1 GHz), simulate proper downconversion
         if tx_frequency > 1e9 or rx_frequency > 1e9:
-            beat_signal = self._generate_rf_beat_note(
+            beat_signal, tx_baseband, rx_baseband = self._generate_rf_beat_note(
                 tx_signal, rx_signal, tx_frequency, rx_frequency
             )
         else:
             # For lower frequencies, use direct mixing
             beat_signal = tx_signal * np.conj(rx_signal)
+            tx_baseband = tx_signal
+            rx_baseband = rx_signal
 
         # Add noise if requested
         if add_noise:
@@ -92,6 +94,8 @@ class BeatNoteProcessor:
             snr=snr_db,
             quality=quality,
             measured_beat_frequency=measured_beat_frequency,
+            tx_waveform=tx_baseband,
+            rx_waveform=rx_baseband,
         )
 
     def extract_beat_frequency(self, beat_note: BeatNoteData) -> Tuple[Hertz, Hertz]:
@@ -139,8 +143,11 @@ class BeatNoteProcessor:
         Returns:
             Tuple of (time_vector, instantaneous_phase)
         """
-        # Get analytic signal using Hilbert transform
-        analytic_signal = scipy_signal.hilbert(beat_note.waveform.real)
+        # Get analytic signal (use native complex waveform when available)
+        if np.iscomplexobj(beat_note.waveform):
+            analytic_signal = beat_note.waveform
+        else:
+            analytic_signal = scipy_signal.hilbert(beat_note.waveform)
 
         # Extract instantaneous phase
         instantaneous_phase = np.unwrap(np.angle(analytic_signal))
@@ -429,7 +436,7 @@ class BeatNoteProcessor:
         rx_signal: np.ndarray,
         tx_frequency: Hertz,
         rx_frequency: Hertz,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Generate beat note for RF frequencies using proper downconversion.
 
@@ -471,4 +478,4 @@ class BeatNoteProcessor:
         # The resulting beat frequency should be |tx_freq - rx_freq|
         # which is exactly what we want for chronometric interferometry
 
-        return beat_signal
+        return beat_signal, tx_baseband, rx_baseband

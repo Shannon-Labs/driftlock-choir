@@ -1,72 +1,37 @@
 # Driftlock Choir
 
-> Precision timing infrastructure for distributed systems through RF chronometric interferometry.
+![13.5 ps beat-note recovery](docs/assets/images/hero_beat_note_tau13p5ps.png)
+
+> Precision timing infrastructure for distributed systems via RF chronometric interferometry.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![CI](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/ci.yml)
-[![Pages](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/Shannon-Labs/driftlock-choir/actions/workflows/pages.yml)
 
-- **Documentation:** https://shannon-labs.github.io/driftlock-choir/
-- **Technical Overview:** https://shannon-labs.github.io/driftlock-choir/technology/
-- **Implementation Guide:** https://shannon-labs.github.io/driftlock-choir/getting-started/
+## Executive Summary
 
----
+- Achieves **13.5 ps** line-of-sight recovery in the clean E1 chronometric interferometry experiment.
+- Demonstrates **sub-ps timing** at **5.8 GHz** and documents failure behaviour in noisy multipath scenarios.
+- Ships curated experiment artifacts, interactive notebooks, and automation scaffolding for continuous validation.
 
-## Contents
+## Project Vision
 
-1. [Technical Overview](#technical-overview)
-2. [Performance Characteristics](#performance-characteristics)
-3. [Core Experiment](#core-experiment)
-4. [Quick Start](#quick-start)
-5. [Repository Structure](#repository-structure)
-6. [Documentation](#documentation)
-7. [Validation & Testing](#validation--testing)
-8. [Citation](#citation)
+Chronometric interferometry mixes distributed oscillators, unwraps the beat-note phase slope, and recovers both propagation delay (τ) and frequency offset (Δf). Driftlock Choir packages the full stack—typed physics models, estimators, visualization, and hardware bridges—to deliver picosecond timing for next-generation infrastructure.
 
----
+## Science Highlights
 
-## Technical Overview
+- 2.4 GHz clean baseline holds **|Δτ| = 1.57 ps**, **|Δf| < 0.2 mHz** ([artifact](results/snapshots/e1_24ghz_clean.json)).
+- 5.8 GHz high-band run delivers **0.09 ps** residual error ([artifact](results/snapshots/e1_58ghz_clean.json)).
+- Noisy RF multipath currently diverges to the **hundreds of nanoseconds**, motivating calibration research ([artifact](results/snapshots/e1_multipath_noisy.json)).
+- Interactive CLI walkthrough notebook lives at [`docs/examples/e1_cli_walkthrough.ipynb`](docs/examples/e1_cli_walkthrough.ipynb).
 
-Driftlock Choir is a framework for achieving ultra-precise time and frequency synchronization in distributed systems. It uses a novel technique called chronometric interferometry, which leverages the beat-note interference between oscillators to measure time-of-flight (τ) and frequency offset (Δf). The framework combines signal processing, estimation algorithms, and consensus protocols to achieve picosecond-level timing precision and sub-ppb frequency accuracy in simulation.
+## Comparison at a Glance
 
-Chronometric interferometry analyzes the phase slope of mixed oscillators:
-
-- `τ = Δφ / (2π·Δf)` extracts propagation delay
-- `Δf = ∂φ/∂t` recovers oscillator drift
-
-This interferometric method enables picosecond synchronization for 6G, distributed sensing, and precision metrology.
-
-### Chronometric Interferometry Method
-
-![Chronometric Interferometry Visualization](docs/assets/images/chronometric_interferometry_enhanced.png)
-
-Chronometric interferometry is a two-way time transfer method that uses heterodyne techniques to achieve high-precision time and frequency synchronization. The technical approach is as follows:
-
-1. **Two-Way Time Transfer (TWTT)**: Two nodes exchange RF signals. This allows for the cancellation of common-mode noise sources.
-2. **Heterodyne Down-Conversion**: Each node mixes the received signal with its local oscillator (LO) to produce a beat-note signal at the difference frequency (Δf).
-3. **Phase-Slope Analysis**: The phase of the beat-note signal is measured over time. The slope of the phase (∂φ/∂t) is proportional to the frequency offset (Δf), and the phase intercept is proportional to the time-of-flight (τ).
-
-By precisely measuring the phase of the beat-note, picosecond-level timing precision and sub-ppb frequency accuracy can be achieved.
-
----
-
-## Performance Characteristics
-
-| Metric | Result | Context |
-| --- | --- | --- |
-| Timing precision | **13.5 ps RMSE** | E1 baseline (clean conditions) |
-| Timing range | **5-20 ps typical** | 2-30 ps depending on SNR and Δf |
-| Frequency accuracy | **0.05 ppb RMSE** | E1 baseline (clean conditions) |
-| Frequency range | **0.05-5 ppb typical** | Varies with signal conditions |
-| Convergence | **< 100 ms** | Two-node consensus |
-| Scalability | **Designed for 500+ nodes** | Architecture supports large-scale deployment |
-| Fault tolerance | **33% malicious nodes** | Byzantine filtering |
-
-- 47 automated test suites / 312+ cases / 100% pass rate
-- Hardware validation roadmap using RTL-SDR and Feather microcontrollers
-
----
+| Track | RF band | τ performance | Δf accuracy | Status | Artifact |
+| --- | --- | --- | --- | --- | --- |
+| E1 simulation (clean) | 2.4 GHz | ≈85% within ±2 ps | ±0.0001 Hz | ✅ Stable | [`e1_24ghz_clean.json`](results/snapshots/e1_24ghz_clean.json) |
+| High-band simulation | 5.8 GHz | 0.09 ps RMSE | <0.0001 Hz | ✅ Stable | [`e1_58ghz_clean.json`](results/snapshots/e1_58ghz_clean.json) |
+| RF multipath stress | 2.4 GHz + multipath | Drifts to ns scale | 1.8 Hz bias | ⚠️ Known limitation | [`e1_multipath_noisy.json`](results/snapshots/e1_multipath_noisy.json) |
+| Hardware bridge dry run | RTL-SDR + offline bridge | Pending capture | Pending | 🚧 In flight | [`hardware_experiment/`](hardware_experiment/README.md) |
 
 ## Quick Start
 
@@ -76,122 +41,84 @@ cd driftlock-choir/driftlockchoir-oss
 pip install -r requirements.txt
 ```
 
+Run the clean chronometric interferometry experiment and export structured output:
+
 ```bash
-# Run the core experiment (E1)
-python -m src.experiments.e1_basic_beat_note
-
-# Explore examples
-python examples/basic_beat_note_demo.py
-python examples/oscillator_demo.py
-python examples/basic_consensus_demo.py
-
-# Validate the suite
-pytest tests/ -v
+python run_experiment.py   --band 2.4GHz   --channel-profile line_of_sight   --duration-ms 2.0   --sampling-rate-msps 40   --tau-ps 13.5   --delta-f-hz 150   --no-phase-noise --no-additive-noise   --export results/snapshots/e1_24ghz_clean.json
 ```
 
-Expected (E1): 13.5 ps timing RMSE (5-20 ps typical), 0.05 ppb frequency RMSE (0.05-5 ppb typical), visualization plots stored under `results/`.
+Explore the interactive walkthrough (plots, JSON inspection, residual analysis):
 
----
-
-## Core Experiment
-
-The framework provides a comprehensive validation of chronometric interferometry through a single, rigorously designed experiment:
-
-```
-src/
-├── algorithms/        # τ/Δf estimators, consensus protocols
-├── core/              # Typed physical units, experiment configuration
-├── signal_processing/ # Oscillator models, channel simulation, beat-note analysis
-└── experiments/       # Core chronometric interferometry validation
-```
-
-The core experiment validates beat-note formation, phase-slope estimation, and performance characterization under realistic RF conditions. Hardware validation tools are provided in [`hardware_experiment/`](hardware_experiment/README.md) for RTL-SDR integration.
-
----
-
-## Repository Structure
-
-```
-driftlock-choir/
-├── src/
-│   ├── algorithms/        # τ/Δf estimation methods and consensus protocols
-│   ├── core/              # Type-safe physical units and experiment configuration
-│   ├── signal_processing/ # Oscillator models, RF channel simulation, beat-note analysis
-│   └── experiments/       # Core chronometric interferometry validation
-├── tests/                 # Comprehensive test suite (47 test suites, 312+ cases)
-├── docs/                  # Technical documentation and mathematical derivations
-├── examples/              # Implementation demonstrations and usage patterns
-├── hardware_experiment/   # RTL-SDR integration and hardware validation tools
-└── requirements.txt       # Python dependencies
-```
-
----
-
-## Validation & Testing
-
-The framework includes comprehensive validation:
-
-- **Unit Tests**: 47 automated test suites covering all algorithms
-- **Integration Tests**: End-to-end experiment validation
-- **Performance Baselines**: Reproducible metrics with deterministic seeds
-- **Statistical Analysis**: Parameter sweeps across SNR and frequency ranges
-
-Run validation:
 ```bash
-pytest tests/ -v
-python -m src.experiments.e1_basic_beat_note
+jupyter notebook docs/examples/e1_cli_walkthrough.ipynb
 ```
 
----
+## Structured Output Snapshot
 
-## Documentation
-
-- Interactive onboarding: https://shannon-labs.github.io/driftlock-choir/getting-started/
-- Documentation hub: https://shannon-labs.github.io/driftlock-choir/documentation/
-- Deep dives on GitHub:
-  - [Chronometric Interferometry Explained](https://shannon-labs.github.io/driftlock-choir/technology_enhanced/)
-  - [Quality Assurance Checklist](QUALITY_ASSURANCE.md)
-  - [Release Readiness Board](RELEASE_READINESS.md)
-  - [Getting Started Guide](GETTING_STARTED.md)
-- Governance & history:
-  - [Contributing](CONTRIBUTING.md)
-  - [Code of Conduct](CODE_OF_CONDUCT.md)
-  - [Changelog](CHANGELOG.md)
-  - [Citation](CITATION.cff)
-
----
-
-## Contributing & Support
-
-We welcome research collaborations, feature proposals, and documentation improvements. To get involved:
-
-1. Review the [contribution guide](CONTRIBUTING.md) and [code of conduct](CODE_OF_CONDUCT.md).
-2. Open an [issue](https://github.com/Shannon-Labs/driftlock-choir/issues) or [discussion](https://github.com/Shannon-Labs/driftlock-choir/discussions).
-3. Submit pull requests with tests (`pytest tests/ -v`) and documentation updates as needed.
-
-For partnership inquiries contact **hunter@shannonlabs.dev**.
-
----
-
-## Citation
-
-If you use Driftlock Choir in your research, please cite it as below:
-
-```
-@software{driftlock_choir_2025,
-  title = {Driftlock Choir: Ultra-Precise Distributed Timing
-           Through Chronometric Interferometry},
-  author = {Shannon Labs},
-  year = {2025},
-  url = {https://github.com/Shannon-Labs/driftlock-choir},
-  note = {Open-source framework achieving 13.5 ps timing RMSE and 0.05 ppb
-          frequency accuracy in simulation through RF chronometric interferometry;
-          hardware validation in progress}
+```json
+{
+  "metrics": {
+    "rmse_timing_ps": 1.57,
+    "rmse_frequency_ppb": 4.5e-05
+  },
+  "analysis": {
+    "tau_estimate_ps": 11.93,
+    "tau_uncertainty_ps": 6.64,
+    "delta_f_estimate_hz": 1.1e-04,
+    "quality": "good"
+  },
+  "validation": {
+    "timing_error_ps": 1.57,
+    "meets_precision": true,
+    "meets_frequency": true
+  }
 }
 ```
 
----
+All snapshot JSONs follow the documented `analysis_records` schema; see [`docs/examples/artifacts/e1_cli_clean.json`](docs/examples/artifacts/e1_cli_clean.json) for the full export.
+
+## Key Figures
+
+![Chronometric interferometry schematic](docs/assets/images/chronometric_interferometry_enhanced.png)
+*Figure 1 – System-level chronometric interferometry schematic highlighting two-way signal exchange, beat-note formation, and parameter extraction pipeline.*
+
+## Repository Layout
+
+```
+src/
+├── core/              # Physical units, experiment configuration
+├── signal_processing/ # Beat-note generation, channels, oscillators
+├── algorithms/        # τ/Δf estimators and uncertainty propagation
+└── experiments/       # Experiment orchestration and runners
+docs/                  # GitHub Pages site, walkthroughs, assets
+results/snapshots/     # Curated experiment outputs (JSON)
+tests/                 # Unit, integration, and CLI validation suites
+```
+
+## Validation & Automation
+
+- `pytest -v` runs the unit/integration portfolio.
+- CLI validation scripts (coming in this release cycle) assert clean, multipath, 5.8 GHz, and hardware-bridge dry runs.
+- `run_experiment.py` exports deterministic JSON artifacts suitable for regression checks.
+
+## Limitations & Roadmap
+
+- RF multipath calibration is unresolved; the phase-slope estimator collapses under low SNR and heavy reflections (see noisy snapshot).
+- Hardware captures require integrating the RTL-SDR bridge scripts with the structured output pipeline.
+- Upcoming milestones: multipath calibration study, automated uncertainty dashboards, GitHub Actions CI with docs builds.
+
+## Citation
+
+```
+@software{driftlock_choir_2025,
+  title = {Driftlock Choir: Ultra-Precise Distributed Timing Through Chronometric Interferometry},
+  author = {Shannon Labs},
+  year = {2025},
+  url = {https://github.com/Shannon-Labs/driftlock-choir},
+  note = {Open-source chronometric interferometry toolkit; 13.5 ps timing baseline, hardware validation in progress}
+}
+```
 
 ## License
 
-Driftlock Choir is released under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE).

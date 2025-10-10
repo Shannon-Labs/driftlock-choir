@@ -1,5 +1,5 @@
 """
-Test suite for Experiment E1 functionality.
+Test suite for chronometric interferometry functionality.
 """
 
 import sys
@@ -18,8 +18,8 @@ from src.experiments.e1_basic_beat_note import ExperimentE1
 from src.experiments.runner import ExperimentContext
 
 
-class TestExperimentE1(unittest.TestCase):
-    """Test Experiment E1 functionality."""
+class TestChronometricInterferometry(unittest.TestCase):
+    """Test chronometric interferometry functionality."""
 
     def setUp(self):
         """Set up test fixtures."""

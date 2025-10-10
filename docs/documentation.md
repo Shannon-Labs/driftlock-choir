@@ -125,7 +125,7 @@ description: "Reference guides, governance, and technical deep dives for Driftlo
             <h2 class="h4 card-title">
               <i class="fas fa-flask me-2 text-primary"></i>Run the Experiments
             </h2>
-            <p class="text-muted">Follow the step-by-step guides to reproduce experiment E1 and extend the framework.</p>
+            <p class="text-muted">Follow the step-by-step guides to reproduce chronometric interferometry demonstration and extend the framework.</p>
             <a class="btn btn-outline-primary" href="https://github.com/{{ site.repository }}/blob/main/GETTING_STARTED.md" target="_blank">
               View Getting Started Guide
             </a>

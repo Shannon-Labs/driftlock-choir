@@ -95,11 +95,11 @@
 ### Performance Claims
 
 **Verify**:
-- [ ] "≈2.1 ps timing precision" - Is this substantiated by E1 simulation results?
+- [ ] "≈13.5 ps timing precision" - Is this substantiated by chronometric interferometry simulation results?
 - [ ] "<1 ppb frequency accuracy" - Is this validated in experiments?
 - [ ] "100% test pass rate" - Confirm with actual test execution
-- [ ] "500+ node scalability" - Verify E10 experimental validation
-- [ ] "33% Byzantine resilience" - Confirm E9 tolerance threshold
+- [ ] "500+ node scalability" - Verify architecture supports large-scale deployment
+- [ ] "33% Byzantine resilience" - Confirm algorithmic tolerance threshold
 - [ ] All percentage improvements (35%, 40%, 60%, etc.) - Cross-check experiment results
 
 **Review Method**:

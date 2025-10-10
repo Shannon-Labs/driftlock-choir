@@ -1,7 +1,7 @@
-# E1 Hardware Experiment Instructions
+# Hardware Experiment Instructions
 ## RF Chronometric Interferometry with Adafruit Feathers and RTL-SDR
 
-This document provides complete step-by-step instructions for performing the E1 hardware experiment demonstrating chronometric interferometry using real hardware.
+This document provides complete step-by-step instructions for performing the hardware experiment demonstrating chronometric interferometry using real hardware.
 
 ## Overview
 
@@ -358,7 +358,7 @@ The principles demonstrated here scale to:
 ## References and Further Reading
 
 1. **Chronometric Interferometry Theory**
-   - Original E1 experiment documentation in this repository
+   - Original experiment documentation in this repository
    - IEEE papers on wireless timing synchronization
 
 2. **RTL-SDR Resources**
@@ -378,6 +378,4 @@ The principles demonstrated here scale to:
 
 ---
 
-**Good luck with your chronometric interferometry experiment!** 🚀📡
-
-Remember: This experiment demonstrates advanced concepts in a simplified form. Real-world chronometric interferometry systems involve much more sophisticated hardware and algorithms, but the fundamental principles are the same.
+This experiment demonstrates advanced concepts in a simplified form. Real-world chronometric interferometry systems involve much more sophisticated hardware and algorithms, but the fundamental principles are the same.

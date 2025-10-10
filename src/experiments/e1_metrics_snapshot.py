@@ -1,4 +1,4 @@
-"""Generate reproducible metrics snapshots for Experiment E1."""
+"""Generate reproducible metrics snapshots for chronometric interferometry demonstration."""
 
 from __future__ import annotations
 

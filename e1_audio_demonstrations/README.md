@@ -1,6 +1,6 @@
-# E1 Chronomagnetic Audio Demonstrations
+# Chronomagnetic Audio Demonstrations
 
-This directory contains audio representations of Experiment E1 from the Driftlock Choir project, demonstrating chronometric interferometry principles through audible phenomena.
+This directory contains audio representations of chronometric interferometry from the Driftlock Choir project, demonstrating chronometric interferometry principles through audible phenomena.
 
 ## Access the Audio Files
 
@@ -12,7 +12,7 @@ All audio files are located in this directory and can be played with any standar
 
 ## Simulation-Based Demonstration
 
-These audio representations are based on our simulation framework that accurately models the physics of chronometric interferometry. While the audio demonstrates the theoretical relationships validated in E1 (achieving ~10 ps median timing precision and 0.05-40 ppb frequency precision in simulations), actual hardware validation remains to be performed.
+These audio representations are based on our simulation framework that accurately models the physics of chronometric interferometry. While the audio demonstrates the theoretical relationships validated in chronometric interferometry (achieving ~10 ps median timing precision and 0.05-40 ppb frequency precision in simulations), actual hardware validation remains to be performed.
 
 ## Hardware Roadmap
 
@@ -24,23 +24,23 @@ We are actively planning hardware experiments to validate these principles in re
 ## Files Generated:
 
 ### 1. e1_beat_note_formation.wav
-- **Concept**: Beat-note formation as in E1 experiment
+- **Concept**: Beat-note formation as in chronometric interferometry demonstration
 - **Description**: Represents two oscillators with a slight frequency offset (100 Hz) creating beat patterns that demonstrate the fundamental principle of τ (time-of-flight) and Δf (frequency offset) measurements
 - **Audible Elements**: You'll hear the carrier frequency (440 Hz) modulated by the beat frequency (100 Hz) with additional τ-related modulations at 2 Hz
 
 ### 2. e1_chronomagnetic_pulses.wav
-- **Concept**: Information 'materializing' at E1-relevant frequencies
+- **Concept**: Information 'materializing' at chronometric interferometry-relevant frequencies
 - **Description**: Demonstrates how information manifests at specific temporal frequencies in chronometric interferometry
 - **Audible Elements**: Pulsed signals at 100, 200, and 300 Hz frequencies representing the "out-of-tune" effect where information arrives at specific temporal frequencies
 
 ### 3. e1_tau_delta_f_modulation.wav
-- **Concept**: Modulation representing τ/Δf relationship from E1
-- **Description**: Shows the relationship between τ (time-of-flight) and Δf (frequency offset) as measured in E1 experiment
+- **Concept**: Modulation representing τ/Δf relationship from chronometric interferometry
+- **Description**: Shows the relationship between τ (time-of-flight) and Δf (frequency offset) as measured in chronometric interferometry demonstration
 - **Audible Elements**: 330 Hz carrier modulated by interplay between τ-related (2.1 Hz) and Δf-related (0.8 Hz) components
 
 ## Scientific Context:
 
-Experiment E1 achieved:
+Chronometric interferometry achieved:
 - **~10 ps median timing precision** (τ measurements, range 2-30 ps)
 - **0.8 ppb frequency precision** (Δf measurements)
 

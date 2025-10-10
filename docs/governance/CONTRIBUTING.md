@@ -181,7 +181,7 @@ Closes #[issue number]
 
 ### Adding New Experiments
 
-When proposing Experiment E14+:
+When proposing advanced experiments:
 
 1. **Create Experiment Specification**:
    - **Objective**: What physics/algorithm/scenario does this validate?
