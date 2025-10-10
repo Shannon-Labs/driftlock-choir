@@ -24,6 +24,13 @@ Chronometric interferometry mixes distributed oscillators, unwraps the beat-note
 - Noisy RF multipath currently diverges to the **hundreds of nanoseconds**, motivating calibration research ([artifact](results/snapshots/e1_multipath_noisy.json)).
 - Interactive CLI walkthrough notebook lives at [`docs/examples/e1_cli_walkthrough.ipynb`](docs/examples/e1_cli_walkthrough.ipynb).
 
+## Applications & 6G Alignment
+
+- **Network-as-a-sensor timing fabric:** Chronometric interferometry supplies synchronized phase references that align with emerging 6G network sensing concepts, enabling centimeter-class ranging and cooperative perception across shared RF infrastructure.
+- **Cloud-robotic control loops:** Sub-ps τ estimation keeps distributed manipulators within tens-of-microseconds latency budgets for remote teleoperation, factory automation, and field robotics.
+- **Industrial autonomy & RL:** The structured `analysis_records` schema integrates cleanly with reinforcement-learning pipelines, providing high-fidelity labels for drift-aware policies and digital twins.
+- **Sensing-driven safety:** Curated clean and noisy snapshots highlight validated regimes and known failure modes, informing resilience work for mobility, XR, and mixed-reality safety cases.
+
 ## Comparison at a Glance
 
 | Track | RF band | τ performance | Δf accuracy | Status | Artifact |
