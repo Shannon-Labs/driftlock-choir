@@ -63,8 +63,19 @@ The plot you generated tells a story in four parts. Let's walk through it using 
 
 ## For RF Engineers: Full Hardware Experiment
 
-If you have the required hardware, you can run this experiment with real radio waves. This mode uses two Adafruit Feather M4 boards as transmitters and an RTL-SDR as the receiver.
+If you have the required hardware, you can run this experiment with real radio waves. This mode uses two **Raspberry Pi Picos** as transmitters and an RTL-SDR as the receiver.
 
 A complete, step-by-step guide for flashing firmware, setting up the hardware, and running the experiment is available in the detailed manual:
 
 ➡️ **[EXPERIMENT_INSTRUCTIONS.md](EXPERIMENT_INSTRUCTIONS.md)**
+
+---
+
+## File Overview
+
+*   `e1_hardware_controller.py`: The main experiment controller script with both hardware and dry-run modes.
+*   `EXPERIMENT_INSTRUCTIONS.md`: The detailed, step-by-step guide for the full hardware setup using Raspberry Pi Picos.
+*   `requirements.txt`: Python dependencies for this experiment.
+*   `pico_firmware_reference.py`: MicroPython firmware for the reference signal Pico.
+*   `pico_firmware_offset.py`: MicroPython firmware for the offset signal Pico.
+*   `offline_bridge.py`: A utility script for running the analysis pipeline on pre-recorded IQ data files.

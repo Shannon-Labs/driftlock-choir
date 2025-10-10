@@ -8,7 +8,11 @@ This page answers common questions about the Driftlock Choir project, with expla
 
 *   **The Simple Answer:** Imagine trying to take a single, perfectly clear photo of a hummingbird's wings. You need an incredibly fast camera shutter. Picosecond timing is like an ultra-fast shutter for a whole network. It lets us "freeze" time across many locations with such precision that we can see the world in a new way, enabling things like high-resolution 3D mapping with radio waves or perfectly synchronized robotic teams.
 
-*   **The Technical Answer:** This level of timing resolution (τ) allows for coherent signal processing across a distributed array. For Joint Communication and Sensing (JCAS) in 6G, it enables the synthesis of a large virtual antenna aperture for high-resolution imaging and beamforming (angle of arrival estimation). For robotics, it allows for sensor fusion (e.g., LiDAR, IMU) across multiple agents with minimal ambiguity, which is critical for safe, high-speed coordinated action where `c * Δτ` is on the order of millimeters.
+*   **The Technical Answer:** This level of timing resolution (τ) allows for coherent signal processing across a distributed array. Specific applications include:
+    *   **6G Joint Communication and Sensing (JCAS):** Enabling the synthesis of a large virtual antenna aperture for high-resolution imaging and beamforming.
+    *   **Industrial Metrology & Robotics:** Allowing for sensor fusion (e.g., LiDAR, IMU) across multiple agents with minimal ambiguity, which is critical for safe, high-speed coordinated action.
+    *   **High-Frequency Trading (HFT):** Ensuring fairness and providing an edge in order execution with a verifiable, ultra-precise time-stamping fabric.
+    *   **Scientific Instrumentation:** Synchronizing large-scale sensor arrays for radio astronomy or physics experiments with the precision of fiber optics.
 
 ---
 

@@ -569,7 +569,7 @@ class ChronometricInterferometryHardwareExperiment:
         Returns:
             Experiment results dictionary
         """
-        print("\n=== Running Hardware Chronometric Interferometry Demo ===")
+        print("\n=== Running Experiment ===\n")
 
         results = {
             "timestamp": datetime.now().isoformat(),
@@ -581,17 +581,13 @@ class ChronometricInterferometryHardwareExperiment:
         try:
             # Start signal generation (hardware only)
             if not dry_run:
-                print("\nInitial hardware status:")
+                print("[Step 1/4] Connecting to Picos and checking status...")
                 ref_status = self.reference_feather.get_status()
                 offset_status = self.offset_feather.get_status()
-                print(
-                    f"Reference: {ref_status['frequency']} - {'Active' if ref_status['signal_active'] else 'Idle'}"
-                )
-                print(
-                    f"Offset: {offset_status['frequency']} - {'Active' if offset_status['signal_active'] else 'Idle'}"
-                )
+                print("         Reference Pico: OK")
+                print("         Offset Pico: OK")
 
-                print("\nStarting signal generation...")
+                print("\n[Step 2/4] Starting signal generation...")
                 ref_start = self.reference_feather.start_signal()
                 offset_start = self.offset_feather.start_signal()
 
@@ -599,30 +595,28 @@ class ChronometricInterferometryHardwareExperiment:
                     results["error_message"] = "Failed to start signal generation"
                     return results
 
-                print("Waiting for signals to stabilize...")
+                print("         Waiting 2s for signals to stabilize...")
                 time.sleep(2)
 
             # Capture samples (from hardware or simulation)
             if dry_run:
-                print(f"\nGenerating simulated samples for {self.capture_duration}s...")
+                print(f"[Step 1/2] Generating simulated samples for {self.capture_duration}s...")
                 samples = self._generate_simulated_samples(self.capture_duration)
             else:
-                print(f"\nCapturing samples for {self.capture_duration}s...")
+                print(f"\n[Step 3/4] Capturing {self.capture_duration}s of RF data via RTL-SDR...")
                 samples = self.rtlsdr.capture_samples(self.capture_duration)
 
             # Stop signal generation (hardware only)
             if not dry_run:
-                print("\nStopping signal generation...")
                 self.reference_feather.stop_signal()
                 self.offset_feather.stop_signal()
 
             # Analyze samples
-            print("\nAnalyzing captured samples...")
+            print(f"\n[Step {'2/2' if dry_run else '4/4'}] Analyzing data and generating plot...")
             analysis_results = self._analyze_samples(samples)
             results.update(analysis_results)
 
             # Generate plots
-            print("\nGenerating analysis plots...")
             self._generate_plots(samples, results)
 
             results["success"] = True

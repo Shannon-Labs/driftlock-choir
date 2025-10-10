@@ -1,6 +1,6 @@
 # Driftlock Choir
 
-![13.5 ps beat-note recovery](docs/assets/images/hero_beat_note_tau13p5ps.png)
+![Driftlock Choir Synchronization Process](docs/assets/images/narrative_synchronization_13p5ps.png)
 
 > The open-source foundation for a breakthrough wireless synchronization technology, actively transitioning from proven theory to hardware validation.
 
@@ -76,21 +76,13 @@ Explore the results and visualizations in the interactive walkthrough notebook:
 jupyter notebook docs/examples/e1_cli_walkthrough.ipynb
 ```
 
-## Collaboration & Commercialization
+## Collaboration & Open Core Model
 
-We are building this project using an **"Open Core"** model to encourage academic collaboration while enabling commercial application.
-*   The **core simulation framework** is open-source (MIT).
-*   The **hardware-specific performance layer** will be proprietary.
+This project uses an **"Open Core"** model. The core simulation framework is open-source (MIT) to foster academic collaboration and peer review. The high-performance, hardware-specific implementations (e.g., for FPGAs) are proprietary and form the basis for future commercialization.
 
-We welcome collaboration from academic labs, industry researchers, and potential partners. For more details on our IP strategy and target markets, please see our **[Commercialization Brief](COMMERCIALIZATION.md)**.
+We are committed to validating our work through peer-reviewed publication in high-impact venues.
 
-## Scientific Dissemination
-
-We are committed to validating our work through peer-reviewed publication. To see our target venues and track our progress, please visit our **[Publications Page](PUBLICATIONS.md)**.
-
-## Deeper Dive: Q&A
-
-For a deeper dive into the theory, technical challenges, and scientific context of this project, please see our detailed Q&A:
+For a deeper dive into the theory, technical challenges, and scientific context, please see our detailed Q&A:
 
 ➡️ **[Frequently Asked Questions (Q&A.md)](Q&A.md)**
 
