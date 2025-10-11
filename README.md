@@ -24,7 +24,68 @@ This system addresses time *distribution* (syntonization and synchronization), n
 ### The Primary Challenge: Multipath Fading
 The primary challenge is multipath fading. The current phase-slope estimator assumes a single, line-of-sight (LoS) propagation path. In a real environment, the received signal is a superposition of multiple paths, each with a different delay and attenuation. This corrupts the simple linear relationship between frequency and phase. Overcoming this requires developing advanced estimators that can identify the LoS path in a dense multipath environment.
 
+![Chronometric Interferometry Visualization](docs/assets/images/final_visualization.png)
+
+*Figure 1 – A detailed visualization of the chronometric interferometry process, showing how an initial time delay on a high-frequency carrier wave creates a measurable phase shift in the low-frequency beat-note, which is then used to calculate the original delay.*
+
+> #### **Panel 4: Calculation & Final Result**
+> 
+> **Extracting Time-of-Flight (τ)**
+> 
+> The phase shift, φ, preserved in the beat-note, allows us to calculate the original time-of-flight, τ, using the carrier frequency.
+> 
+> - **Formula:** `τ = φ / (2 * π * f_carrier)`
+> 
+> - **Given:**
+>   - Measured Phase Shift (φ) ≈ 0.207 rad
+>   - Carrier Frequency (f_carrier) = 2.442 GHz
+> 
+> - **Calculation:**
+>   - τ = 0.207 / (2 * π * 2.442e9 Hz)
+>   - **Calculated Result: τ ≈ 13.5 ps**
+>>>>>>> caa7a5d (graphics update)
 ## Performance
+
+![Chronometric Interferometry Visualization](docs/assets/images/final_visualization.png)
+
+*Figure 1 – A detailed visualization of the chronometric interferometry process, showing how an initial time delay on a high-frequency carrier wave creates a measurable phase shift in the low-frequency beat-note, which is then used to calculate the original delay.*
+
+> #### **Panel 4: Calculation & Final Result**
+> 
+> **Extracting Time-of-Flight (τ)**
+> 
+> The phase shift, φ, preserved in the beat-note, allows us to calculate the original time-of-flight, τ, using the carrier frequency.
+> 
+> - **Formula:** `τ = φ / (2 * π * f_carrier)`
+> 
+> - **Given:**
+>   - Measured Phase Shift (φ) ≈ 0.207 rad
+>   - Carrier Frequency (f_carrier) = 2.442 GHz
+> 
+> - **Calculation:**
+>   - τ = 0.207 / (2 * π * 2.442e9 Hz)
+>   - **Calculated Result: τ ≈ 13.5 ps**
+=======
+![Chronometric Interferometry Visualization](docs/assets/images/final_visualization.png)
+
+*Figure 1 – A detailed visualization of the chronometric interferometry process, showing how an initial time delay on a high-frequency carrier wave creates a measurable phase shift in the low-frequency beat-note, which is then used to calculate the original delay.*
+
+> #### **Panel 4: Calculation & Final Result**
+> 
+> **Extracting Time-of-Flight (τ)**
+> 
+> The phase shift, φ, preserved in the beat-note, allows us to calculate the original time-of-flight, τ, using the carrier frequency.
+> 
+> - **Formula:** `τ = φ / (2 * π * f_carrier)`
+> 
+> - **Given:**
+>   - Measured Phase Shift (φ) ≈ 0.207 rad
+>   - Carrier Frequency (f_carrier) = 2.442 GHz
+> 
+> - **Calculation:**
+>   - τ = 0.207 / (2 * π * 2.442e9 Hz)
+>   - **Calculated Result: τ ≈ 13.5 ps**
+>>>>>>> caa7a5d (graphics update)
 
 Achieving picosecond-level wireless timing enables new applications across various fields.
 
